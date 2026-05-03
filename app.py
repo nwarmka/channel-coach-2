@@ -44,7 +44,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.markdown('<p class="main-title">🎬 Channel Coach</p>', unsafe_allow_html=True)
-st.markdown('<p class="subtitle">AI tools for YouTube, TikTok, Shorts, captions, hooks, hashtags, thumbnails, and content growth.</p>', unsafe_allow_html=True)
+st.markdown('<p class="subtitle">AI tools for YouTube, TikTok, Shorts, captions, hooks, hashtags, thumbnails, and creator growth.</p>', unsafe_allow_html=True)
 
 st.divider()
 
@@ -81,7 +81,10 @@ niche = st.sidebar.text_input(
     placeholder="Example: gaming, beauty, fitness"
 )
 
-st.sidebar.caption("Built by Nikki | Channel Coach v2")
+st.sidebar.caption("Built by Nikki | Channel Coach v3")
+
+if "messages" not in st.session_state:
+    st.session_state.messages = []
 
 left, right = st.columns([1, 1])
 
@@ -167,10 +170,7 @@ with right:
 </div>
 """, unsafe_allow_html=True)
 
-    st.info("Tip: Upload a thumbnail or screenshot to get visual feedback, better titles, hooks, and on-screen text.")
-
-if "messages" not in st.session_state:
-    st.session_state.messages = []
+    st.info("Tip: Your bot now remembers the conversation, so users can ask follow-ups like “describe that idea in more detail.”")
 
 chat_input = st.chat_input("Ask Channel Coach anything...")
 
@@ -238,7 +238,10 @@ User request:
 Task:
 {task}
 
-Rules:
+Important conversation rules:
+- Use the previous conversation when the user asks follow-up questions.
+- If the user says things like "describe it more," "make it better," "expand that," or "give me more detail," continue from the previous idea.
+- Do not say you need more context if the previous messages already contain the idea.
 - Be specific, not generic.
 - Use SEO-rich language when helpful.
 - Make it catchy but not cringe.
@@ -251,22 +254,44 @@ if quick_prompt:
     if not quick_prompt.strip() and not uploaded_file:
         st.warning("Please describe your video or upload an image first.")
     else:
-        st.session_state.messages.append({"role": "user", "content": quick_prompt})
+        user_message = quick_prompt if quick_prompt else "Analyze the uploaded image."
+        st.session_state.messages.append({"role": "user", "content": user_message})
 
         if "VIRAL HOOK CAPTIONS" in quick_prompt:
             full_prompt = quick_prompt
         else:
-            full_prompt = build_prompt(tool, platform, niche, tone, quick_prompt)
+            full_prompt = build_prompt(tool, platform, niche, tone, user_message)
+
+        messages_for_ai = [
+            {
+                "role": "system",
+                "content": """
+You are Channel Coach, a helpful AI assistant for creators.
+You help with YouTube, TikTok, Shorts, thumbnails, hooks, captions, scripts, hashtags, and content strategy.
+You remember the current conversation and can expand, revise, or continue previous ideas.
+"""
+            }
+        ]
+
+        for msg in st.session_state.messages[-10:]:
+            messages_for_ai.append({
+                "role": msg["role"],
+                "content": msg["content"]
+            })
+
+        messages_for_ai.append({
+            "role": "user",
+            "content": full_prompt
+        })
 
         with st.spinner("Channel Coach is creating your content..."):
 
             if uploaded_file:
                 image_bytes = uploaded_file.getvalue()
                 image_base64 = base64.b64encode(image_bytes).decode("utf-8")
-
                 mime_type = uploaded_file.type
 
-                full_prompt = full_prompt + """
+                image_prompt = full_prompt + """
 
 Also analyze the uploaded image.
 Give feedback on:
@@ -284,7 +309,7 @@ Give feedback on:
                         {
                             "role": "user",
                             "content": [
-                                {"type": "input_text", "text": full_prompt},
+                                {"type": "input_text", "text": image_prompt},
                                 {
                                     "type": "input_image",
                                     "image_url": f"data:{mime_type};base64,{image_base64}"
@@ -297,7 +322,7 @@ Give feedback on:
             else:
                 response = client.responses.create(
                     model="gpt-4.1-mini",
-                    input=full_prompt
+                    input=messages_for_ai
                 )
 
         reply = response.output_text
