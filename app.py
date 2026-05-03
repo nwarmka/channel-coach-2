@@ -2,13 +2,9 @@ import streamlit as st
 from openai import OpenAI
 import os
 from dotenv import load_dotenv
+import base64
 
 load_dotenv()
-import streamlit as st
-from openai import OpenAI
-import os
-from dotenv import load_dotenv
-import streamlit.components.v1 as components
 
 api_key = os.getenv("OPENAI_API_KEY")
 
@@ -44,21 +40,14 @@ st.markdown("""
     border: 1px solid #e6e6e6;
     margin-bottom: 15px;
 }
-.result-box {
-    padding: 20px;
-    border-radius: 18px;
-    background-color: #ffffff;
-    border: 1px solid #ddd;
-}
 </style>
 """, unsafe_allow_html=True)
 
 st.markdown('<p class="main-title">🎬 Channel Coach</p>', unsafe_allow_html=True)
-st.markdown('<p class="subtitle">AI tools for YouTube, TikTok, Shorts, captions, hooks, hashtags, and content growth.</p>', unsafe_allow_html=True)
+st.markdown('<p class="subtitle">AI tools for YouTube, TikTok, Shorts, captions, hooks, hashtags, thumbnails, and content growth.</p>', unsafe_allow_html=True)
 
 st.divider()
 
-# Sidebar
 st.sidebar.title("⚙️ Creator Settings")
 
 tool = st.sidebar.selectbox(
@@ -72,6 +61,7 @@ tool = st.sidebar.selectbox(
         "TikTok Caption",
         "On-Screen Captions",
         "Thumbnail Text",
+        "Thumbnail Analyzer",
         "Script Ideas"
     ]
 )
@@ -91,19 +81,30 @@ niche = st.sidebar.text_input(
     placeholder="Example: gaming, beauty, fitness"
 )
 
-st.sidebar.caption("Built by Nikki | Channel Coach v1")
+st.sidebar.caption("Built by Nikki | Channel Coach v2")
 
-# Main layout
 left, right = st.columns([1, 1])
 
 with left:
     st.markdown("### ✍️ Describe Your Content")
 
     user_text = st.text_area(
-        "Video idea, script, comment, or content topic",
+        "Video idea, script, comment, thumbnail, or content topic",
         placeholder="Example: A Paper Mario boss fight short where Mario barely wins...",
         height=180
     )
+
+    st.markdown("### 🖼️ Upload Image Optional")
+
+    uploaded_file = st.file_uploader(
+        "Upload a thumbnail, screenshot, or video frame",
+        type=["png", "jpg", "jpeg"]
+    )
+
+    if uploaded_file:
+        st.image(uploaded_file, caption="Uploaded Image", use_container_width=True)
+        tool = "Thumbnail Analyzer"
+        st.success("Image uploaded! Channel Coach will analyze it like a thumbnail or visual post.")
 
     st.markdown("### 🚀 Quick Tools")
 
@@ -151,6 +152,9 @@ Output:
     if st.button("✨ Generate With Selected Tool", use_container_width=True):
         quick_prompt = user_text
 
+    if uploaded_file and st.button("🖼️ Analyze Uploaded Thumbnail", use_container_width=True):
+        quick_prompt = user_text if user_text.strip() else "Analyze this uploaded thumbnail or visual post."
+
 with right:
     st.markdown("### 📌 Current Setup")
 
@@ -163,7 +167,7 @@ with right:
 </div>
 """, unsafe_allow_html=True)
 
-    st.info("Tip: For best results, include the video topic, audience, goal, and platform.")
+    st.info("Tip: Upload a thumbnail or screenshot to get visual feedback, better titles, hooks, and on-screen text.")
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
@@ -172,6 +176,7 @@ chat_input = st.chat_input("Ask Channel Coach anything...")
 
 if chat_input:
     quick_prompt = chat_input
+
 
 def build_prompt(tool, platform, niche, tone, user_request):
     if tool == "Content Pack":
@@ -201,6 +206,22 @@ Include:
         task = "Create short, punchy on-screen captions. Keep each line easy to read."
     elif tool == "Thumbnail Text":
         task = "Create 10 bold thumbnail text ideas. Keep each one 3–5 words max."
+    elif tool == "Thumbnail Analyzer":
+        task = """
+Analyze the uploaded thumbnail, screenshot, or visual post.
+
+Include:
+1. Overall thumbnail strength
+2. What works visually
+3. What is weak or unclear
+4. Text readability
+5. Clickability score from 1–10
+6. Better thumbnail text ideas
+7. Better title ideas
+8. Better hook ideas
+9. SEO caption idea
+10. Hashtags
+"""
     else:
         task = "Generate useful, specific script or content ideas."
 
@@ -222,12 +243,13 @@ Rules:
 - Use SEO-rich language when helpful.
 - Make it catchy but not cringe.
 - Give ready-to-copy examples.
-- Focus on hooks, retention, discoverability, and engagement.
+- Focus on hooks, retention, discoverability, visuals, and engagement.
 """
 
+
 if quick_prompt:
-    if not quick_prompt.strip():
-        st.warning("Please describe your video or type a request first.")
+    if not quick_prompt.strip() and not uploaded_file:
+        st.warning("Please describe your video or upload an image first.")
     else:
         st.session_state.messages.append({"role": "user", "content": quick_prompt})
 
@@ -237,16 +259,49 @@ if quick_prompt:
             full_prompt = build_prompt(tool, platform, niche, tone, quick_prompt)
 
         with st.spinner("Channel Coach is creating your content..."):
-            response = client.responses.create(
-                model="gpt-4.1-mini",
-                input=full_prompt
-            )
+
+            if uploaded_file:
+                image_bytes = uploaded_file.getvalue()
+                image_base64 = base64.b64encode(image_bytes).decode("utf-8")
+
+                mime_type = uploaded_file.type
+
+                full_prompt = full_prompt + """
+
+Also analyze the uploaded image.
+Give feedback on:
+1. Thumbnail strength
+2. Text readability
+3. Hook potential
+4. Visual appeal
+5. Better title ideas
+6. Better on-screen text ideas
+"""
+
+                response = client.responses.create(
+                    model="gpt-4.1-mini",
+                    input=[
+                        {
+                            "role": "user",
+                            "content": [
+                                {"type": "input_text", "text": full_prompt},
+                                {
+                                    "type": "input_image",
+                                    "image_url": f"data:{mime_type};base64,{image_base64}"
+                                }
+                            ]
+                        }
+                    ]
+                )
+
+            else:
+                response = client.responses.create(
+                    model="gpt-4.1-mini",
+                    input=full_prompt
+                )
 
         reply = response.output_text
         st.session_state.messages.append({"role": "assistant", "content": reply})
-
-st.divider()
-st.markdown("### 💬 Results")
 
 st.divider()
 st.markdown("### 💬 Results")
@@ -261,7 +316,7 @@ for i, message in enumerate(st.session_state.messages):
             st.text_area(
                 "Copyable result",
                 message["content"],
-                height=250,
+                height=300,
                 key=f"text_{i}"
             )
 
