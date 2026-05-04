@@ -38,9 +38,9 @@ st.markdown(
         color: #666;
         margin-bottom: 25px;
     }
-    .section-card {
-        padding: 18px;
-        border-radius: 16px;
+    .helper-box {
+        padding: 16px;
+        border-radius: 14px;
         background-color: #f7f7f9;
         border: 1px solid #e5e5e5;
         margin-bottom: 16px;
@@ -91,12 +91,35 @@ def ask_image_ai(prompt, uploaded_image):
     return response.output_text
 
 
+def build_creator_profile(creator_name, platform, niche, custom_niche, tone, audience):
+    selected_niche = custom_niche if niche == "Other" else niche
+    return f"""
+Creator/channel name: {creator_name or 'Not provided'}
+Main platform: {platform}
+Selected niche: {selected_niche}
+Tone: {tone}
+Audience: {audience or 'Not provided'}
+"""
+
 # -----------------------------
 # HEADER
 # -----------------------------
 st.markdown('<div class="main-title">🎬 Channel Coach</div>', unsafe_allow_html=True)
 st.markdown(
-    '<div class="subtitle">A creator assistant for better titles, hooks, captions, thumbnails, and video ideas.</div>',
+    '<div class="subtitle">A creator assistant for better titles, hooks, captions, thumbnails, videos, and growth ideas.</div>',
+    unsafe_allow_html=True
+)
+
+st.markdown(
+    """
+    <div class="helper-box">
+    <b>How to use this:</b><br>
+    1. Fill out the Creator Profile on the left.<br>
+    2. Pick a tab depending on what you need.<br>
+    3. Paste your video idea, upload a short clip, upload a thumbnail, or paste a YouTube link.<br>
+    4. Let Channel Coach improve your content before you post.
+    </div>
+    """,
     unsafe_allow_html=True
 )
 
@@ -121,6 +144,7 @@ platform = st.sidebar.selectbox(
 niche = st.sidebar.selectbox(
     "Creator niche",
     [
+        "Auto-detect from my idea",
         "Gaming",
         "Lifestyle",
         "Beauty",
@@ -160,21 +184,17 @@ audience = st.sidebar.text_area(
     placeholder="Example: Nintendo fans, moms, people moving to Mexico, beginners, etc."
 )
 
-creator_profile = f"""
-Creator/channel name: {creator_name or 'Not provided'}
-Main platform: {platform}
-Niche: {custom_niche if niche == 'Other' else niche}
-Tone: {tone}
-Audience: {audience or 'Not provided'}
-"""
+creator_profile = build_creator_profile(creator_name, platform, niche, custom_niche, tone, audience)
 
 # -----------------------------
 # MAIN TABS
 # -----------------------------
-tab1, tab2, tab3, tab4 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
     "🚀 Quick Tools",
     "🖼️ Thumbnail Review",
     "🎥 Video Upload Coach",
+    "🔗 YouTube Link Coach",
+    "🛠️ Fix My Video",
     "💡 Idea Builder"
 ])
 
@@ -206,6 +226,8 @@ Creator profile:
 Video description:
 {content_description}
 
+If the niche says auto-detect, identify the most likely niche first.
+
 Create 12 strong title options.
 Separate them into:
 1. Search-friendly titles
@@ -213,7 +235,7 @@ Separate them into:
 3. Shorts/Reels/TikTok titles
 
 Make them specific, not generic.
-Avoid clickbait that lies.
+Avoid fake clickbait.
 """
                 with st.spinner("Creating title ideas..."):
                     st.write(ask_text_ai(prompt))
@@ -231,14 +253,17 @@ Creator profile:
 Video description:
 {content_description}
 
+If the niche says auto-detect, identify the most likely niche first.
+
 Create:
 1. A YouTube description with SEO-rich language
 2. A TikTok caption
-3. A Facebook Reels caption
-4. 15 hashtags, each under 20 characters when possible
-5. 10 keyword phrases the creator could naturally use
+3. An Instagram Reels caption
+4. A Facebook Reels caption
+5. 15 hashtags, each under 20 characters when possible
+6. 10 keyword phrases the creator could naturally use
 
-Make it useful, specific, and platform-friendly.
+Make it specific, searchable, and not generic.
 """
                 with st.spinner("Creating SEO captions..."):
                     st.write(ask_text_ai(prompt))
@@ -257,11 +282,14 @@ Creator profile:
 Video description:
 {content_description}
 
+If the niche says auto-detect, identify the most likely niche first.
+
 Create:
 1. 10 opening hook lines
 2. 10 on-screen text hook ideas
 3. 5 voiceover hook ideas
-4. Explain which 3 are strongest and why
+4. A stronger first 3 seconds plan
+5. Explain which 3 hooks are strongest and why
 
 Keep hooks short, clear, and attention-grabbing.
 """
@@ -281,6 +309,8 @@ Creator profile:
 User's current post/video idea:
 {content_description}
 
+If the niche says auto-detect, identify the most likely niche first.
+
 Improve this for social media.
 Give:
 1. What is working
@@ -290,6 +320,7 @@ Give:
 5. Better title
 6. Better hashtags
 7. Better on-screen text
+8. What to change before posting
 """
                 with st.spinner("Improving your post..."):
                     st.write(ask_text_ai(prompt))
@@ -329,6 +360,8 @@ Creator profile:
 Video context:
 {thumbnail_context or 'No extra context provided.'}
 
+If the niche says auto-detect, identify the most likely niche first.
+
 Analyze the uploaded thumbnail/screenshot.
 Give feedback on:
 1. Thumbnail strength from 1-10
@@ -353,7 +386,7 @@ Give specific changes, not generic advice.
 # -----------------------------
 with tab3:
     st.header("🎥 Video Upload Coach")
-    st.write("Upload a short video file or describe the video. For now, Channel Coach can coach based on your description and file details.")
+    st.write("Upload a short video clip. Shorts usually work best because long videos may be too large for Streamlit.")
 
     uploaded_video = st.file_uploader(
         "Upload video file",
@@ -374,13 +407,13 @@ with tab3:
         st.video(uploaded_video)
         st.info(f"Uploaded file: {uploaded_video.name}")
 
-    if st.button("Coach My Video"):
+    if st.button("Coach My Uploaded Video"):
         if not video_description and not uploaded_video:
             st.warning("Upload a video or describe it first.")
         else:
             file_note = ""
             if uploaded_video:
-                file_note = f"The user uploaded a video file named {uploaded_video.name}. You cannot directly watch the full video here, so coach based on the user's description and file context."
+                file_note = f"The user uploaded a video file named {uploaded_video.name}. You cannot directly watch every frame here, so coach based on the user's description, title, caption, and file context."
 
             prompt = f"""
 You are Channel Coach, a creator growth assistant.
@@ -399,29 +432,149 @@ Current title:
 Current caption:
 {current_caption or 'Not provided'}
 
+If the niche says auto-detect, identify the most likely niche first.
+
 Give a complete pre-posting review:
-1. Stronger title options
-2. Stronger hook ideas
-3. Better first 3 seconds idea
-4. SEO-rich YouTube description
-5. TikTok caption
-6. Facebook Reels caption
-7. Hashtags
-8. On-screen text ideas
-9. Editing suggestions
-10. Thumbnail idea
-11. What might confuse viewers
-12. Final post checklist
+1. Detected niche
+2. Stronger title options
+3. Stronger hook ideas
+4. Better first 3 seconds idea
+5. SEO-rich YouTube description
+6. TikTok caption
+7. Instagram Reels caption
+8. Facebook Reels caption
+9. Hashtags
+10. On-screen text ideas
+11. Editing suggestions
+12. Thumbnail idea
+13. What might confuse viewers
+14. Final post checklist
 
 Be specific to the creator's niche and video.
 """
-            with st.spinner("Coaching your video..."):
+            with st.spinner("Coaching your uploaded video..."):
                 st.write(ask_text_ai(prompt))
 
 # -----------------------------
-# TAB 4: IDEA BUILDER
+# TAB 4: YOUTUBE LINK COACH
 # -----------------------------
 with tab4:
+    st.header("🔗 YouTube Link Coach")
+    st.write("Paste a YouTube link and describe what happens in the video. This is useful when the file is too big to upload.")
+
+    youtube_link = st.text_input("Paste YouTube link", placeholder="https://www.youtube.com/watch?v=...")
+    link_context = st.text_area(
+        "Describe the video or paste your current title/description",
+        placeholder="Example: This is my long-form Paper Mario episode where I get Flurrie and help the Punies. I want better SEO and a better title."
+    )
+
+    if st.button("Analyze YouTube Link"):
+        if not youtube_link and not link_context:
+            st.warning("Paste a YouTube link or describe the video first.")
+        else:
+            prompt = f"""
+You are Channel Coach, a creator growth assistant.
+
+Creator profile:
+{creator_profile}
+
+YouTube link:
+{youtube_link or 'No link provided'}
+
+Video context/current description:
+{link_context or 'No context provided'}
+
+Important: You cannot directly open the YouTube link from inside this app. Use the link as context only, and coach based on the user's description.
+
+If the niche says auto-detect, identify the most likely niche first.
+
+Give:
+1. Detected niche
+2. Better YouTube title options
+3. Better searchable description
+4. Better first paragraph for the description
+5. Chapters/timestamps template if this is long-form
+6. Better pinned comment idea
+7. Better thumbnail concept
+8. Better Shorts ideas from this long video
+9. SEO keyword phrases
+10. Hashtags
+11. What to improve before posting or reposting
+
+Make this practical and specific.
+"""
+            with st.spinner("Analyzing YouTube link context..."):
+                st.write(ask_text_ai(prompt))
+
+# -----------------------------
+# TAB 5: FIX MY VIDEO
+# -----------------------------
+with tab5:
+    st.header("🛠️ Fix My Video Mode")
+    st.write("Paste what you already have, and Channel Coach will rewrite it stronger.")
+
+    fix_platform = st.selectbox(
+        "Where are you posting?",
+        ["YouTube Long Video", "YouTube Short", "TikTok", "Instagram Reel", "Facebook Reel", "Multiple platforms"]
+    )
+
+    bad_title = st.text_input("Current title")
+    bad_caption = st.text_area("Current caption or description")
+    bad_hashtags = st.text_area("Current hashtags")
+    what_happens = st.text_area(
+        "What happens in the video?",
+        placeholder="Example: Flurrie blows the Punies across a gap and everyone makes it safely across."
+    )
+
+    if st.button("Fix My Video"):
+        if not what_happens and not bad_title and not bad_caption:
+            st.warning("Paste at least a title, caption, or video description first.")
+        else:
+            prompt = f"""
+You are Channel Coach, a creator growth assistant.
+
+Creator profile:
+{creator_profile}
+
+Posting platform:
+{fix_platform}
+
+Current title:
+{bad_title or 'Not provided'}
+
+Current caption/description:
+{bad_caption or 'Not provided'}
+
+Current hashtags:
+{bad_hashtags or 'Not provided'}
+
+What happens in the video:
+{what_happens or 'Not provided'}
+
+If the niche says auto-detect, identify the most likely niche first.
+
+Rewrite and fix everything.
+Give:
+1. What is weak or confusing
+2. Stronger title
+3. 10 alternate titles
+4. Stronger caption/description
+5. Better hashtags
+6. Better first 3 seconds hook
+7. Better on-screen text
+8. Better thumbnail text
+9. One simple thing to change before posting
+10. Final ready-to-copy version
+
+Make it specific and ready to post.
+"""
+            with st.spinner("Fixing your video..."):
+                st.write(ask_text_ai(prompt))
+
+# -----------------------------
+# TAB 6: IDEA BUILDER
+# -----------------------------
+with tab6:
     st.header("💡 Idea Builder")
     st.write("Build unique video ideas for your niche.")
 
@@ -457,13 +610,18 @@ Goal:
 User notes:
 {idea_notes or 'No extra notes provided.'}
 
+If the niche says auto-detect, identify the most likely niche first.
+
 Create:
-1. 15 video ideas
-2. 10 short-form ideas
-3. 5 series ideas
-4. 5 ideas that feel unique and less generic
-5. Best idea to post first and why
-6. Simple filming/editing checklist
+1. Detected niche
+2. 15 video ideas
+3. 10 short-form ideas
+4. 5 long-form ideas
+5. 5 series ideas
+6. 5 ideas that feel unique and less generic
+7. Best idea to post first and why
+8. Simple filming/editing checklist
+9. What makes these ideas different from generic AI suggestions
 
 Make the ideas specific to the creator's niche.
 """
