@@ -1,349 +1,480 @@
 import streamlit as st
 from openai import OpenAI
-import os
-from dotenv import load_dotenv
 import base64
 
-load_dotenv()
-
-api_key = os.getenv("OPENAI_API_KEY")
-
-try:
-    api_key = st.secrets["OPENAI_API_KEY"]
-except Exception:
-    pass
-
-client = OpenAI(api_key=api_key)
-
+# -----------------------------
+# PAGE SETUP
+# -----------------------------
 st.set_page_config(
     page_title="Channel Coach",
     page_icon="🎬",
     layout="wide"
 )
 
-st.markdown("""
-<style>
-.main-title {
-    font-size: 42px;
-    font-weight: 800;
-    margin-bottom: 0;
-}
-.subtitle {
-    font-size: 18px;
-    color: #666;
-    margin-top: 0;
-}
-.card {
-    padding: 20px;
-    border-radius: 18px;
-    background-color: #f7f7f9;
-    border: 1px solid #e6e6e6;
-    margin-bottom: 15px;
-}
-</style>
-""", unsafe_allow_html=True)
+# -----------------------------
+# OPENAI CLIENT
+# -----------------------------
+api_key = st.secrets.get("OPENAI_API_KEY", None)
 
-st.markdown('<p class="main-title">🎬 Channel Coach</p>', unsafe_allow_html=True)
-st.markdown('<p class="subtitle">AI tools for YouTube, TikTok, Shorts, captions, hooks, hashtags, thumbnails, and creator growth.</p>', unsafe_allow_html=True)
+if not api_key:
+    st.error("OPENAI_API_KEY is missing. Add it in Streamlit Cloud → Manage app → Settings → Secrets.")
+    st.stop()
 
-st.divider()
+client = OpenAI(api_key=api_key)
 
-st.sidebar.title("⚙️ Creator Settings")
+# -----------------------------
+# STYLES
+# -----------------------------
+st.markdown(
+    """
+    <style>
+    .main-title {
+        font-size: 42px;
+        font-weight: 800;
+        margin-bottom: 0px;
+    }
+    .subtitle {
+        font-size: 18px;
+        color: #666;
+        margin-bottom: 25px;
+    }
+    .section-card {
+        padding: 18px;
+        border-radius: 16px;
+        background-color: #f7f7f9;
+        border: 1px solid #e5e5e5;
+        margin-bottom: 16px;
+    }
+    .small-note {
+        font-size: 14px;
+        color: #777;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 
-tool = st.sidebar.selectbox(
-    "Tool",
+# -----------------------------
+# HELPER FUNCTIONS
+# -----------------------------
+def image_to_base64(uploaded_file):
+    return base64.b64encode(uploaded_file.getvalue()).decode("utf-8")
+
+
+def ask_text_ai(prompt):
+    response = client.responses.create(
+        model="gpt-4.1-mini",
+        input=prompt
+    )
+    return response.output_text
+
+
+def ask_image_ai(prompt, uploaded_image):
+    image_base64 = image_to_base64(uploaded_image)
+    mime_type = uploaded_image.type or "image/png"
+
+    response = client.responses.create(
+        model="gpt-4.1-mini",
+        input=[
+            {
+                "role": "user",
+                "content": [
+                    {"type": "input_text", "text": prompt},
+                    {
+                        "type": "input_image",
+                        "image_url": f"data:{mime_type};base64,{image_base64}"
+                    }
+                ]
+            }
+        ]
+    )
+    return response.output_text
+
+
+# -----------------------------
+# HEADER
+# -----------------------------
+st.markdown('<div class="main-title">🎬 Channel Coach</div>', unsafe_allow_html=True)
+st.markdown(
+    '<div class="subtitle">A creator assistant for better titles, hooks, captions, thumbnails, and video ideas.</div>',
+    unsafe_allow_html=True
+)
+
+# -----------------------------
+# SIDEBAR CREATOR PROFILE
+# -----------------------------
+st.sidebar.header("Creator Profile")
+
+creator_name = st.sidebar.text_input("Creator or channel name", placeholder="Example: Nikki Plays")
+platform = st.sidebar.selectbox(
+    "Main platform",
     [
-        "Content Pack",
-        "SEO Caption",
-        "Hashtags",
-        "Hooks",
-        "YouTube Title",
-        "TikTok Caption",
-        "On-Screen Captions",
-        "Thumbnail Text",
-        "Thumbnail Analyzer",
-        "Script Ideas"
+        "YouTube",
+        "TikTok",
+        "Instagram Reels",
+        "Facebook Reels",
+        "YouTube + TikTok",
+        "Multiple platforms"
     ]
 )
 
-platform = st.sidebar.selectbox(
-    "Platform",
-    ["YouTube Shorts", "TikTok", "Instagram Reels", "YouTube Long Form"]
+niche = st.sidebar.selectbox(
+    "Creator niche",
+    [
+        "Gaming",
+        "Lifestyle",
+        "Beauty",
+        "Fitness",
+        "Food/Cooking",
+        "Travel",
+        "Family/Vlogs",
+        "Deportee wife / life in Mexico",
+        "Education/Tutorials",
+        "Comedy",
+        "Music",
+        "Business",
+        "Other"
+    ]
 )
+
+custom_niche = ""
+if niche == "Other":
+    custom_niche = st.sidebar.text_input("Type your niche")
 
 tone = st.sidebar.selectbox(
-    "Tone",
-    ["Casual", "Professional", "Funny", "Bold", "Friendly"]
+    "Content tone",
+    [
+        "Friendly",
+        "Funny",
+        "Helpful",
+        "Dramatic",
+        "Cozy",
+        "High-energy",
+        "Professional",
+        "Emotional/storytelling"
+    ]
 )
 
-niche = st.sidebar.text_input(
-    "Niche",
-    placeholder="Example: gaming, beauty, fitness"
+audience = st.sidebar.text_area(
+    "Who is your audience?",
+    placeholder="Example: Nintendo fans, moms, people moving to Mexico, beginners, etc."
 )
 
-st.sidebar.caption("Built by Nikki | Channel Coach v3")
+creator_profile = f"""
+Creator/channel name: {creator_name or 'Not provided'}
+Main platform: {platform}
+Niche: {custom_niche if niche == 'Other' else niche}
+Tone: {tone}
+Audience: {audience or 'Not provided'}
+"""
 
-if "messages" not in st.session_state:
-    st.session_state.messages = []
+# -----------------------------
+# MAIN TABS
+# -----------------------------
+tab1, tab2, tab3, tab4 = st.tabs([
+    "🚀 Quick Tools",
+    "🖼️ Thumbnail Review",
+    "🎥 Video Upload Coach",
+    "💡 Idea Builder"
+])
 
-left, right = st.columns([1, 1])
+# -----------------------------
+# TAB 1: QUICK TOOLS
+# -----------------------------
+with tab1:
+    st.header("🚀 Quick Creator Tools")
+    st.write("Use these tools for fast titles, captions, hashtags, hooks, and post ideas.")
 
-with left:
-    st.markdown("### ✍️ Describe Your Content")
-
-    user_text = st.text_area(
-        "Video idea, script, comment, thumbnail, or content topic",
-        placeholder="Example: A Paper Mario boss fight short where Mario barely wins...",
-        height=180
+    content_description = st.text_area(
+        "Describe your video or short",
+        placeholder="Example: Flurrie blows the Punies across the gap in Paper Mario TTYD. The on-screen text says teamwork wins again."
     )
-
-    st.markdown("### 🖼️ Upload Image Optional")
-
-    uploaded_file = st.file_uploader(
-        "Upload a thumbnail, screenshot, or video frame",
-        type=["png", "jpg", "jpeg"]
-    )
-
-    if uploaded_file:
-        st.image(uploaded_file, caption="Uploaded Image", use_container_width=True)
-        tool = "Thumbnail Analyzer"
-        st.success("Image uploaded! Channel Coach will analyze it like a thumbnail or visual post.")
-
-    st.markdown("### 🚀 Quick Tools")
-
-    quick_prompt = None
 
     col1, col2 = st.columns(2)
 
     with col1:
-        if st.button("🎬 Titles", use_container_width=True):
-            quick_prompt = "Give me 5 strong video title ideas."
+        if st.button("Generate Better Titles"):
+            if not content_description:
+                st.warning("Describe your video first.")
+            else:
+                prompt = f"""
+You are Channel Coach, a creator growth assistant.
 
-        if st.button("💬 Comment Reply", use_container_width=True):
-            quick_prompt = "Help me write a friendly reply to this comment."
+Creator profile:
+{creator_profile}
+
+Video description:
+{content_description}
+
+Create 12 strong title options.
+Separate them into:
+1. Search-friendly titles
+2. Curiosity/clickable titles
+3. Shorts/Reels/TikTok titles
+
+Make them specific, not generic.
+Avoid clickbait that lies.
+"""
+                with st.spinner("Creating title ideas..."):
+                    st.write(ask_text_ai(prompt))
+
+        if st.button("Generate SEO Captions + Hashtags"):
+            if not content_description:
+                st.warning("Describe your video first.")
+            else:
+                prompt = f"""
+You are Channel Coach, a creator growth assistant.
+
+Creator profile:
+{creator_profile}
+
+Video description:
+{content_description}
+
+Create:
+1. A YouTube description with SEO-rich language
+2. A TikTok caption
+3. A Facebook Reels caption
+4. 15 hashtags, each under 20 characters when possible
+5. 10 keyword phrases the creator could naturally use
+
+Make it useful, specific, and platform-friendly.
+"""
+                with st.spinner("Creating SEO captions..."):
+                    st.write(ask_text_ai(prompt))
 
     with col2:
-        if st.button("📝 Description", use_container_width=True):
-            quick_prompt = "Write a YouTube description with hashtags."
+        if st.button("Generate Hook Ideas"):
+            if not content_description:
+                st.warning("Describe your video first.")
+            else:
+                prompt = f"""
+You are Channel Coach, a creator growth assistant.
 
-        if st.button("⚡ Shorts Ideas", use_container_width=True):
-            quick_prompt = "Give me 5 short-form video ideas."
+Creator profile:
+{creator_profile}
 
-    if st.button("🔥 Viral Captions + SEO Hashtags", use_container_width=True):
-        quick_prompt = f"""Create high-performing captions for a {niche} creator on {platform}.
+Video description:
+{content_description}
 
-Tone: {tone}
+Create:
+1. 10 opening hook lines
+2. 10 on-screen text hook ideas
+3. 5 voiceover hook ideas
+4. Explain which 3 are strongest and why
 
-Output:
-
-1. VIRAL HOOK CAPTIONS
-- 5 short scroll-stopping hooks
-
-2. ON-SCREEN TEXT
-- Break into short readable lines
-
-3. SEO CAPTION
-- Keyword-rich but natural
-
-4. HASHTAGS
-- 15 hashtags mixing broad, niche, and searchable tags
-
-5. BEST OPTION
-- Explain which hook is strongest and why
+Keep hooks short, clear, and attention-grabbing.
 """
+                with st.spinner("Creating hooks..."):
+                    st.write(ask_text_ai(prompt))
 
-    if st.button("✨ Generate With Selected Tool", use_container_width=True):
-        quick_prompt = user_text
+        if st.button("Improve My Post"):
+            if not content_description:
+                st.warning("Paste your post or description first.")
+            else:
+                prompt = f"""
+You are Channel Coach, a creator growth assistant.
 
-    if uploaded_file and st.button("🖼️ Analyze Uploaded Thumbnail", use_container_width=True):
-        quick_prompt = user_text if user_text.strip() else "Analyze this uploaded thumbnail or visual post."
+Creator profile:
+{creator_profile}
 
-with right:
-    st.markdown("### 📌 Current Setup")
+User's current post/video idea:
+{content_description}
 
-    st.markdown(f"""
-<div class="card">
-<b>Selected Tool:</b> {tool}<br>
-<b>Platform:</b> {platform}<br>
-<b>Tone:</b> {tone}<br>
-<b>Niche:</b> {niche if niche else "Not set yet"}
-</div>
-""", unsafe_allow_html=True)
-
-    st.info("Tip: Your bot now remembers the conversation, so users can ask follow-ups like “describe that idea in more detail.”")
-
-chat_input = st.chat_input("Ask Channel Coach anything...")
-
-if chat_input:
-    quick_prompt = chat_input
-
-
-def build_prompt(tool, platform, niche, tone, user_request):
-    if tool == "Content Pack":
-        task = """
-Create a full content pack.
-
-Include:
-1. Best Title
-2. Hook
-3. SEO Caption
-4. Hashtags
-5. On-Screen Text
-6. Thumbnail Text
-7. Why This Works
+Improve this for social media.
+Give:
+1. What is working
+2. What is confusing
+3. A stronger version
+4. Better caption
+5. Better title
+6. Better hashtags
+7. Better on-screen text
 """
-    elif tool == "SEO Caption":
-        task = "Write a high-performing SEO caption that sounds natural and creator-ready."
-    elif tool == "Hashtags":
-        task = "Generate 15 hashtags. Mix broad, niche, searchable, and platform-friendly hashtags."
-    elif tool == "Hooks":
-        task = "Create 5 strong hooks that make people want to keep watching."
-    elif tool == "YouTube Title":
-        task = "Create 5 clickable YouTube titles that are clear, searchable, and not clickbait."
-    elif tool == "TikTok Caption":
-        task = "Write 5 TikTok captions that are short, catchy, and engagement-friendly."
-    elif tool == "On-Screen Captions":
-        task = "Create short, punchy on-screen captions. Keep each line easy to read."
-    elif tool == "Thumbnail Text":
-        task = "Create 10 bold thumbnail text ideas. Keep each one 3–5 words max."
-    elif tool == "Thumbnail Analyzer":
-        task = """
-Analyze the uploaded thumbnail, screenshot, or visual post.
+                with st.spinner("Improving your post..."):
+                    st.write(ask_text_ai(prompt))
 
-Include:
-1. Overall thumbnail strength
-2. What works visually
-3. What is weak or unclear
-4. Text readability
-5. Clickability score from 1–10
-6. Better thumbnail text ideas
-7. Better title ideas
-8. Better hook ideas
-9. SEO caption idea
-10. Hashtags
-"""
-    else:
-        task = "Generate useful, specific script or content ideas."
+# -----------------------------
+# TAB 2: THUMBNAIL REVIEW
+# -----------------------------
+with tab2:
+    st.header("🖼️ Thumbnail Review")
+    st.write("Upload a thumbnail or screenshot and Channel Coach will critique it before you post.")
 
-    return f"""
-You are Channel Coach, an AI content strategist for creators.
+    uploaded_thumbnail = st.file_uploader(
+        "Upload thumbnail or screenshot",
+        type=["png", "jpg", "jpeg"],
+        key="thumbnail_upload"
+    )
 
-Platform: {platform}
-Niche: {niche}
-Tone: {tone}
+    thumbnail_context = st.text_area(
+        "What is this video about?",
+        placeholder="Example: This is a Paper Mario short where Flurrie pushes Punies across a gap.",
+        key="thumbnail_context"
+    )
 
-User request:
-{user_request}
+    if uploaded_thumbnail:
+        st.image(uploaded_thumbnail, caption="Uploaded thumbnail/screenshot", use_container_width=True)
 
-Task:
-{task}
-
-Important conversation rules:
-- Use the previous conversation when the user asks follow-up questions.
-- If the user says things like "describe it more," "make it better," "expand that," or "give me more detail," continue from the previous idea.
-- Do not say you need more context if the previous messages already contain the idea.
-- Be specific, not generic.
-- Use SEO-rich language when helpful.
-- Make it catchy but not cringe.
-- Give ready-to-copy examples.
-- Focus on hooks, retention, discoverability, visuals, and engagement.
-"""
-
-
-if quick_prompt:
-    if not quick_prompt.strip() and not uploaded_file:
-        st.warning("Please describe your video or upload an image first.")
-    else:
-        user_message = quick_prompt if quick_prompt else "Analyze the uploaded image."
-        st.session_state.messages.append({"role": "user", "content": user_message})
-
-        if "VIRAL HOOK CAPTIONS" in quick_prompt:
-            full_prompt = quick_prompt
+    if st.button("Analyze Thumbnail"):
+        if not uploaded_thumbnail:
+            st.warning("Upload an image first.")
         else:
-            full_prompt = build_prompt(tool, platform, niche, tone, user_message)
+            prompt = f"""
+You are Channel Coach, a creator thumbnail and video growth expert.
 
-        messages_for_ai = [
-            {
-                "role": "system",
-                "content": """
-You are Channel Coach, a helpful AI assistant for creators.
-You help with YouTube, TikTok, Shorts, thumbnails, hooks, captions, scripts, hashtags, and content strategy.
-You remember the current conversation and can expand, revise, or continue previous ideas.
-"""
-            }
-        ]
+Creator profile:
+{creator_profile}
 
-        for msg in st.session_state.messages[-10:]:
-            messages_for_ai.append({
-                "role": msg["role"],
-                "content": msg["content"]
-            })
+Video context:
+{thumbnail_context or 'No extra context provided.'}
 
-        messages_for_ai.append({
-            "role": "user",
-            "content": full_prompt
-        })
-
-        with st.spinner("Channel Coach is creating your content..."):
-
-            if uploaded_file:
-                image_bytes = uploaded_file.getvalue()
-                image_base64 = base64.b64encode(image_bytes).decode("utf-8")
-                mime_type = uploaded_file.type
-
-                image_prompt = full_prompt + """
-
-Also analyze the uploaded image.
+Analyze the uploaded thumbnail/screenshot.
 Give feedback on:
-1. Thumbnail strength
+1. Thumbnail strength from 1-10
 2. Text readability
 3. Hook potential
 4. Visual appeal
-5. Better title ideas
-6. Better on-screen text ideas
+5. Whether it would stop someone from scrolling
+6. What is confusing
+7. What should be bigger, brighter, or removed
+8. Better title ideas
+9. Better on-screen text ideas
+10. A simple redesign plan the creator can follow in Canva
+
+Be honest but encouraging.
+Give specific changes, not generic advice.
 """
+            with st.spinner("Analyzing thumbnail..."):
+                st.write(ask_image_ai(prompt, uploaded_thumbnail))
 
-                response = client.responses.create(
-                    model="gpt-4.1-mini",
-                    input=[
-                        {
-                            "role": "user",
-                            "content": [
-                                {"type": "input_text", "text": image_prompt},
-                                {
-                                    "type": "input_image",
-                                    "image_url": f"data:{mime_type};base64,{image_base64}"
-                                }
-                            ]
-                        }
-                    ]
-                )
+# -----------------------------
+# TAB 3: VIDEO UPLOAD COACH
+# -----------------------------
+with tab3:
+    st.header("🎥 Video Upload Coach")
+    st.write("Upload a short video file or describe the video. For now, Channel Coach can coach based on your description and file details.")
 
-            else:
-                response = client.responses.create(
-                    model="gpt-4.1-mini",
-                    input=messages_for_ai
-                )
+    uploaded_video = st.file_uploader(
+        "Upload video file",
+        type=["mp4", "mov", "m4v", "webm"],
+        key="video_upload"
+    )
 
-        reply = response.output_text
-        st.session_state.messages.append({"role": "assistant", "content": reply})
+    video_description = st.text_area(
+        "Describe what happens in the video",
+        placeholder="Example: Mario and Flurrie help the Punies cross the gap. The clip is about teamwork and puzzle solving.",
+        key="video_description"
+    )
 
-st.divider()
-st.markdown("### 💬 Results")
+    current_title = st.text_input("Current title, if you have one", key="current_title")
+    current_caption = st.text_area("Current caption/description, if you have one", key="current_caption")
 
-for i, message in enumerate(st.session_state.messages):
-    with st.chat_message(message["role"]):
+    if uploaded_video:
+        st.video(uploaded_video)
+        st.info(f"Uploaded file: {uploaded_video.name}")
 
-        if message["role"] == "assistant":
-            st.markdown("### ✨ Your Results")
-            st.caption("📋 Click inside the box, press Ctrl + A, then Ctrl + C to copy.")
-
-            st.text_area(
-                "Copyable result",
-                message["content"],
-                height=300,
-                key=f"text_{i}"
-            )
-
+    if st.button("Coach My Video"):
+        if not video_description and not uploaded_video:
+            st.warning("Upload a video or describe it first.")
         else:
-            st.write(message["content"])
+            file_note = ""
+            if uploaded_video:
+                file_note = f"The user uploaded a video file named {uploaded_video.name}. You cannot directly watch the full video here, so coach based on the user's description and file context."
+
+            prompt = f"""
+You are Channel Coach, a creator growth assistant.
+
+Creator profile:
+{creator_profile}
+
+{file_note}
+
+Video description:
+{video_description or 'No detailed description provided.'}
+
+Current title:
+{current_title or 'Not provided'}
+
+Current caption:
+{current_caption or 'Not provided'}
+
+Give a complete pre-posting review:
+1. Stronger title options
+2. Stronger hook ideas
+3. Better first 3 seconds idea
+4. SEO-rich YouTube description
+5. TikTok caption
+6. Facebook Reels caption
+7. Hashtags
+8. On-screen text ideas
+9. Editing suggestions
+10. Thumbnail idea
+11. What might confuse viewers
+12. Final post checklist
+
+Be specific to the creator's niche and video.
+"""
+            with st.spinner("Coaching your video..."):
+                st.write(ask_text_ai(prompt))
+
+# -----------------------------
+# TAB 4: IDEA BUILDER
+# -----------------------------
+with tab4:
+    st.header("💡 Idea Builder")
+    st.write("Build unique video ideas for your niche.")
+
+    goal = st.selectbox(
+        "What do you want?",
+        [
+            "More views",
+            "More subscribers/followers",
+            "More comments",
+            "Better SEO/search traffic",
+            "More relatable content",
+            "A unique series idea",
+            "Short-form ideas",
+            "Long-form video ideas"
+        ]
+    )
+
+    idea_notes = st.text_area(
+        "Tell Channel Coach what you want help with",
+        placeholder="Example: I need shorts ideas for Paper Mario that feel like helpful mini-guides."
+    )
+
+    if st.button("Build Ideas"):
+        prompt = f"""
+You are Channel Coach, a creator growth assistant.
+
+Creator profile:
+{creator_profile}
+
+Goal:
+{goal}
+
+User notes:
+{idea_notes or 'No extra notes provided.'}
+
+Create:
+1. 15 video ideas
+2. 10 short-form ideas
+3. 5 series ideas
+4. 5 ideas that feel unique and less generic
+5. Best idea to post first and why
+6. Simple filming/editing checklist
+
+Make the ideas specific to the creator's niche.
+"""
+        with st.spinner("Building ideas..."):
+            st.write(ask_text_ai(prompt))
+
+# -----------------------------
+# FOOTER
+# -----------------------------
+st.markdown("---")
+st.markdown(
+    "<p class='small-note'>Channel Coach helps creators brainstorm and improve content before posting. Always review results before publishing.</p>",
+    unsafe_allow_html=True
+)
