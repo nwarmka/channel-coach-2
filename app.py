@@ -26,7 +26,6 @@ if not api_key:
     st.stop()
 
 client = OpenAI(api_key=api_key)
-
 MODEL = "gpt-4.1-mini"
 
 # -----------------------------
@@ -42,19 +41,20 @@ st.markdown("""
 .subtitle {
     font-size: 18px;
     text-align: center;
-    color: #666;
+    color: #888;
 }
-.card {
+.result-box {
     padding: 18px;
     border-radius: 18px;
-    background-color: #f7f7f7;
-    margin-bottom: 15px;
+    background-color: #1f1f2e;
+    border: 1px solid #444;
+    margin-top: 15px;
 }
 </style>
 """, unsafe_allow_html=True)
 
 # -----------------------------
-# HELPERS
+# HELPER FUNCTIONS
 # -----------------------------
 def ask_channel_coach(prompt):
     response = client.responses.create(
@@ -170,7 +170,7 @@ Creator profile:
 """
 
 # -----------------------------
-# MAIN TABS
+# TABS
 # -----------------------------
 tab1, tab2, tab3, tab4 = st.tabs([
     "🎬 Shorts Analyst",
@@ -185,6 +185,7 @@ tab1, tab2, tab3, tab4 = st.tabs([
 with tab1:
     st.subheader("🎬 Shorts Analyst")
     st.write("Upload a Short, TikTok, or Reel and get feedback before posting.")
+    st.caption("You'll get: hook score, title ideas, fixes, hashtags, and a final posting recommendation.")
 
     uploaded_short = st.file_uploader(
         "Upload your short video",
@@ -192,11 +193,31 @@ with tab1:
         key="short_video"
     )
 
+    if uploaded_short:
+        st.video(uploaded_short)
+
+    use_idea_only = st.checkbox("I don't have a video yet — analyze my idea instead")
+
     short_topic = st.text_area(
-        "What is happening in the video?",
+        "Describe your Short: what happens, and what moment should people care about?",
         placeholder="Example: Flurrie blows the Punies across a gap to save them.",
-        height=90
+        height=100
     )
+
+    with st.expander("👀 See example result"):
+        st.markdown("""
+🔥 **HOOK SCORE: 6/10**  
+The idea is cute, but the first 2 seconds need stronger action.
+
+🎯 **FIX:**  
+Start with urgency: “Can Flurrie save them before they fall?”
+
+📈 **BETTER TITLE:**  
+“Flurrie Saves the Punies in a CRAZY Escape!”
+
+💬 **FINAL VERDICT:**  
+Needs small edits before posting.
+""")
 
     goal = st.selectbox(
         "What do you want this Short to do?",
@@ -210,29 +231,30 @@ with tab1:
         ]
     )
 
-    if st.button("Analyze My Short", type="primary"):
-        if not uploaded_short:
-            st.warning("Upload a short video first.")
+    if st.button("🚀 Analyze & Improve My Short", type="primary"):
+        if not uploaded_short and not use_idea_only:
+            st.warning("Upload a video or check the idea-only box.")
         elif not short_topic:
-            st.warning("Tell me what is happening in the video.")
+            st.warning("Describe your Short first.")
         else:
-            with st.spinner("Analyzing your Short..."):
-                frames = extract_video_frames(uploaded_short, max_frames=8)
+            with st.spinner("Watching your Short like a viral content expert..."):
+                if uploaded_short and not use_idea_only:
+                    frames = extract_video_frames(uploaded_short, max_frames=8)
 
-                if not frames:
-                    st.error("I could not read the video. Try uploading an MP4 file.")
-                else:
-                    content = [
-                        {
-                            "type": "input_text",
-                            "text": f"""
+                    if not frames:
+                        st.error("I could not read the video. Try uploading a shorter MP4 file.")
+                    else:
+                        content = [
+                            {
+                                "type": "input_text",
+                                "text": f"""
 You are Channel Coach, a short-form video expert.
 
 {profile_text}
 
-Analyze this short-form video.
+Analyze this uploaded short-form video.
 
-Video topic:
+Video description:
 {short_topic}
 
 Goal:
@@ -269,28 +291,75 @@ Say one of these:
 
 Be honest but encouraging.
 """
-                        }
-                    ]
-
-                    for frame in frames:
-                        content.append({
-                            "type": "input_image",
-                            "image_url": f"data:image/jpeg;base64,{frame}",
-                            "detail": "auto"
-                        })
-
-                    response = client.responses.create(
-                        model=MODEL,
-                        input=[
-                            {
-                                "role": "user",
-                                "content": content
                             }
                         ]
-                    )
 
-                    st.success("Analysis complete!")
-                    st.markdown(response.output_text)
+                        for frame in frames:
+                            content.append({
+                                "type": "input_image",
+                                "image_url": f"data:image/jpeg;base64,{frame}",
+                                "detail": "auto"
+                            })
+
+                        response = client.responses.create(
+                            model=MODEL,
+                            input=[
+                                {
+                                    "role": "user",
+                                    "content": content
+                                }
+                            ]
+                        )
+
+                        st.success("Analysis complete!")
+                        st.subheader("📊 Your Results")
+                        st.markdown(response.output_text)
+
+                else:
+                    prompt = f"""
+You are Channel Coach, a short-form video expert.
+
+{profile_text}
+
+The creator does not have a video uploaded yet. Analyze the idea instead.
+
+Short idea:
+{short_topic}
+
+Goal:
+{goal}
+
+Give feedback in this exact format:
+
+🔥 IDEA HOOK SCORE: /10
+Is this idea strong enough for short-form content?
+
+🪝 BEST OPENING HOOK:
+Give the best first 3 seconds.
+
+📝 ON-SCREEN TEXT:
+Give text for the opening.
+
+⚡ PACING PLAN:
+Break the short into beginning, middle, and ending.
+
+🎯 WHAT TO FIX BEFORE RECORDING:
+Give 3 specific improvements.
+
+📈 BETTER TITLES:
+Give 5 title options.
+
+🏷️ HASHTAGS:
+Give hashtags for {platform}.
+
+💬 FINAL VERDICT:
+Say if this idea is ready to record, needs small changes, or needs a stronger concept.
+"""
+                    result = ask_channel_coach(prompt)
+
+                    st.success("Idea analysis complete!")
+                    st.subheader("📊 Your Results")
+                    st.markdown(result)
 
 # -----------------------------
 # TAB 2: TITLES & HASHTAGS
@@ -355,6 +424,7 @@ Give hashtags for {platform}.
 Make it useful, specific, and not generic.
 """
                 result = ask_channel_coach(prompt)
+                st.subheader("📊 Your Results")
                 st.markdown(result)
 
 # -----------------------------
@@ -385,7 +455,7 @@ with tab3:
         elif not thumbnail_context:
             st.warning("Tell me what the video is about.")
         else:
-            with st.spinner("Analyzing thumbnail..."):
+            with st.spinner("Analyzing thumbnail like a viewer scrolling fast..."):
                 image_b64 = image_to_base64(uploaded_image)
 
                 response = client.responses.create(
@@ -439,6 +509,7 @@ Give 5 title ideas that match the thumbnail.
                     ]
                 )
 
+                st.subheader("📊 Your Results")
                 st.markdown(response.output_text)
 
 # -----------------------------
@@ -469,7 +540,7 @@ with tab4:
         if not idea_topic:
             st.warning("Tell me your topic first.")
         else:
-            with st.spinner("Building ideas..."):
+            with st.spinner("Building ideas for your channel..."):
                 prompt = f"""
 You are Channel Coach.
 
@@ -504,10 +575,11 @@ Explain why it could get attention.
 Give title options and hashtags.
 """
                 result = ask_channel_coach(prompt)
+                st.subheader("📊 Your Results")
                 st.markdown(result)
 
 # -----------------------------
 # FOOTER
 # -----------------------------
 st.divider()
-st.caption("Channel Coach helps creators improve ideas, titles, captions, thumbnails, and Shorts before posting.")
+st.caption("Channel Coach helps creators improve Shorts, captions, thumbnails, titles, and content ideas before posting.")
