@@ -1,5 +1,5 @@
-streamlit
-openai
-python-dotenv
-opencv-python-headless
-pillow
+app.py
+requirements.txt
+manifest.json
+service-worker.js
+static/

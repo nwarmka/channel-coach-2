@@ -1,585 +1,529 @@
 import os
-import cv2
 import base64
-import tempfile
-import streamlit as st
-from io import BytesIO
-from PIL import Image
+import cv2
+import requests
+import gradio as gr
 from dotenv import load_dotenv
 from openai import OpenAI
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
-# -----------------------------
-# SETUP
-# -----------------------------
 load_dotenv()
 
-st.set_page_config(
-    page_title="Channel Coach",
-    page_icon="🎬",
-    layout="centered"
-)
+# =========================
+# API KEYS
+# =========================
+# IMPORTANT:
+# Do NOT paste your real API keys directly into this file.
+# Put them in your environment variables instead:
+# OPENAI_API_KEY
+# ELEVENLABS_API_KEY
 
-api_key = st.secrets.get("OPENAI_API_KEY", os.getenv("OPENAI_API_KEY"))
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-if not api_key:
-    st.error("Missing OpenAI API key. Add OPENAI_API_KEY in Streamlit secrets.")
-    st.stop()
+ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
 
-client = OpenAI(api_key=api_key)
-MODEL = "gpt-4.1-mini"
+# =========================
+# PWA / APP-LIKE SETTINGS
+# =========================
 
-# -----------------------------
-# STYLE
-# -----------------------------
-st.markdown("""
-<style>
-.big-title {
-    font-size: 38px;
-    font-weight: 800;
-    text-align: center;
+custom_head = """
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#111111">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Channel Coach">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script>
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function() {
+        navigator.serviceWorker.register('/service-worker.js')
+            .then(function(registration) {
+                console.log('Channel Coach service worker registered:', registration.scope);
+            })
+            .catch(function(error) {
+                console.log('Channel Coach service worker failed:', error);
+            });
+    });
 }
-.subtitle {
-    font-size: 18px;
-    text-align: center;
-    color: #888;
-}
-.result-box {
-    padding: 18px;
-    border-radius: 18px;
-    background-color: #1f1f2e;
-    border: 1px solid #444;
-    margin-top: 15px;
-}
-</style>
-""", unsafe_allow_html=True)
+</script>
+"""
 
-# -----------------------------
-# HELPER FUNCTIONS
-# -----------------------------
+# =========================
+# VOICES
+# =========================
+
+VOICE_OPTIONS = {
+    "Rachel": "21m00Tcm4TlvDq8ikWAM",
+    "Bella": "EXAVITQu4vr4xnSDxMaL",
+    "Antoni": "ErXwobaYiN019PkySvjV",
+    "Josh": "TxGEqnHWrfWFTfGW9XjX",
+}
+
+# =========================
+# OPENAI TEXT HELPER
+# =========================
+
 def ask_channel_coach(prompt):
+    if not os.getenv("OPENAI_API_KEY"):
+        return "Missing OPENAI_API_KEY. Add your OpenAI API key to your environment variables."
+
     response = client.responses.create(
-        model=MODEL,
+        model="gpt-4.1-mini",
         input=prompt
     )
     return response.output_text
 
 
-def frame_to_base64(frame):
-    image = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-    buffer = BytesIO()
-    image.save(buffer, format="JPEG", quality=80)
-    return base64.b64encode(buffer.getvalue()).decode("utf-8")
+# =========================
+# IMAGE / VIDEO HELPERS
+# =========================
+
+def encode_image_file(image_path):
+    with open(image_path, "rb") as image_file:
+        return base64.b64encode(image_file.read()).decode("utf-8")
 
 
-def extract_video_frames(video_file, max_frames=8):
-    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4")
-    temp_file.write(video_file.read())
-    temp_file.close()
-
-    video = cv2.VideoCapture(temp_file.name)
-    total_frames = int(video.get(cv2.CAP_PROP_FRAME_COUNT))
-
-    if total_frames <= 0:
-        return []
-
-    frame_positions = [
-        int(total_frames * i / max_frames)
-        for i in range(max_frames)
-    ]
-
+def extract_video_frames(video_path, max_frames=8):
     frames = []
 
-    for pos in frame_positions:
-        video.set(cv2.CAP_PROP_POS_FRAMES, pos)
-        success, frame = video.read()
-        if success:
-            frames.append(frame_to_base64(frame))
+    cap = cv2.VideoCapture(video_path)
 
-    video.release()
+    if not cap.isOpened():
+        return frames
+
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+
+    if total_frames <= 0:
+        cap.release()
+        return frames
+
+    frame_positions = []
+
+    for i in range(max_frames):
+        position = int((i + 1) * total_frames / (max_frames + 1))
+        frame_positions.append(position)
+
+    for position in frame_positions:
+        cap.set(cv2.CAP_PROP_POS_FRAMES, position)
+        success, frame = cap.read()
+
+        if success:
+            success, buffer = cv2.imencode(".jpg", frame)
+
+            if success:
+                frame_base64 = base64.b64encode(buffer).decode("utf-8")
+                frames.append(frame_base64)
+
+    cap.release()
     return frames
 
 
-def image_to_base64(uploaded_image):
-    image = Image.open(uploaded_image).convert("RGB")
-    buffer = BytesIO()
-    image.save(buffer, format="JPEG", quality=85)
-    return base64.b64encode(buffer.getvalue()).decode("utf-8")
+def analyze_video_with_frames(video_file, notes, video_type):
+    if video_file is None and not notes.strip():
+        return "Please upload a video or paste notes first."
+
+    content = [
+        {
+            "type": "input_text",
+            "text": f"""
+You are Channel Coach, an expert YouTube creator coach.
+
+Analyze this {video_type}.
+
+Creator notes:
+{notes}
+
+You are being shown sample frames extracted from the uploaded video.
+
+Give detailed creator feedback:
+- what works visually
+- what feels boring or slow
+- what should be cut
+- pacing advice
+- where to add text
+- where to add arrows/circles/zoom
+- best Shorts moments if this is long-form
+- hook strength
+- title ideas
+- thumbnail ideas
+- final score out of 10
+"""
+        }
+    ]
+
+    if video_file is not None:
+        frames = extract_video_frames(video_file, max_frames=8)
+
+        if not frames:
+            return "I could not extract frames from this video. Try a different video format like MP4."
+
+        for frame in frames:
+            content.append(
+                {
+                    "type": "input_image",
+                    "image_url": f"data:image/jpeg;base64,{frame}"
+                }
+            )
+
+    response = client.responses.create(
+        model="gpt-4.1-mini",
+        input=[
+            {
+                "role": "user",
+                "content": content
+            }
+        ]
+    )
+
+    return response.output_text
 
 
-# -----------------------------
-# HEADER
-# -----------------------------
-st.markdown('<div class="big-title">🎬 Channel Coach</div>', unsafe_allow_html=True)
-st.markdown(
-    '<div class="subtitle">A creator assistant for Shorts, captions, titles, thumbnails, and content ideas.</div>',
-    unsafe_allow_html=True
+# =========================
+# TEXT TOOLS
+# =========================
+
+def generate_titles(video_idea, platform, tone):
+    prompt = f"""
+You are Channel Coach.
+
+Create 10 catchy titles.
+
+Platform: {platform}
+Tone: {tone}
+Video idea: {video_idea}
+
+Make them clickable but not fake clickbait.
+"""
+    return ask_channel_coach(prompt)
+
+
+def seo_help(video_idea, platform, niche):
+    prompt = f"""
+You are Channel Coach.
+
+Create SEO help.
+
+Platform: {platform}
+Niche: {niche}
+Video idea: {video_idea}
+
+Give:
+- searchable title
+- keywords
+- SEO description
+- 15 hashtags
+- tags
+"""
+    return ask_channel_coach(prompt)
+
+
+def description_help(video_idea, platform, niche):
+    prompt = f"""
+Write a strong video description.
+
+Platform: {platform}
+Niche: {niche}
+Video idea: {video_idea}
+
+Include:
+- hook sentence
+- description paragraph
+- call to action
+- hashtags
+"""
+    return ask_channel_coach(prompt)
+
+
+def comment_assistant(comment, tone):
+    prompt = f"""
+Write 5 replies to this viewer comment.
+
+Comment: {comment}
+Tone: {tone}
+"""
+    return ask_channel_coach(prompt)
+
+
+def video_review(video_file, notes):
+    return analyze_video_with_frames(video_file, notes, "long-form YouTube video")
+
+
+def shorts_review(shorts_file, notes):
+    return analyze_video_with_frames(shorts_file, notes, "Short, Reel, or TikTok")
+
+
+def shorts_ideas(niche, topic):
+    prompt = f"""
+Create 10 Shorts ideas.
+
+Niche: {niche}
+Topic/game: {topic}
+
+For each idea include:
+- title
+- hook
+- on-screen text
+- footage idea
+- caption
+"""
+    return ask_channel_coach(prompt)
+
+
+# =========================
+# THUMBNAIL ANALYZER
+# =========================
+
+def analyze_thumbnail(image):
+    if image is None:
+        return "Please upload a thumbnail."
+
+    base64_image = encode_image_file(image)
+
+    response = client.responses.create(
+        model="gpt-4.1-mini",
+        input=[
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "input_text",
+                        "text": """
+You are Channel Coach, a YouTube thumbnail expert.
+
+Analyze this thumbnail.
+
+Give:
+- first impression
+- readability
+- visual focus
+- clickability
+- what works
+- what fails
+- how to improve it
+- 5 better thumbnail text ideas
+"""
+                    },
+                    {
+                        "type": "input_image",
+                        "image_url": f"data:image/png;base64,{base64_image}"
+                    }
+                ]
+            }
+        ]
+    )
+
+    return response.output_text
+
+
+# =========================
+# VOICEOVER
+# =========================
+
+def generate_voice(script, voice_name):
+    if not script.strip():
+        return None
+
+    if not ELEVENLABS_API_KEY:
+        print("Missing ELEVENLABS_API_KEY.")
+        return None
+
+    voice_id = VOICE_OPTIONS[voice_name]
+
+    url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
+
+    headers = {
+        "xi-api-key": ELEVENLABS_API_KEY,
+        "Content-Type": "application/json"
+    }
+
+    data = {
+        "text": script,
+        "model_id": "eleven_monolingual_v1"
+    }
+
+    response = requests.post(url, json=data, headers=headers)
+
+    if response.status_code != 200:
+        print(response.text)
+        return None
+
+    output_path = "voice.mp3"
+
+    with open(output_path, "wb") as f:
+        f.write(response.content)
+
+    return output_path
+
+
+# =========================
+# GRADIO APP
+# =========================
+
+with gr.Blocks(title="Channel Coach", head=custom_head) as app:
+
+    gr.Markdown("# 🎬 Channel Coach")
+    gr.Markdown("AI tools for creators: titles, SEO, video review, Shorts review, thumbnails, comments, and voiceovers.")
+
+    with gr.Tab("Title Help"):
+        title_input = gr.Textbox(label="Video Idea", lines=4)
+        title_platform = gr.Dropdown(
+            ["YouTube Shorts", "TikTok", "Instagram Reels", "YouTube Long Form"],
+            value="YouTube Shorts",
+            label="Platform"
+        )
+        title_tone = gr.Dropdown(
+            ["Bold", "Funny", "Friendly", "Casual", "Professional"],
+            value="Bold",
+            label="Tone"
+        )
+        title_button = gr.Button("Generate Titles")
+        title_output = gr.Textbox(label="Title Ideas", lines=12)
+
+        title_button.click(
+            generate_titles,
+            inputs=[title_input, title_platform, title_tone],
+            outputs=title_output
+        )
+
+    with gr.Tab("SEO Help"):
+        seo_input = gr.Textbox(label="Video Idea", lines=4)
+        seo_platform = gr.Dropdown(
+            ["YouTube Shorts", "TikTok", "Instagram Reels", "YouTube Long Form"],
+            value="YouTube Shorts",
+            label="Platform"
+        )
+        seo_niche = gr.Textbox(label="Niche", value="Gaming creator")
+        seo_button = gr.Button("Generate SEO Help")
+        seo_output = gr.Textbox(label="SEO Results", lines=14)
+
+        seo_button.click(
+            seo_help,
+            inputs=[seo_input, seo_platform, seo_niche],
+            outputs=seo_output
+        )
+
+    with gr.Tab("Description Help"):
+        desc_input = gr.Textbox(label="Video Idea", lines=4)
+        desc_platform = gr.Dropdown(
+            ["YouTube Shorts", "TikTok", "Instagram Reels", "YouTube Long Form"],
+            value="YouTube Shorts",
+            label="Platform"
+        )
+        desc_niche = gr.Textbox(label="Niche", value="Gaming creator")
+        desc_button = gr.Button("Write Description")
+        desc_output = gr.Textbox(label="Description", lines=14)
+
+        desc_button.click(
+            description_help,
+            inputs=[desc_input, desc_platform, desc_niche],
+            outputs=desc_output
+        )
+
+    with gr.Tab("Comment Assistant"):
+        comment_input = gr.Textbox(label="Viewer Comment", lines=4)
+        comment_tone = gr.Dropdown(
+            ["Friendly", "Funny", "Supportive", "Professional", "Bold"],
+            value="Friendly",
+            label="Tone"
+        )
+        comment_button = gr.Button("Write Replies")
+        comment_output = gr.Textbox(label="Reply Options", lines=10)
+
+        comment_button.click(
+            comment_assistant,
+            inputs=[comment_input, comment_tone],
+            outputs=comment_output
+        )
+
+    with gr.Tab("Video Review"):
+        video_upload = gr.Video(label="Upload Long-Form Video")
+        video_notes = gr.Textbox(label="Optional notes", lines=6)
+        video_button = gr.Button("Analyze Video")
+        video_output = gr.Textbox(label="Video Feedback", lines=18)
+
+        video_button.click(
+            video_review,
+            inputs=[video_upload, video_notes],
+            outputs=video_output
+        )
+
+    with gr.Tab("Shorts Review"):
+        shorts_upload = gr.Video(label="Upload Short / Reel / TikTok")
+        shorts_notes = gr.Textbox(label="Optional notes", lines=6)
+        shorts_button = gr.Button("Analyze Short")
+        shorts_output = gr.Textbox(label="Shorts Feedback", lines=18)
+
+        shorts_button.click(
+            shorts_review,
+            inputs=[shorts_upload, shorts_notes],
+            outputs=shorts_output
+        )
+
+    with gr.Tab("Shorts Idea Generator"):
+        niche_input = gr.Textbox(label="Niche", value="Retro gaming")
+        topic_input = gr.Textbox(label="Game or Topic", value="A Link to the Past")
+        ideas_button = gr.Button("Generate Shorts Ideas")
+        ideas_output = gr.Textbox(label="Shorts Ideas", lines=16)
+
+        ideas_button.click(
+            shorts_ideas,
+            inputs=[niche_input, topic_input],
+            outputs=ideas_output
+        )
+
+    with gr.Tab("Thumbnail Analyzer"):
+        thumbnail_input = gr.Image(type="filepath", label="Upload Thumbnail")
+        thumbnail_button = gr.Button("Analyze Thumbnail")
+        thumbnail_output = gr.Textbox(label="Thumbnail Feedback", lines=16)
+
+        thumbnail_button.click(
+            analyze_thumbnail,
+            inputs=thumbnail_input,
+            outputs=thumbnail_output
+        )
+
+    with gr.Tab("AI Voiceover"):
+        script_input = gr.Textbox(label="Voiceover Script", lines=8)
+        voice_dropdown = gr.Dropdown(
+            choices=list(VOICE_OPTIONS.keys()),
+            value="Bella",
+            label="Choose Voice"
+        )
+        voice_button = gr.Button("Generate Voiceover")
+        voice_output = gr.Audio(label="Generated Voiceover")
+
+        voice_button.click(
+            generate_voice,
+            inputs=[script_input, voice_dropdown],
+            outputs=voice_output
+        )
+
+
+# =========================
+# SERVE PWA FILES
+# =========================
+# These lines make Gradio serve your app icon files and PWA files.
+
+app.app.mount("/static", StaticFiles(directory="static"), name="static")
+
+
+@app.app.get("/manifest.json", include_in_schema=False)
+async def serve_manifest():
+    return FileResponse("manifest.json", media_type="application/manifest+json")
+
+
+@app.app.get("/service-worker.js", include_in_schema=False)
+async def serve_service_worker():
+    return FileResponse("service-worker.js", media_type="application/javascript")
+
+
+port = int(os.environ.get("PORT", 7860))
+
+port = int(os.environ.get("PORT", 7860))
+
+app.launch(
+    server_name="0.0.0.0",
+    server_port=port,
+    head=custom_head
 )
-
-st.divider()
-
-# -----------------------------
-# CREATOR PROFILE
-# -----------------------------
-with st.expander("👤 Creator Profile - fill this out first for better results", expanded=True):
-    niche = st.selectbox(
-        "What kind of creator are you?",
-        [
-            "Gaming",
-            "Lifestyle",
-            "Travel",
-            "Food",
-            "Beauty",
-            "Fitness",
-            "Deportee / Life in Mexico",
-            "Education",
-            "Business",
-            "Other"
-        ]
-    )
-
-    platform = st.selectbox(
-        "Main platform",
-        ["YouTube Shorts", "TikTok", "Instagram Reels", "Facebook Reels", "YouTube Long Form"]
-    )
-
-    tone = st.selectbox(
-        "Content style",
-        [
-            "Funny",
-            "Helpful",
-            "Emotional",
-            "Dramatic",
-            "Cozy",
-            "Educational",
-            "High-energy",
-            "Beginner-friendly"
-        ]
-    )
-
-    audience = st.text_input(
-        "Who is your audience?",
-        placeholder="Example: Nintendo fans, beginner creators, wives of deportees, food lovers"
-    )
-
-profile_text = f"""
-Creator profile:
-- Niche: {niche}
-- Platform: {platform}
-- Tone: {tone}
-- Audience: {audience if audience else "General audience"}
-"""
-
-# -----------------------------
-# TABS
-# -----------------------------
-tab1, tab2, tab3, tab4 = st.tabs([
-    "🎬 Shorts Analyst",
-    "🏷️ Titles & Hashtags",
-    "🖼️ Thumbnail Help",
-    "💡 Video Ideas"
-])
-
-# -----------------------------
-# TAB 1: SHORTS ANALYST
-# -----------------------------
-with tab1:
-    st.subheader("🎬 Shorts Analyst")
-    st.write("Upload a Short, TikTok, or Reel and get feedback before posting.")
-    st.caption("You'll get: hook score, title ideas, fixes, hashtags, and a final posting recommendation.")
-
-    uploaded_short = st.file_uploader(
-        "Upload your short video",
-        type=["mp4", "mov", "webm"],
-        key="short_video"
-    )
-
-    if uploaded_short:
-        st.video(uploaded_short)
-
-    use_idea_only = st.checkbox("I don't have a video yet — analyze my idea instead")
-
-    short_topic = st.text_area(
-        "Describe your Short: what happens, and what moment should people care about?",
-        placeholder="Example: Flurrie blows the Punies across a gap to save them.",
-        height=100
-    )
-
-    with st.expander("👀 See example result"):
-        st.markdown("""
-🔥 **HOOK SCORE: 6/10**  
-The idea is cute, but the first 2 seconds need stronger action.
-
-🎯 **FIX:**  
-Start with urgency: “Can Flurrie save them before they fall?”
-
-📈 **BETTER TITLE:**  
-“Flurrie Saves the Punies in a CRAZY Escape!”
-
-💬 **FINAL VERDICT:**  
-Needs small edits before posting.
-""")
-
-    goal = st.selectbox(
-        "What do you want this Short to do?",
-        [
-            "Get more views",
-            "Get more comments",
-            "Make people laugh",
-            "Teach something",
-            "Build my channel",
-            "Promote a service or product"
-        ]
-    )
-
-    if st.button("🚀 Analyze & Improve My Short", type="primary"):
-        if not uploaded_short and not use_idea_only:
-            st.warning("Upload a video or check the idea-only box.")
-        elif not short_topic:
-            st.warning("Describe your Short first.")
-        else:
-            with st.spinner("Watching your Short like a viral content expert..."):
-                if uploaded_short and not use_idea_only:
-                    frames = extract_video_frames(uploaded_short, max_frames=8)
-
-                    if not frames:
-                        st.error("I could not read the video. Try uploading a shorter MP4 file.")
-                    else:
-                        content = [
-                            {
-                                "type": "input_text",
-                                "text": f"""
-You are Channel Coach, a short-form video expert.
-
-{profile_text}
-
-Analyze this uploaded short-form video.
-
-Video description:
-{short_topic}
-
-Goal:
-{goal}
-
-Give feedback in this exact format:
-
-🔥 HOOK SCORE: /10
-Explain if the first 1-3 seconds are strong or weak.
-
-👀 VISUAL CLARITY:
-Is it obvious what is happening?
-
-📝 ON-SCREEN TEXT:
-Give better text for the first 3 seconds.
-
-⚡ PACING:
-Does the video feel slow, confusing, or engaging?
-
-🎯 WHAT TO FIX BEFORE POSTING:
-Give 3 specific fixes.
-
-📈 BETTER TITLES:
-Give 5 title options.
-
-🏷️ HASHTAGS:
-Give hashtags for {platform}.
-
-💬 FINAL VERDICT:
-Say one of these:
-- Ready to post
-- Needs small edits
-- Needs major changes
-
-Be honest but encouraging.
-"""
-                            }
-                        ]
-
-                        for frame in frames:
-                            content.append({
-                                "type": "input_image",
-                                "image_url": f"data:image/jpeg;base64,{frame}",
-                                "detail": "auto"
-                            })
-
-                        response = client.responses.create(
-                            model=MODEL,
-                            input=[
-                                {
-                                    "role": "user",
-                                    "content": content
-                                }
-                            ]
-                        )
-
-                        st.success("Analysis complete!")
-                        st.subheader("📊 Your Results")
-                        st.markdown(response.output_text)
-
-                else:
-                    prompt = f"""
-You are Channel Coach, a short-form video expert.
-
-{profile_text}
-
-The creator does not have a video uploaded yet. Analyze the idea instead.
-
-Short idea:
-{short_topic}
-
-Goal:
-{goal}
-
-Give feedback in this exact format:
-
-🔥 IDEA HOOK SCORE: /10
-Is this idea strong enough for short-form content?
-
-🪝 BEST OPENING HOOK:
-Give the best first 3 seconds.
-
-📝 ON-SCREEN TEXT:
-Give text for the opening.
-
-⚡ PACING PLAN:
-Break the short into beginning, middle, and ending.
-
-🎯 WHAT TO FIX BEFORE RECORDING:
-Give 3 specific improvements.
-
-📈 BETTER TITLES:
-Give 5 title options.
-
-🏷️ HASHTAGS:
-Give hashtags for {platform}.
-
-💬 FINAL VERDICT:
-Say if this idea is ready to record, needs small changes, or needs a stronger concept.
-"""
-                    result = ask_channel_coach(prompt)
-
-                    st.success("Idea analysis complete!")
-                    st.subheader("📊 Your Results")
-                    st.markdown(result)
-
-# -----------------------------
-# TAB 2: TITLES & HASHTAGS
-# -----------------------------
-with tab2:
-    st.subheader("🏷️ Titles, Captions & Hashtags")
-    st.write("Use this when you already know what your video is about.")
-
-    video_description = st.text_area(
-        "Describe your video",
-        placeholder="Example: Mario rescues the trapped Punies after they get captured.",
-        height=120
-    )
-
-    content_type = st.selectbox(
-        "What do you need?",
-        [
-            "Everything",
-            "Titles only",
-            "SEO caption only",
-            "Hashtags only",
-            "On-screen text ideas"
-        ]
-    )
-
-    if st.button("Create Titles / Captions / Hashtags"):
-        if not video_description:
-            st.warning("Describe your video first.")
-        else:
-            with st.spinner("Creating creator-friendly results..."):
-                prompt = f"""
-You are Channel Coach.
-
-{profile_text}
-
-Video description:
-{video_description}
-
-The creator needs:
-{content_type}
-
-Create results in this format:
-
-🔥 BEST TITLE:
-Give the strongest title.
-
-📈 WHY IT WORKS:
-Explain simply.
-
-🎯 MORE TITLE OPTIONS:
-Give 7 options.
-
-📝 SEO CAPTION:
-Write a strong caption using searchable language.
-
-💬 ON-SCREEN TEXT:
-Give 5 short text overlay ideas.
-
-🏷️ HASHTAGS:
-Give hashtags for {platform}.
-
-Make it useful, specific, and not generic.
-"""
-                result = ask_channel_coach(prompt)
-                st.subheader("📊 Your Results")
-                st.markdown(result)
-
-# -----------------------------
-# TAB 3: THUMBNAIL HELP
-# -----------------------------
-with tab3:
-    st.subheader("🖼️ Thumbnail Help")
-    st.write("Upload a thumbnail or screenshot and get feedback.")
-
-    uploaded_image = st.file_uploader(
-        "Upload thumbnail or screenshot",
-        type=["png", "jpg", "jpeg"],
-        key="thumbnail"
-    )
-
-    thumbnail_context = st.text_area(
-        "What is the video about?",
-        placeholder="Example: Mario enters the Great Tree and finds the trapped Punies.",
-        height=90
-    )
-
-    if uploaded_image:
-        st.image(uploaded_image, caption="Uploaded image", use_container_width=True)
-
-    if st.button("Analyze Thumbnail"):
-        if not uploaded_image:
-            st.warning("Upload a thumbnail or screenshot first.")
-        elif not thumbnail_context:
-            st.warning("Tell me what the video is about.")
-        else:
-            with st.spinner("Analyzing thumbnail like a viewer scrolling fast..."):
-                image_b64 = image_to_base64(uploaded_image)
-
-                response = client.responses.create(
-                    model=MODEL,
-                    input=[
-                        {
-                            "role": "user",
-                            "content": [
-                                {
-                                    "type": "input_text",
-                                    "text": f"""
-You are Channel Coach.
-
-{profile_text}
-
-Analyze this thumbnail or screenshot.
-
-Video context:
-{thumbnail_context}
-
-Give feedback in this exact format:
-
-🖼️ THUMBNAIL SCORE: /10
-
-👀 FIRST IMPRESSION:
-Would someone understand it quickly?
-
-📝 TEXT READABILITY:
-Is the text easy to read? If there is no text, suggest text.
-
-🎯 CLICKABILITY:
-Would this make someone click?
-
-🔧 WHAT TO FIX:
-Give 3 specific improvements.
-
-🔥 BETTER THUMBNAIL TEXT:
-Give 5 short options.
-
-📈 TITLE PAIRINGS:
-Give 5 title ideas that match the thumbnail.
-"""
-                                },
-                                {
-                                    "type": "input_image",
-                                    "image_url": f"data:image/jpeg;base64,{image_b64}",
-                                    "detail": "auto"
-                                }
-                            ]
-                        }
-                    ]
-                )
-
-                st.subheader("📊 Your Results")
-                st.markdown(response.output_text)
-
-# -----------------------------
-# TAB 4: VIDEO IDEAS
-# -----------------------------
-with tab4:
-    st.subheader("💡 Video Ideas & Scripts")
-    st.write("Use this when you need ideas, structure, or a simple script.")
-
-    idea_topic = st.text_area(
-        "What do you want to make content about?",
-        placeholder="Example: A Link to the Past first episode guide, Paper Mario Punies escaping, life in Mexico content",
-        height=120
-    )
-
-    idea_type = st.selectbox(
-        "What do you want?",
-        [
-            "Shorts ideas",
-            "Long-form video outline",
-            "Step-by-step guide script",
-            "Hook ideas",
-            "Content plan"
-        ]
-    )
-
-    if st.button("Generate Ideas"):
-        if not idea_topic:
-            st.warning("Tell me your topic first.")
-        else:
-            with st.spinner("Building ideas for your channel..."):
-                prompt = f"""
-You are Channel Coach.
-
-{profile_text}
-
-Topic:
-{idea_topic}
-
-Request:
-{idea_type}
-
-Give the creator practical, specific ideas.
-
-Format:
-
-🔥 BEST IDEA:
-Give the strongest idea first.
-
-🎬 VIDEO STRUCTURE:
-Break it into simple parts.
-
-🪝 HOOK OPTIONS:
-Give 5 hooks.
-
-📝 SCRIPT / TALKING POINTS:
-Give beginner-friendly talking points.
-
-📈 WHY THIS COULD WORK:
-Explain why it could get attention.
-
-🏷️ TITLE + HASHTAGS:
-Give title options and hashtags.
-"""
-                result = ask_channel_coach(prompt)
-                st.subheader("📊 Your Results")
-                st.markdown(result)
-
-# -----------------------------
-# FOOTER
-# -----------------------------
-st.divider()
-st.caption("Channel Coach helps creators improve Shorts, captions, thumbnails, titles, and content ideas before posting.")
