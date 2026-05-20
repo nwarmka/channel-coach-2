@@ -1,5 +1,6 @@
-app.py
-requirements.txt
-manifest.json
-service-worker.js
-static/
+gradio
+openai
+python-dotenv
+opencv-python-headless
+requests
+fastapi
