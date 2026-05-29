@@ -56,42 +56,44 @@ if ('serviceWorker' in navigator) {
 # Big 80s synthwave/arcade style update.
 
 custom_css = """
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;600;800&display=swap');
 
 :root {
-    --cc-black: #05030d;
-    --cc-deep: #0b0620;
-    --cc-panel: rgba(13, 9, 35, 0.92);
-    --cc-panel2: rgba(23, 13, 55, 0.92);
-    --cc-purple: #9d4edd;
-    --cc-pink: #ff2bd6;
-    --cc-cyan: #00e5ff;
-    --cc-blue: #4d96ff;
-    --cc-orange: #ff8c1a;
-    --cc-text: #ffffff;
-    --cc-muted: #d8d6ff;
+    --cc-bg: #080818;
+    --cc-bg2: #101044;
+    --cc-panel: #050510;
+    --cc-panel2: #111133;
+    --cc-border: #7c6cff;
+    --cc-border2: #2de2ff;
+    --cc-pink: #ff4fd8;
+    --cc-yellow: #ffe66d;
+    --cc-green: #4cff8f;
+    --cc-blue: #3a86ff;
+    --cc-white: #fff7e8;
+    --cc-muted: #b9b4ff;
+    --cc-shadow: #000000;
 }
 
 html, body, .gradio-container {
     min-height: 100vh !important;
-    color: var(--cc-text) !important;
+    color: var(--cc-white) !important;
     font-family: 'Inter', system-ui, sans-serif !important;
     background:
         linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
         linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px),
-        radial-gradient(circle at 18% 8%, rgba(255, 43, 214, 0.36), transparent 28%),
-        radial-gradient(circle at 86% 15%, rgba(0, 229, 255, 0.30), transparent 26%),
-        radial-gradient(circle at 50% 105%, rgba(157, 78, 221, 0.42), transparent 40%),
-        linear-gradient(135deg, #05030d 0%, #0b0620 40%, #17072b 100%) !important;
-    background-size: 42px 42px, 42px 42px, auto, auto, auto, auto !important;
+        radial-gradient(circle at 18% 0%, rgba(255,79,216,0.22), transparent 30%),
+        radial-gradient(circle at 90% 5%, rgba(45,226,255,0.18), transparent 28%),
+        linear-gradient(180deg, #14145c 0%, #080818 46%, #030309 100%) !important;
+    background-size: 32px 32px, 32px 32px, auto, auto, auto !important;
 }
 
 .gradio-container {
     max-width: 1280px !important;
     margin: auto !important;
-    padding: 26px !important;
+    padding: 20px !important;
 }
 
+/* CRT scanlines */
 .gradio-container::before {
     content: "";
     position: fixed;
@@ -99,143 +101,167 @@ html, body, .gradio-container {
     pointer-events: none;
     background: repeating-linear-gradient(
         to bottom,
-        rgba(255,255,255,0.035) 0px,
-        rgba(255,255,255,0.035) 1px,
+        rgba(255,255,255,0.04) 0px,
+        rgba(255,255,255,0.04) 1px,
         transparent 2px,
         transparent 5px
     );
-    opacity: .18;
+    opacity: .16;
     z-index: 9999;
 }
 
 #channel-coach-header {
     position: relative;
     overflow: hidden;
-    padding: 34px 32px !important;
-    border-radius: 28px !important;
-    border: 2px solid rgba(0, 229, 255, 0.55) !important;
+    padding: 26px 28px 30px 28px !important;
+    margin-bottom: 18px !important;
+    border: 4px solid var(--cc-border2) !important;
+    border-radius: 0 !important;
     background:
-        linear-gradient(135deg, rgba(255,43,214,0.20), rgba(0,229,255,0.11)),
-        rgba(8, 5, 24, 0.92) !important;
+        linear-gradient(180deg, rgba(35,35,120,.92), rgba(8,8,24,.96)),
+        var(--cc-panel) !important;
     box-shadow:
-        0 0 18px rgba(0,229,255,.55),
-        0 0 42px rgba(255,43,214,.28),
-        inset 0 0 40px rgba(157,78,221,.18) !important;
-    margin-bottom: 22px !important;
+        0 0 0 4px var(--cc-shadow),
+        0 0 0 8px var(--cc-border),
+        10px 10px 0 #000 !important;
+}
+
+#channel-coach-header::before {
+    content: "📺";
+    position: absolute;
+    right: 28px;
+    bottom: 20px;
+    font-size: 4rem;
+    filter: drop-shadow(4px 4px 0 #000);
 }
 
 #channel-coach-header::after {
-    content: "CREATOR MODE";
+    content: "CRT COACH MODE  •  LVL 1  •  READY";
     position: absolute;
-    right: 26px;
-    top: 22px;
-    font-family: 'Orbitron', sans-serif;
-    letter-spacing: .18em;
-    font-size: .72rem;
-    color: var(--cc-cyan);
-    text-shadow: 0 0 12px var(--cc-cyan);
-    opacity: .85;
+    right: 24px;
+    top: 18px;
+    color: var(--cc-yellow);
+    font-family: 'Press Start 2P', monospace;
+    font-size: .62rem;
+    letter-spacing: .04em;
+    text-shadow: 3px 3px 0 #000;
 }
 
 #channel-coach-header h1 {
-    font-family: 'Orbitron', sans-serif !important;
+    font-family: 'Press Start 2P', monospace !important;
     text-transform: uppercase;
-    letter-spacing: .04em;
-    font-size: clamp(2rem, 4vw, 4rem) !important;
-    line-height: 1.05 !important;
-    margin: 0 0 14px 0 !important;
-    background: linear-gradient(90deg, #ffffff, var(--cc-cyan), var(--cc-pink), #fff) !important;
-    -webkit-background-clip: text !important;
-    -webkit-text-fill-color: transparent !important;
-    text-shadow: 0 0 26px rgba(0,229,255,.65) !important;
+    font-size: clamp(1.45rem, 3vw, 2.8rem) !important;
+    line-height: 1.35 !important;
+    color: var(--cc-white) !important;
+    text-shadow:
+        4px 4px 0 #000,
+        7px 7px 0 var(--cc-pink) !important;
+    margin: 0 0 22px 0 !important;
+    max-width: 780px !important;
 }
 
 #channel-coach-header p {
-    color: var(--cc-muted) !important;
-    font-size: 1.08rem !important;
-    max-width: 900px !important;
+    font-family: 'Press Start 2P', monospace !important;
+    color: var(--cc-yellow) !important;
+    font-size: .72rem !important;
+    line-height: 1.9 !important;
+    max-width: 820px !important;
+    text-shadow: 3px 3px 0 #000;
 }
 
-/* Tabs */
+/* Tabs as game menu buttons */
 .tabs, .tab-nav {
-    border-radius: 22px !important;
-    background: rgba(5, 3, 13, .74) !important;
-    border: 1px solid rgba(255,43,214,.32) !important;
-    box-shadow: 0 0 22px rgba(157,78,221,.22) !important;
-    padding: 6px !important;
+    background: #050510 !important;
+    border: 4px solid var(--cc-border) !important;
+    border-radius: 0 !important;
+    box-shadow: 0 0 0 4px #000, 8px 8px 0 #000 !important;
+    padding: 8px !important;
 }
 
 button[role='tab'] {
-    border-radius: 16px !important;
-    color: #f2eaff !important;
-    background: rgba(16, 10, 43, .78) !important;
-    border: 1px solid rgba(0,229,255,.20) !important;
-    font-weight: 800 !important;
-    box-shadow: inset 0 0 14px rgba(0,229,255,.05) !important;
+    font-family: 'Press Start 2P', monospace !important;
+    font-size: .62rem !important;
+    line-height: 1.5 !important;
+    border-radius: 0 !important;
+    color: var(--cc-muted) !important;
+    background: #111133 !important;
+    border: 3px solid var(--cc-blue) !important;
+    box-shadow: 4px 4px 0 #000 !important;
+    text-transform: uppercase !important;
+    min-height: 44px !important;
 }
 
 button[role='tab'][aria-selected='true'] {
-    color: #05030d !important;
-    background: linear-gradient(90deg, var(--cc-cyan), var(--cc-pink)) !important;
-    border: 1px solid rgba(255,255,255,.7) !important;
-    box-shadow: 0 0 18px rgba(0,229,255,.75), 0 0 24px rgba(255,43,214,.35) !important;
+    color: #050510 !important;
+    background: linear-gradient(90deg, var(--cc-yellow), var(--cc-pink)) !important;
+    border-color: var(--cc-white) !important;
+    box-shadow: 4px 4px 0 #000 !important;
 }
 
-/* Cards / panels */
+/* Main panels */
 .block, .gr-box, .form, .panel, .gr-panel, .tabitem, [role='tabpanel'] {
     background: linear-gradient(180deg, var(--cc-panel2), var(--cc-panel)) !important;
-    border: 1px solid rgba(0,229,255,.35) !important;
-    border-radius: 22px !important;
-    box-shadow: 0 0 24px rgba(0,229,255,.12), 0 18px 60px rgba(0,0,0,.46) !important;
+    border: 4px solid var(--cc-border) !important;
+    border-radius: 0 !important;
+    box-shadow: 0 0 0 4px #000, 8px 8px 0 #000 !important;
 }
 
 label, .block-label, .gr-form label, .label-wrap span {
-    color: #ffffff !important;
-    font-weight: 900 !important;
-    letter-spacing: .02em !important;
-    text-shadow: 0 0 10px rgba(0,229,255,.55) !important;
+    font-family: 'Press Start 2P', monospace !important;
+    color: var(--cc-yellow) !important;
+    font-size: .68rem !important;
+    letter-spacing: .03em !important;
+    text-shadow: 3px 3px 0 #000 !important;
 }
 
 textarea, input, select, .wrap, .container, .secondary-wrap {
-    background: rgba(2, 2, 12, .78) !important;
-    color: #ffffff !important;
-    border: 1px solid rgba(255,43,214,.38) !important;
-    border-radius: 18px !important;
-    box-shadow: inset 0 0 18px rgba(0,229,255,.08) !important;
+    background: #07071b !important;
+    color: var(--cc-white) !important;
+    border: 3px solid var(--cc-border) !important;
+    border-radius: 0 !important;
+    box-shadow: inset 0 0 0 2px #000 !important;
 }
 
 textarea:focus, input:focus {
-    border-color: var(--cc-cyan) !important;
-    box-shadow: 0 0 0 3px rgba(0,229,255,.18), 0 0 24px rgba(0,229,255,.30) !important;
+    border-color: var(--cc-yellow) !important;
+    box-shadow: inset 0 0 0 2px #000, 0 0 0 3px var(--cc-pink) !important;
 }
 
-/* Main buttons */
+/* Pixel action buttons */
 button, .gr-button, button.primary {
-    border-radius: 18px !important;
-    border: 1px solid rgba(255,255,255,.62) !important;
-    background: linear-gradient(90deg, var(--cc-pink), var(--cc-purple), var(--cc-cyan)) !important;
-    color: #ffffff !important;
-    font-weight: 900 !important;
-    letter-spacing: .04em !important;
+    font-family: 'Press Start 2P', monospace !important;
+    font-size: .7rem !important;
+    line-height: 1.7 !important;
+    border-radius: 0 !important;
+    border: 4px solid var(--cc-white) !important;
+    background: linear-gradient(180deg, #ff77df, #d9369f) !important;
+    color: #fff7e8 !important;
+    text-shadow: 3px 3px 0 #000 !important;
+    box-shadow: 0 0 0 4px #000, 7px 7px 0 #000 !important;
     text-transform: uppercase !important;
-    box-shadow: 0 0 20px rgba(255,43,214,.55), 0 0 35px rgba(0,229,255,.25) !important;
-    min-height: 48px !important;
+    min-height: 54px !important;
 }
 
 button:hover, .gr-button:hover {
-    transform: translateY(-2px) scale(1.01) !important;
-    filter: brightness(1.18) !important;
-    box-shadow: 0 0 28px rgba(255,43,214,.85), 0 0 46px rgba(0,229,255,.42) !important;
+    transform: translate(-2px, -2px) !important;
+    filter: brightness(1.12) !important;
+    box-shadow: 0 0 0 4px #000, 10px 10px 0 #000 !important;
 }
 
-/* Dropdown text */
-.svelte-1gfkn6j, .wrap-inner, .single-select-wrap {
-    color: #ffffff !important;
+button:active, .gr-button:active {
+    transform: translate(3px, 3px) !important;
+    box-shadow: 0 0 0 4px #000, 3px 3px 0 #000 !important;
 }
 
-/* Outputs */
+/* Text output */
 .output-class, .prose, .markdown, .gr-markdown {
-    color: #ffffff !important;
+    color: var(--cc-white) !important;
+}
+
+/* Smaller body text stays readable */
+textarea, input, select, .wrap, .container, .secondary-wrap, .prose, .markdown {
+    font-family: 'Inter', system-ui, sans-serif !important;
+    font-size: 1rem !important;
 }
 
 .footer, footer { display: none !important; }
@@ -556,8 +582,8 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
 
     gr.Markdown(
         """
-        # 🎬 Channel Coach
-        Neon-powered creator tools for titles, SEO, video reviews, Shorts, thumbnails, comments, and voiceovers.
+        # Channel Coach
+        8-bit creator tools for titles, SEO, video reviews, Shorts, thumbnails, comments, and voiceovers.
         """,
         elem_id="channel-coach-header"
     )
@@ -722,8 +748,6 @@ app.launch(
     server_port=port,
     share=False
 )
-
-
 
       
 
