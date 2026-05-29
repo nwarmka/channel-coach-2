@@ -49,6 +49,198 @@ if ('serviceWorker' in navigator) {
 </script>
 """
 
+
+# =========================
+# CHANNEL COACH NEON / RETRO STYLE
+# =========================
+# Big 80s synthwave/arcade style update.
+
+custom_css = """
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@600;700;800;900&display=swap');
+
+:root {
+    --cc-black: #05030d;
+    --cc-deep: #0b0620;
+    --cc-panel: rgba(13, 9, 35, 0.92);
+    --cc-panel2: rgba(23, 13, 55, 0.92);
+    --cc-purple: #9d4edd;
+    --cc-pink: #ff2bd6;
+    --cc-cyan: #00e5ff;
+    --cc-blue: #4d96ff;
+    --cc-orange: #ff8c1a;
+    --cc-text: #ffffff;
+    --cc-muted: #d8d6ff;
+}
+
+html, body, .gradio-container {
+    min-height: 100vh !important;
+    color: var(--cc-text) !important;
+    font-family: 'Inter', system-ui, sans-serif !important;
+    background:
+        linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px),
+        radial-gradient(circle at 18% 8%, rgba(255, 43, 214, 0.36), transparent 28%),
+        radial-gradient(circle at 86% 15%, rgba(0, 229, 255, 0.30), transparent 26%),
+        radial-gradient(circle at 50% 105%, rgba(157, 78, 221, 0.42), transparent 40%),
+        linear-gradient(135deg, #05030d 0%, #0b0620 40%, #17072b 100%) !important;
+    background-size: 42px 42px, 42px 42px, auto, auto, auto, auto !important;
+}
+
+.gradio-container {
+    max-width: 1280px !important;
+    margin: auto !important;
+    padding: 26px !important;
+}
+
+.gradio-container::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+        to bottom,
+        rgba(255,255,255,0.035) 0px,
+        rgba(255,255,255,0.035) 1px,
+        transparent 2px,
+        transparent 5px
+    );
+    opacity: .18;
+    z-index: 9999;
+}
+
+#channel-coach-header {
+    position: relative;
+    overflow: hidden;
+    padding: 34px 32px !important;
+    border-radius: 28px !important;
+    border: 2px solid rgba(0, 229, 255, 0.55) !important;
+    background:
+        linear-gradient(135deg, rgba(255,43,214,0.20), rgba(0,229,255,0.11)),
+        rgba(8, 5, 24, 0.92) !important;
+    box-shadow:
+        0 0 18px rgba(0,229,255,.55),
+        0 0 42px rgba(255,43,214,.28),
+        inset 0 0 40px rgba(157,78,221,.18) !important;
+    margin-bottom: 22px !important;
+}
+
+#channel-coach-header::after {
+    content: "CREATOR MODE";
+    position: absolute;
+    right: 26px;
+    top: 22px;
+    font-family: 'Orbitron', sans-serif;
+    letter-spacing: .18em;
+    font-size: .72rem;
+    color: var(--cc-cyan);
+    text-shadow: 0 0 12px var(--cc-cyan);
+    opacity: .85;
+}
+
+#channel-coach-header h1 {
+    font-family: 'Orbitron', sans-serif !important;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    font-size: clamp(2rem, 4vw, 4rem) !important;
+    line-height: 1.05 !important;
+    margin: 0 0 14px 0 !important;
+    background: linear-gradient(90deg, #ffffff, var(--cc-cyan), var(--cc-pink), #fff) !important;
+    -webkit-background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+    text-shadow: 0 0 26px rgba(0,229,255,.65) !important;
+}
+
+#channel-coach-header p {
+    color: var(--cc-muted) !important;
+    font-size: 1.08rem !important;
+    max-width: 900px !important;
+}
+
+/* Tabs */
+.tabs, .tab-nav {
+    border-radius: 22px !important;
+    background: rgba(5, 3, 13, .74) !important;
+    border: 1px solid rgba(255,43,214,.32) !important;
+    box-shadow: 0 0 22px rgba(157,78,221,.22) !important;
+    padding: 6px !important;
+}
+
+button[role='tab'] {
+    border-radius: 16px !important;
+    color: #f2eaff !important;
+    background: rgba(16, 10, 43, .78) !important;
+    border: 1px solid rgba(0,229,255,.20) !important;
+    font-weight: 800 !important;
+    box-shadow: inset 0 0 14px rgba(0,229,255,.05) !important;
+}
+
+button[role='tab'][aria-selected='true'] {
+    color: #05030d !important;
+    background: linear-gradient(90deg, var(--cc-cyan), var(--cc-pink)) !important;
+    border: 1px solid rgba(255,255,255,.7) !important;
+    box-shadow: 0 0 18px rgba(0,229,255,.75), 0 0 24px rgba(255,43,214,.35) !important;
+}
+
+/* Cards / panels */
+.block, .gr-box, .form, .panel, .gr-panel, .tabitem, [role='tabpanel'] {
+    background: linear-gradient(180deg, var(--cc-panel2), var(--cc-panel)) !important;
+    border: 1px solid rgba(0,229,255,.35) !important;
+    border-radius: 22px !important;
+    box-shadow: 0 0 24px rgba(0,229,255,.12), 0 18px 60px rgba(0,0,0,.46) !important;
+}
+
+label, .block-label, .gr-form label, .label-wrap span {
+    color: #ffffff !important;
+    font-weight: 900 !important;
+    letter-spacing: .02em !important;
+    text-shadow: 0 0 10px rgba(0,229,255,.55) !important;
+}
+
+textarea, input, select, .wrap, .container, .secondary-wrap {
+    background: rgba(2, 2, 12, .78) !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(255,43,214,.38) !important;
+    border-radius: 18px !important;
+    box-shadow: inset 0 0 18px rgba(0,229,255,.08) !important;
+}
+
+textarea:focus, input:focus {
+    border-color: var(--cc-cyan) !important;
+    box-shadow: 0 0 0 3px rgba(0,229,255,.18), 0 0 24px rgba(0,229,255,.30) !important;
+}
+
+/* Main buttons */
+button, .gr-button, button.primary {
+    border-radius: 18px !important;
+    border: 1px solid rgba(255,255,255,.62) !important;
+    background: linear-gradient(90deg, var(--cc-pink), var(--cc-purple), var(--cc-cyan)) !important;
+    color: #ffffff !important;
+    font-weight: 900 !important;
+    letter-spacing: .04em !important;
+    text-transform: uppercase !important;
+    box-shadow: 0 0 20px rgba(255,43,214,.55), 0 0 35px rgba(0,229,255,.25) !important;
+    min-height: 48px !important;
+}
+
+button:hover, .gr-button:hover {
+    transform: translateY(-2px) scale(1.01) !important;
+    filter: brightness(1.18) !important;
+    box-shadow: 0 0 28px rgba(255,43,214,.85), 0 0 46px rgba(0,229,255,.42) !important;
+}
+
+/* Dropdown text */
+.svelte-1gfkn6j, .wrap-inner, .single-select-wrap {
+    color: #ffffff !important;
+}
+
+/* Outputs */
+.output-class, .prose, .markdown, .gr-markdown {
+    color: #ffffff !important;
+}
+
+.footer, footer { display: none !important; }
+"""
+
 # =========================
 # VOICES
 # =========================
@@ -360,10 +552,15 @@ def generate_voice(script, voice_name):
 # GRADIO APP
 # =========================
 
-with gr.Blocks(title="Channel Coach", head=custom_head) as app:
+with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
 
-    gr.Markdown("# 🎬 Channel Coach")
-    gr.Markdown("AI tools for creators: titles, SEO, video review, Shorts review, thumbnails, comments, and voiceovers.")
+    gr.Markdown(
+        """
+        # 🎬 Channel Coach
+        Neon-powered creator tools for titles, SEO, video reviews, Shorts, thumbnails, comments, and voiceovers.
+        """,
+        elem_id="channel-coach-header"
+    )
 
     with gr.Tab("Title Help"):
         title_input = gr.Textbox(label="Video Idea", lines=4)
@@ -520,10 +717,44 @@ async def serve_service_worker():
 
 port = int(os.environ.get("PORT", 7860))
 
-port = int(os.environ.get("PORT", 7860))
-
 app.launch(
     server_name="0.0.0.0",
     server_port=port,
-    head=custom_head
+    share=False
 )
+
+
+
+      
+
+
+
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+  
+
+ 
+
+ 
+ 
+
+
+      
+      
+
+  
+
+   
+ 
+  
