@@ -56,215 +56,116 @@ if ('serviceWorker' in navigator) {
 # Big 80s synthwave/arcade style update.
 
 custom_css = """
-@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;600;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 :root {
-    --cc-bg: #080818;
-    --cc-bg2: #101044;
-    --cc-panel: #050510;
-    --cc-panel2: #111133;
-    --cc-border: #7c6cff;
-    --cc-border2: #2de2ff;
-    --cc-pink: #ff4fd8;
-    --cc-yellow: #ffe66d;
-    --cc-green: #4cff8f;
-    --cc-blue: #3a86ff;
-    --cc-white: #fff7e8;
-    --cc-muted: #b9b4ff;
-    --cc-shadow: #000000;
+    --bg: #0f1117;
+    --bg2: #171923;
+    --panel: #1e2230;
+    --panel2: #252b3b;
+    --border: #31384d;
+    --accent: #8b5cf6;
+    --accent2: #22d3ee;
+    --text: #f5f7ff;
+    --muted: #b8c0d9;
 }
 
 html, body, .gradio-container {
     min-height: 100vh !important;
-    color: var(--cc-white) !important;
-    font-family: 'Inter', system-ui, sans-serif !important;
     background:
-        linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px),
-        radial-gradient(circle at 18% 0%, rgba(255,79,216,0.22), transparent 30%),
-        radial-gradient(circle at 90% 5%, rgba(45,226,255,0.18), transparent 28%),
-        linear-gradient(180deg, #14145c 0%, #080818 46%, #030309 100%) !important;
-    background-size: 32px 32px, 32px 32px, auto, auto, auto !important;
+        radial-gradient(circle at top left, rgba(139,92,246,.12), transparent 25%),
+        radial-gradient(circle at top right, rgba(34,211,238,.10), transparent 22%),
+        linear-gradient(180deg, var(--bg) 0%, #0b0d12 100%) !important;
+    color: var(--text) !important;
+    font-family: 'Inter', sans-serif !important;
 }
 
 .gradio-container {
-    max-width: 1280px !important;
+    max-width: 1200px !important;
     margin: auto !important;
     padding: 20px !important;
 }
 
-/* CRT scanlines */
-.gradio-container::before {
-    content: "";
-    position: fixed;
-    inset: 0;
-    pointer-events: none;
-    background: repeating-linear-gradient(
-        to bottom,
-        rgba(255,255,255,0.04) 0px,
-        rgba(255,255,255,0.04) 1px,
-        transparent 2px,
-        transparent 5px
-    );
-    opacity: .16;
-    z-index: 9999;
-}
-
 #channel-coach-header {
-    position: relative;
-    overflow: hidden;
-    padding: 26px 28px 30px 28px !important;
-    margin-bottom: 18px !important;
-    border: 4px solid var(--cc-border2) !important;
-    border-radius: 0 !important;
-    background:
-        linear-gradient(180deg, rgba(35,35,120,.92), rgba(8,8,24,.96)),
-        var(--cc-panel) !important;
-    box-shadow:
-        0 0 0 4px var(--cc-shadow),
-        0 0 0 8px var(--cc-border),
-        10px 10px 0 #000 !important;
-}
-
-#channel-coach-header::before {
-    content: "📺";
-    position: absolute;
-    right: 28px;
-    bottom: 20px;
-    font-size: 4rem;
-    filter: drop-shadow(4px 4px 0 #000);
-}
-
-#channel-coach-header::after {
-    content: "CRT COACH MODE  •  LVL 1  •  READY";
-    position: absolute;
-    right: 24px;
-    top: 18px;
-    color: var(--cc-yellow);
-    font-family: 'Press Start 2P', monospace;
-    font-size: .62rem;
-    letter-spacing: .04em;
-    text-shadow: 3px 3px 0 #000;
+    background: linear-gradient(135deg, #1f2433, #171b27) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 20px !important;
+    padding: 28px !important;
+    margin-bottom: 20px !important;
+    box-shadow: 0 10px 30px rgba(0,0,0,.35) !important;
 }
 
 #channel-coach-header h1 {
-    font-family: 'Press Start 2P', monospace !important;
-    text-transform: uppercase;
-    font-size: clamp(1.45rem, 3vw, 2.8rem) !important;
-    line-height: 1.35 !important;
-    color: var(--cc-white) !important;
-    text-shadow:
-        4px 4px 0 #000,
-        7px 7px 0 var(--cc-pink) !important;
-    margin: 0 0 22px 0 !important;
-    max-width: 780px !important;
+    font-size: 3rem !important;
+    margin-bottom: 10px !important;
+    color: var(--text) !important;
+    letter-spacing: -.03em !important;
 }
 
 #channel-coach-header p {
-    font-family: 'Press Start 2P', monospace !important;
-    color: var(--cc-yellow) !important;
-    font-size: .72rem !important;
-    line-height: 1.9 !important;
-    max-width: 820px !important;
-    text-shadow: 3px 3px 0 #000;
-}
-
-/* Tabs as game menu buttons */
-.tabs, .tab-nav {
-    background: #050510 !important;
-    border: 4px solid var(--cc-border) !important;
-    border-radius: 0 !important;
-    box-shadow: 0 0 0 4px #000, 8px 8px 0 #000 !important;
-    padding: 8px !important;
-}
-
-button[role='tab'] {
-    font-family: 'Press Start 2P', monospace !important;
-    font-size: .62rem !important;
-    line-height: 1.5 !important;
-    border-radius: 0 !important;
-    color: var(--cc-muted) !important;
-    background: #111133 !important;
-    border: 3px solid var(--cc-blue) !important;
-    box-shadow: 4px 4px 0 #000 !important;
-    text-transform: uppercase !important;
-    min-height: 44px !important;
-}
-
-button[role='tab'][aria-selected='true'] {
-    color: #050510 !important;
-    background: linear-gradient(90deg, var(--cc-yellow), var(--cc-pink)) !important;
-    border-color: var(--cc-white) !important;
-    box-shadow: 4px 4px 0 #000 !important;
-}
-
-/* Main panels */
-.block, .gr-box, .form, .panel, .gr-panel, .tabitem, [role='tabpanel'] {
-    background: linear-gradient(180deg, var(--cc-panel2), var(--cc-panel)) !important;
-    border: 4px solid var(--cc-border) !important;
-    border-radius: 0 !important;
-    box-shadow: 0 0 0 4px #000, 8px 8px 0 #000 !important;
-}
-
-label, .block-label, .gr-form label, .label-wrap span {
-    font-family: 'Press Start 2P', monospace !important;
-    color: var(--cc-yellow) !important;
-    font-size: .68rem !important;
-    letter-spacing: .03em !important;
-    text-shadow: 3px 3px 0 #000 !important;
-}
-
-textarea, input, select, .wrap, .container, .secondary-wrap {
-    background: #07071b !important;
-    color: var(--cc-white) !important;
-    border: 3px solid var(--cc-border) !important;
-    border-radius: 0 !important;
-    box-shadow: inset 0 0 0 2px #000 !important;
-}
-
-textarea:focus, input:focus {
-    border-color: var(--cc-yellow) !important;
-    box-shadow: inset 0 0 0 2px #000, 0 0 0 3px var(--cc-pink) !important;
-}
-
-/* Pixel action buttons */
-button, .gr-button, button.primary {
-    font-family: 'Press Start 2P', monospace !important;
-    font-size: .7rem !important;
-    line-height: 1.7 !important;
-    border-radius: 0 !important;
-    border: 4px solid var(--cc-white) !important;
-    background: linear-gradient(180deg, #ff77df, #d9369f) !important;
-    color: #fff7e8 !important;
-    text-shadow: 3px 3px 0 #000 !important;
-    box-shadow: 0 0 0 4px #000, 7px 7px 0 #000 !important;
-    text-transform: uppercase !important;
-    min-height: 54px !important;
-}
-
-button:hover, .gr-button:hover {
-    transform: translate(-2px, -2px) !important;
-    filter: brightness(1.12) !important;
-    box-shadow: 0 0 0 4px #000, 10px 10px 0 #000 !important;
-}
-
-button:active, .gr-button:active {
-    transform: translate(3px, 3px) !important;
-    box-shadow: 0 0 0 4px #000, 3px 3px 0 #000 !important;
-}
-
-/* Text output */
-.output-class, .prose, .markdown, .gr-markdown {
-    color: var(--cc-white) !important;
-}
-
-/* Smaller body text stays readable */
-textarea, input, select, .wrap, .container, .secondary-wrap, .prose, .markdown {
-    font-family: 'Inter', system-ui, sans-serif !important;
+    color: var(--muted) !important;
     font-size: 1rem !important;
 }
 
-.footer, footer { display: none !important; }
+.tabs, .tab-nav {
+    background: transparent !important;
+    border: none !important;
+}
+
+button[role='tab'] {
+    background: var(--panel) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 12px !important;
+    color: var(--muted) !important;
+    font-weight: 600 !important;
+}
+
+button[role='tab'][aria-selected='true'] {
+    background: linear-gradient(90deg, var(--accent), var(--accent2)) !important;
+    color: white !important;
+    border: none !important;
+}
+
+.block, .gr-box, .form, .panel, .gr-panel, .tabitem, [role='tabpanel'] {
+    background: linear-gradient(180deg, var(--panel2), var(--panel)) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 18px !important;
+    box-shadow: 0 8px 24px rgba(0,0,0,.25) !important;
+}
+
+textarea, input, select {
+    background: #121521 !important;
+    color: var(--text) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 12px !important;
+}
+
+textarea:focus, input:focus {
+    border-color: var(--accent2) !important;
+    box-shadow: 0 0 0 3px rgba(34,211,238,.15) !important;
+}
+
+button, .gr-button, button.primary {
+    background: linear-gradient(90deg, var(--accent), var(--accent2)) !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 12px !important;
+    font-weight: 700 !important;
+}
+
+button:hover, .gr-button:hover {
+    filter: brightness(1.08) !important;
+    transform: translateY(-1px);
+}
+
+label, .block-label {
+    color: var(--text) !important;
+    font-weight: 600 !important;
+}
+
+.footer, footer {
+    display: none !important;
+}
 """
 
 # =========================
@@ -582,8 +483,8 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
 
     gr.Markdown(
         """
-        # Channel Coach
-        8-bit creator tools for titles, SEO, video reviews, Shorts, thumbnails, comments, and voiceovers.
+        # 🎬 Channel Coach
+        AI creator tools for titles, SEO, thumbnails, Shorts, reviews, and voiceovers.
         """,
         elem_id="channel-coach-header"
     )
@@ -748,7 +649,6 @@ app.launch(
     server_port=port,
     share=False
 )
-
       
 
 
