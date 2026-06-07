@@ -77,12 +77,17 @@ html, body, .gradio-container {
 }
 
 .gradio-container {
+    width: 100% !important;
     max-width: 1200px !important;
-    margin: auto !important;
+    margin: 0 auto !important;
     padding: 20px !important;
+    box-sizing: border-box !important;
 }
 
 #channel-coach-header {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
     background: linear-gradient(135deg, #1f2433, #171b27) !important;
     border: 1px solid var(--border) !important;
     border-radius: 20px !important;
@@ -101,6 +106,54 @@ html, body, .gradio-container {
 #channel-coach-header p {
     color: var(--muted) !important;
     font-size: 1rem !important;
+}
+
+/* Mobile layout fixes */
+@media (max-width: 768px) {
+    html, body {
+        width: 100% !important;
+        overflow-x: hidden !important;
+    }
+
+    .gradio-container {
+        width: 100% !important;
+        max-width: 100% !important;
+        padding: 10px !important;
+        margin: 0 !important;
+        box-sizing: border-box !important;
+    }
+
+    #channel-coach-header {
+        width: 100% !important;
+        max-width: calc(100vw - 20px) !important;
+        padding: 14px !important;
+        margin: 0 0 12px 0 !important;
+        border-radius: 14px !important;
+        box-sizing: border-box !important;
+    }
+
+    #channel-coach-header h1 {
+        font-size: 1.75rem !important;
+        line-height: 1.05 !important;
+        margin-bottom: 6px !important;
+        word-break: normal !important;
+    }
+
+    #channel-coach-header p {
+        font-size: 0.8rem !important;
+        line-height: 1.35 !important;
+        margin-bottom: 0 !important;
+    }
+
+    .block, .gr-box, .form, .panel, .gr-panel, .tabitem, [role='tabpanel'] {
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    textarea, input, select {
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+    }
 }
 
 .tabs, .tab-nav {
@@ -552,5 +605,4 @@ app.launch(
     server_port=port,
     share=False
 )
-
       
