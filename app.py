@@ -1,7 +1,6 @@
 import os
 import base64
 import cv2
-import requests
 import gradio as gr
 from dotenv import load_dotenv
 from openai import OpenAI
@@ -17,11 +16,8 @@ load_dotenv()
 # Do NOT paste your real API keys directly into this file.
 # Put them in your environment variables instead:
 # OPENAI_API_KEY
-# ELEVENLABS_API_KEY
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
-ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
 
 # =========================
 # PWA / APP-LIKE SETTINGS
@@ -167,17 +163,6 @@ label, .block-label {
     display: none !important;
 }
 """
-
-# =========================
-# VOICES
-# =========================
-
-VOICE_OPTIONS = {
-    "Rachel": "21m00Tcm4TlvDq8ikWAM",
-    "Bella": "EXAVITQu4vr4xnSDxMaL",
-    "Antoni": "ErXwobaYiN019PkySvjV",
-    "Josh": "TxGEqnHWrfWFTfGW9XjX",
-}
 
 # =========================
 # OPENAI TEXT HELPER
@@ -354,16 +339,6 @@ Include:
     return ask_channel_coach(prompt)
 
 
-def comment_assistant(comment, tone):
-    prompt = f"""
-Write 5 replies to this viewer comment.
-
-Comment: {comment}
-Tone: {tone}
-"""
-    return ask_channel_coach(prompt)
-
-
 def video_review(video_file, notes):
     return analyze_video_with_frames(video_file, notes, "long-form YouTube video")
 
@@ -436,46 +411,6 @@ Give:
 
 
 # =========================
-# VOICEOVER
-# =========================
-
-def generate_voice(script, voice_name):
-    if not script.strip():
-        return None
-
-    if not ELEVENLABS_API_KEY:
-        print("Missing ELEVENLABS_API_KEY.")
-        return None
-
-    voice_id = VOICE_OPTIONS[voice_name]
-
-    url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
-
-    headers = {
-        "xi-api-key": ELEVENLABS_API_KEY,
-        "Content-Type": "application/json"
-    }
-
-    data = {
-        "text": script,
-        "model_id": "eleven_monolingual_v1"
-    }
-
-    response = requests.post(url, json=data, headers=headers)
-
-    if response.status_code != 200:
-        print(response.text)
-        return None
-
-    output_path = "voice.mp3"
-
-    with open(output_path, "wb") as f:
-        f.write(response.content)
-
-    return output_path
-
-
-# =========================
 # GRADIO APP
 # =========================
 
@@ -484,7 +419,7 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
     gr.Markdown(
         """
         # 🎬 Channel Coach
-        AI creator tools for titles, SEO, thumbnails, Shorts, reviews, and voiceovers.
+        AI creator tools for titles, SEO, thumbnails, Shorts, and video reviews.
         """,
         elem_id="channel-coach-header"
     )
@@ -544,22 +479,6 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
             outputs=desc_output
         )
 
-    with gr.Tab("Comment Assistant"):
-        comment_input = gr.Textbox(label="Viewer Comment", lines=4)
-        comment_tone = gr.Dropdown(
-            ["Friendly", "Funny", "Supportive", "Professional", "Bold"],
-            value="Friendly",
-            label="Tone"
-        )
-        comment_button = gr.Button("Write Replies")
-        comment_output = gr.Textbox(label="Reply Options", lines=10)
-
-        comment_button.click(
-            comment_assistant,
-            inputs=[comment_input, comment_tone],
-            outputs=comment_output
-        )
-
     with gr.Tab("Video Review"):
         video_upload = gr.Video(label="Upload Long-Form Video")
         video_notes = gr.Textbox(label="Optional notes", lines=6)
@@ -607,21 +526,6 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
             outputs=thumbnail_output
         )
 
-    with gr.Tab("AI Voiceover"):
-        script_input = gr.Textbox(label="Voiceover Script", lines=8)
-        voice_dropdown = gr.Dropdown(
-            choices=list(VOICE_OPTIONS.keys()),
-            value="Bella",
-            label="Choose Voice"
-        )
-        voice_button = gr.Button("Generate Voiceover")
-        voice_output = gr.Audio(label="Generated Voiceover")
-
-        voice_button.click(
-            generate_voice,
-            inputs=[script_input, voice_dropdown],
-            outputs=voice_output
-        )
 
 
 # =========================
@@ -650,35 +554,3 @@ app.launch(
     share=False
 )
       
-
-
-
-
- 
-
-
-
-
-
-
-
-
-
-
-
-  
-
- 
-
- 
- 
-
-
-      
-      
-
-  
-
-   
- 
-  
