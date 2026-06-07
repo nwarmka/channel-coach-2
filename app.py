@@ -527,7 +527,6 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
         )
 
 
-
 # =========================
 # SERVE PWA FILES
 # =========================
