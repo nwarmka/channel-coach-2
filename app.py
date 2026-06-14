@@ -34,16 +34,16 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 PROFILE_FILE = os.getenv("CREATOR_PROFILE_FILE", "creator_profile.json")
 
 DEFAULT_PROFILE = {
-    "channel_name": "Gamer Time Machine",
+    "channel_name": "",
     "creator_name": "",
-    "niche": "Gaming creator focused on retro games, guide-style videos, long-form gameplay, YouTube Shorts, TikTok, and Facebook Reels.",
-    "target_audience": "People who enjoy cozy gaming, retro games, Zelda, Paper Mario, and helpful game guides.",
-    "content_style": "Helpful, casual, funny, cozy, encouraging, and not too corporate.",
-    "current_games": "Paper Mario: The Thousand-Year Door, Zelda: A Link to the Past / retro Zelda guides.",
-    "main_platforms": "YouTube, YouTube Shorts, TikTok, Facebook Reels.",
-    "goals": "Grow the channel, improve titles/thumbnails/SEO, create better Shorts, and make clear guide-style videos.",
-    "preferred_tone": "Friendly, honest, motivating, direct, and creator-coach style.",
-    "things_to_avoid": "Generic advice, fake clickbait, sounding too corporate, or ignoring the creator's gaming niche."
+    "niche": "",
+    "target_audience": "",
+    "content_style": "",
+    "current_games": "",
+    "main_platforms": "",
+    "goals": "",
+    "preferred_tone": "",
+    "things_to_avoid": ""
 }
 
 
@@ -62,7 +62,6 @@ def load_creator_profile():
         return DEFAULT_PROFILE.copy()
 
     return DEFAULT_PROFILE.copy()
-
 
 def save_creator_profile(
     channel_name,
@@ -601,49 +600,59 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
 
         profile_channel_name = gr.Textbox(
             label="Channel Name",
-            value=saved_profile.get("channel_name", "")
+            value=saved_profile.get("channel_name", ""),
+            placeholder="Example: My Awesome Gaming Channel"
         )
         profile_creator_name = gr.Textbox(
             label="Creator Name",
-            value=saved_profile.get("creator_name", "")
+            value=saved_profile.get("creator_name", ""),
+            placeholder="Example: Nicole, Alex, Gamer Mom, etc."
         )
         profile_niche = gr.Textbox(
             label="Niche",
             value=saved_profile.get("niche", ""),
+            placeholder="Example: Retro gaming, cooking, travel, tech reviews...",
             lines=3
         )
         profile_target_audience = gr.Textbox(
             label="Target Audience",
             value=saved_profile.get("target_audience", ""),
+            placeholder="Example: Beginners, cozy gamers, busy parents, tech newbies...",
             lines=3
         )
         profile_content_style = gr.Textbox(
             label="Content Style",
             value=saved_profile.get("content_style", ""),
+            placeholder="Example: Funny, helpful, cozy, direct, chaotic-good, cinematic...",
             lines=3
         )
         profile_current_games = gr.Textbox(
             label="Current Games / Current Content",
             value=saved_profile.get("current_games", ""),
+            placeholder="Example: Stardew Valley guides, Zelda walkthroughs, budget recipes...",
             lines=3
         )
         profile_main_platforms = gr.Textbox(
             label="Main Platforms",
-            value=saved_profile.get("main_platforms", "")
+            value=saved_profile.get("main_platforms", ""),
+            placeholder="Example: YouTube, TikTok, Instagram Reels, Facebook Reels"
         )
         profile_goals = gr.Textbox(
             label="Goals",
             value=saved_profile.get("goals", ""),
+            placeholder="Example: Grow subscribers, improve thumbnails, post 3 Shorts a week...",
             lines=3
         )
         profile_preferred_tone = gr.Textbox(
             label="Preferred Coaching Tone",
             value=saved_profile.get("preferred_tone", ""),
+            placeholder="Example: Friendly, honest, motivating, not too corporate...",
             lines=3
         )
         profile_things_to_avoid = gr.Textbox(
             label="Things Channel Coach Should Avoid",
             value=saved_profile.get("things_to_avoid", ""),
+            placeholder="Example: Fake clickbait, generic advice, too much jargon...",
             lines=3
         )
 
@@ -796,3 +805,4 @@ app.launch(
     server_port=port,
     share=False
 )
+      
