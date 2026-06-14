@@ -1,4 +1,5 @@
 import os
+import json
 import base64
 import cv2
 import gradio as gr
@@ -18,6 +19,109 @@ load_dotenv()
 # OPENAI_API_KEY
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+
+# =========================
+# CREATOR PROFILE MEMORY
+# =========================
+# This saves the creator's niche, goals, style, and channel details so every
+# Channel Coach tool can give personalized advice instead of generic feedback.
+#
+# On Render, set CREATOR_PROFILE_FILE to a path on a persistent disk if you want
+# the profile to survive redeploys/restarts. Example:
+# CREATOR_PROFILE_FILE=/data/creator_profile.json
+
+PROFILE_FILE = os.getenv("CREATOR_PROFILE_FILE", "creator_profile.json")
+
+DEFAULT_PROFILE = {
+    "channel_name": "Gamer Time Machine",
+    "creator_name": "",
+    "niche": "Gaming creator focused on retro games, guide-style videos, long-form gameplay, YouTube Shorts, TikTok, and Facebook Reels.",
+    "target_audience": "People who enjoy cozy gaming, retro games, Zelda, Paper Mario, and helpful game guides.",
+    "content_style": "Helpful, casual, funny, cozy, encouraging, and not too corporate.",
+    "current_games": "Paper Mario: The Thousand-Year Door, Zelda: A Link to the Past / retro Zelda guides.",
+    "main_platforms": "YouTube, YouTube Shorts, TikTok, Facebook Reels.",
+    "goals": "Grow the channel, improve titles/thumbnails/SEO, create better Shorts, and make clear guide-style videos.",
+    "preferred_tone": "Friendly, honest, motivating, direct, and creator-coach style.",
+    "things_to_avoid": "Generic advice, fake clickbait, sounding too corporate, or ignoring the creator's gaming niche."
+}
+
+
+def load_creator_profile():
+    try:
+        if os.path.exists(PROFILE_FILE):
+            with open(PROFILE_FILE, "r", encoding="utf-8") as f:
+                saved_profile = json.load(f)
+
+            profile = DEFAULT_PROFILE.copy()
+            profile.update(saved_profile)
+            return profile
+
+    except Exception:
+        # If the saved profile file ever gets corrupted, the app will still load.
+        return DEFAULT_PROFILE.copy()
+
+    return DEFAULT_PROFILE.copy()
+
+
+def save_creator_profile(
+    channel_name,
+    creator_name,
+    niche,
+    target_audience,
+    content_style,
+    current_games,
+    main_platforms,
+    goals,
+    preferred_tone,
+    things_to_avoid
+):
+    profile = {
+        "channel_name": channel_name,
+        "creator_name": creator_name,
+        "niche": niche,
+        "target_audience": target_audience,
+        "content_style": content_style,
+        "current_games": current_games,
+        "main_platforms": main_platforms,
+        "goals": goals,
+        "preferred_tone": preferred_tone,
+        "things_to_avoid": things_to_avoid
+    }
+
+    try:
+        profile_dir = os.path.dirname(PROFILE_FILE)
+        if profile_dir:
+            os.makedirs(profile_dir, exist_ok=True)
+
+        with open(PROFILE_FILE, "w", encoding="utf-8") as f:
+            json.dump(profile, f, indent=4)
+
+        return "✅ Creator profile saved! Channel Coach will use this profile in titles, SEO, descriptions, reviews, Shorts ideas, and thumbnail feedback."
+
+    except Exception as e:
+        return f"❌ Could not save creator profile: {e}"
+
+
+def creator_profile_context():
+    profile = load_creator_profile()
+
+    return f"""
+Creator Profile Memory:
+- Channel name: {profile.get("channel_name", "")}
+- Creator name: {profile.get("creator_name", "")}
+- Niche: {profile.get("niche", "")}
+- Target audience: {profile.get("target_audience", "")}
+- Content style: {profile.get("content_style", "")}
+- Current games/content: {profile.get("current_games", "")}
+- Main platforms: {profile.get("main_platforms", "")}
+- Goals: {profile.get("goals", "")}
+- Preferred coaching tone: {profile.get("preferred_tone", "")}
+- Things to avoid: {profile.get("things_to_avoid", "")}
+
+Use this creator profile in your answer. Be specific to this creator whenever possible.
+"""
+
 
 # =========================
 # PWA / APP-LIKE SETTINGS
@@ -221,9 +325,12 @@ label, .block-label {
 # OPENAI TEXT HELPER
 # =========================
 
-def ask_channel_coach(prompt):
+def ask_channel_coach(prompt, use_profile=True):
     if not os.getenv("OPENAI_API_KEY"):
         return "Missing OPENAI_API_KEY. Add your OpenAI API key to your environment variables."
+
+    if use_profile:
+        prompt = creator_profile_context() + "\n\nUser request:\n" + prompt
 
     response = client.responses.create(
         model="gpt-4.1-mini",
@@ -285,6 +392,8 @@ def analyze_video_with_frames(video_file, notes, video_type):
             "type": "input_text",
             "text": f"""
 You are Channel Coach, an expert YouTube creator coach.
+
+{creator_profile_context()}
 
 Analyze this {video_type}.
 
@@ -435,8 +544,10 @@ def analyze_thumbnail(image):
                 "content": [
                     {
                         "type": "input_text",
-                        "text": """
+                        "text": f"""
 You are Channel Coach, a YouTube thumbnail expert.
+
+{creator_profile_context()}
 
 Analyze this thumbnail.
 
@@ -476,6 +587,86 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
         """,
         elem_id="channel-coach-header"
     )
+
+    saved_profile = load_creator_profile()
+
+    with gr.Tab("Creator Profile"):
+        gr.Markdown(
+            """
+            ## 🧠 Creator Profile Memory
+            Save your channel niche, goals, style, and current content here.
+            Channel Coach will use this information in every tool.
+            """
+        )
+
+        profile_channel_name = gr.Textbox(
+            label="Channel Name",
+            value=saved_profile.get("channel_name", "")
+        )
+        profile_creator_name = gr.Textbox(
+            label="Creator Name",
+            value=saved_profile.get("creator_name", "")
+        )
+        profile_niche = gr.Textbox(
+            label="Niche",
+            value=saved_profile.get("niche", ""),
+            lines=3
+        )
+        profile_target_audience = gr.Textbox(
+            label="Target Audience",
+            value=saved_profile.get("target_audience", ""),
+            lines=3
+        )
+        profile_content_style = gr.Textbox(
+            label="Content Style",
+            value=saved_profile.get("content_style", ""),
+            lines=3
+        )
+        profile_current_games = gr.Textbox(
+            label="Current Games / Current Content",
+            value=saved_profile.get("current_games", ""),
+            lines=3
+        )
+        profile_main_platforms = gr.Textbox(
+            label="Main Platforms",
+            value=saved_profile.get("main_platforms", "")
+        )
+        profile_goals = gr.Textbox(
+            label="Goals",
+            value=saved_profile.get("goals", ""),
+            lines=3
+        )
+        profile_preferred_tone = gr.Textbox(
+            label="Preferred Coaching Tone",
+            value=saved_profile.get("preferred_tone", ""),
+            lines=3
+        )
+        profile_things_to_avoid = gr.Textbox(
+            label="Things Channel Coach Should Avoid",
+            value=saved_profile.get("things_to_avoid", ""),
+            lines=3
+        )
+
+        profile_save_button = gr.Button("Save Creator Profile")
+        profile_save_status = gr.Textbox(label="Save Status", lines=2)
+
+        profile_save_button.click(
+            save_creator_profile,
+            inputs=[
+                profile_channel_name,
+                profile_creator_name,
+                profile_niche,
+                profile_target_audience,
+                profile_content_style,
+                profile_current_games,
+                profile_main_platforms,
+                profile_goals,
+                profile_preferred_tone,
+                profile_things_to_avoid
+            ],
+            outputs=profile_save_status
+        )
+
 
     with gr.Tab("Title Help"):
         title_input = gr.Textbox(label="Video Idea", lines=4)
@@ -605,4 +796,3 @@ app.launch(
     server_port=port,
     share=False
 )
-      
