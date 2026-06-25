@@ -163,6 +163,299 @@ STATUS_PROGRESS = {
 }
 
 
+PROJECT_CHECKLIST_ITEMS = [
+    ("script_written", "Script written"),
+    ("gameplay_recorded", "Gameplay recorded"),
+    ("voiceover_recorded", "Voiceover recorded"),
+    ("editing_complete", "Editing complete"),
+    ("thumbnail_finished", "Thumbnail finished"),
+    ("description_done", "Description done"),
+    ("uploaded_scheduled", "Uploaded / scheduled"),
+    ("shared_social", "Shared on social media")
+]
+
+PROJECT_CHECKLIST_TEMPLATE = {key: False for key, label in PROJECT_CHECKLIST_ITEMS}
+
+
+def normalize_project_item(item):
+    """Make older calendar items compatible with the Project Workspace."""
+    if not isinstance(item.get("checklist"), dict):
+        item["checklist"] = PROJECT_CHECKLIST_TEMPLATE.copy()
+    else:
+        fixed = PROJECT_CHECKLIST_TEMPLATE.copy()
+        fixed.update({key: bool(value) for key, value in item.get("checklist", {}).items()})
+        item["checklist"] = fixed
+
+    item.setdefault("project_notes", item.get("notes", ""))
+    item.setdefault("description_draft", "")
+    item.setdefault("thumbnail_notes", "")
+    item.setdefault("shorts_ideas_draft", "")
+    item.setdefault("workspace_history", [])
+    return item
+
+
+def calculate_item_progress(item):
+    """Checklist-based progress. Falls back to status for older untouched items."""
+    checklist = item.get("checklist")
+
+    if isinstance(checklist, dict) and checklist:
+        fixed = PROJECT_CHECKLIST_TEMPLATE.copy()
+        fixed.update({key: bool(value) for key, value in checklist.items()})
+        completed = sum(1 for value in fixed.values() if value)
+        total = len(fixed)
+        return int(round((completed / total) * 100)) if total else 0
+
+    return STATUS_PROGRESS.get(item.get("status", "Idea"), 10)
+
+
+def find_calendar_item(selected_item_id):
+    items = load_content_calendar()
+    for item in items:
+        if item.get("id") == selected_item_id:
+            return item, items
+    return None, items
+
+
+def render_project_workspace_overview(selected_item_id):
+    item, items = find_calendar_item(selected_item_id)
+
+    if not item:
+        return """
+        <div class="cc-project-empty">
+            <h3>🎬 Project Workspace</h3>
+            <p>Choose a calendar item to open its project workspace.</p>
+        </div>
+        """
+
+    item = normalize_project_item(item)
+    progress = calculate_item_progress(item)
+    checklist = item.get("checklist", PROJECT_CHECKLIST_TEMPLATE.copy())
+    completed = sum(1 for key, label in PROJECT_CHECKLIST_ITEMS if checklist.get(key))
+    total = len(PROJECT_CHECKLIST_ITEMS)
+
+    status = html.escape(item.get("status", "Idea"))
+    content_type = html.escape(item.get("content_type", "Long Video"))
+    title = html.escape(item.get("title", "Untitled"))
+    game_topic = html.escape(item.get("game_topic", ""))
+    publish_date = html.escape(item.get("publish_date", "No date"))
+
+    checklist_html = ""
+    for key, label in PROJECT_CHECKLIST_ITEMS:
+        mark = "✅" if checklist.get(key) else "⬜"
+        checklist_html += f'<div class="cc-project-check-row"><span>{mark}</span><span>{html.escape(label)}</span></div>'
+
+    return f"""
+    <div class="cc-project-overview">
+        <div class="cc-project-hero">
+            <div class="cc-small-label">Project Workspace</div>
+            <h2>{title}</h2>
+            <p>{content_type} · {status} · {game_topic}</p>
+        </div>
+
+        <div class="cc-project-progress-card">
+            <div class="cc-project-progress-top">
+                <strong>{progress}% complete</strong>
+                <span>{completed}/{total} tasks done</span>
+            </div>
+            <div class="cc-progress-wrap cc-project-progress-big">
+                <div class="cc-progress-fill" style="width:{progress}%"></div>
+            </div>
+            <div class="cc-project-meta-row">
+                <span>📅 Target: {publish_date}</span>
+                <span>🎯 Status: {status}</span>
+            </div>
+        </div>
+
+        <div class="cc-project-checklist-card">
+            <h3>Production Checklist</h3>
+            {checklist_html}
+        </div>
+    </div>
+    """
+
+
+def load_project_workspace(selected_item_id):
+    item, items = find_calendar_item(selected_item_id)
+
+    if not item:
+        return (
+            render_project_workspace_overview(None),
+            "", "Long Video", "", "Idea", date.today().isoformat(), "",
+            False, False, False, False, False, False, False, False,
+            "", "", "",
+            "Choose a project first."
+        )
+
+    item = normalize_project_item(item)
+    checklist = item.get("checklist", PROJECT_CHECKLIST_TEMPLATE.copy())
+
+    return (
+        render_project_workspace_overview(selected_item_id),
+        item.get("title", ""),
+        item.get("content_type", "Long Video"),
+        item.get("game_topic", ""),
+        item.get("status", "Idea"),
+        item.get("publish_date", date.today().isoformat()),
+        item.get("project_notes", item.get("notes", "")),
+        checklist.get("script_written", False),
+        checklist.get("gameplay_recorded", False),
+        checklist.get("voiceover_recorded", False),
+        checklist.get("editing_complete", False),
+        checklist.get("thumbnail_finished", False),
+        checklist.get("description_done", False),
+        checklist.get("uploaded_scheduled", False),
+        checklist.get("shared_social", False),
+        item.get("description_draft", ""),
+        item.get("thumbnail_notes", ""),
+        item.get("shorts_ideas_draft", ""),
+        "✅ Project loaded."
+    )
+
+
+def save_project_workspace(
+    selected_item_id,
+    title,
+    content_type,
+    game_topic,
+    status,
+    publish_date,
+    project_notes,
+    script_written,
+    gameplay_recorded,
+    voiceover_recorded,
+    editing_complete,
+    thumbnail_finished,
+    description_done,
+    uploaded_scheduled,
+    shared_social,
+    description_draft,
+    thumbnail_notes,
+    shorts_ideas_draft
+):
+    if not selected_item_id:
+        return render_project_workspace_overview(None), gr.update(choices=get_calendar_choices()), "❌ Choose a project first."
+
+    parsed_date = validate_calendar_date(publish_date or "")
+    if parsed_date is None:
+        return render_project_workspace_overview(selected_item_id), gr.update(choices=get_calendar_choices()), "❌ Please enter the date like this: YYYY-MM-DD"
+
+    items = load_content_calendar()
+    updated = False
+
+    for item in items:
+        if item.get("id") == selected_item_id:
+            normalize_project_item(item)
+            checklist = {
+                "script_written": bool(script_written),
+                "gameplay_recorded": bool(gameplay_recorded),
+                "voiceover_recorded": bool(voiceover_recorded),
+                "editing_complete": bool(editing_complete),
+                "thumbnail_finished": bool(thumbnail_finished),
+                "description_done": bool(description_done),
+                "uploaded_scheduled": bool(uploaded_scheduled),
+                "shared_social": bool(shared_social),
+            }
+
+            item.update({
+                "title": (title or "Untitled").strip(),
+                "content_type": content_type,
+                "game_topic": (game_topic or "").strip(),
+                "status": status,
+                "publish_date": parsed_date.isoformat(),
+                "notes": (project_notes or "").strip(),
+                "project_notes": (project_notes or "").strip(),
+                "checklist": checklist,
+                "description_draft": (description_draft or "").strip(),
+                "thumbnail_notes": (thumbnail_notes or "").strip(),
+                "shorts_ideas_draft": (shorts_ideas_draft or "").strip(),
+                "updated_at": datetime.now().isoformat()
+            })
+            updated = True
+            break
+
+    save_content_calendar(items)
+
+    if not updated:
+        return render_project_workspace_overview(None), gr.update(choices=get_calendar_choices()), "❌ Could not find that project."
+
+    return (
+        render_project_workspace_overview(selected_item_id),
+        gr.update(choices=get_calendar_choices(), value=selected_item_id),
+        "✅ Project workspace saved. Calendar and dashboard will use this updated project data."
+    )
+
+
+def project_ai_helper(selected_item_id, project_notes, description_draft, thumbnail_notes, shorts_ideas_draft, request_type):
+    if not selected_item_id:
+        return "Choose a project first."
+
+    item, items = find_calendar_item(selected_item_id)
+    if not item:
+        return "I could not find that project."
+
+    item = normalize_project_item(item)
+    progress = calculate_item_progress(item)
+
+    project_context = f"""
+Project:
+- Title: {item.get('title', '')}
+- Type: {item.get('content_type', '')}
+- Game / Topic: {item.get('game_topic', '')}
+- Status: {item.get('status', '')}
+- Target publish date: {item.get('publish_date', '')}
+- Progress: {progress}%
+- Calendar notes: {item.get('notes', '')}
+- Current project notes: {project_notes}
+- Current description draft: {description_draft}
+- Current thumbnail notes: {thumbnail_notes}
+- Current Shorts ideas draft: {shorts_ideas_draft}
+- Checklist: {json.dumps(item.get('checklist', {}), indent=2)}
+"""
+
+    prompts = {
+        "titles": "Generate 10 stronger title options for this project. Make them clickable but not fake clickbait.",
+        "description": "Write a YouTube description for this project with a hook, helpful description paragraph, call to action, and hashtags.",
+        "thumbnail": "Generate thumbnail concepts for this project, including text ideas, layout ideas, colors, and what should be visually emphasized.",
+        "shorts": "Generate 5 Shorts/Reels/TikTok ideas from this project. Include hook, on-screen text, and footage idea for each.",
+        "review": "Act like a production manager. Review this project, explain what should happen next, what is missing, and what could make it stronger."
+    }
+
+    prompt = f"""
+You are Channel Coach.
+
+{creator_profile_context()}
+
+{project_context}
+
+Task:
+{prompts.get(request_type, prompts['review'])}
+
+Be specific to this creator and this project.
+"""
+
+    return ask_channel_coach(prompt, use_profile=False)
+
+
+def project_generate_titles(selected_item_id, project_notes, description_draft, thumbnail_notes, shorts_ideas_draft):
+    return project_ai_helper(selected_item_id, project_notes, description_draft, thumbnail_notes, shorts_ideas_draft, "titles")
+
+
+def project_generate_description(selected_item_id, project_notes, description_draft, thumbnail_notes, shorts_ideas_draft):
+    return project_ai_helper(selected_item_id, project_notes, description_draft, thumbnail_notes, shorts_ideas_draft, "description")
+
+
+def project_generate_thumbnail(selected_item_id, project_notes, description_draft, thumbnail_notes, shorts_ideas_draft):
+    return project_ai_helper(selected_item_id, project_notes, description_draft, thumbnail_notes, shorts_ideas_draft, "thumbnail")
+
+
+def project_generate_shorts(selected_item_id, project_notes, description_draft, thumbnail_notes, shorts_ideas_draft):
+    return project_ai_helper(selected_item_id, project_notes, description_draft, thumbnail_notes, shorts_ideas_draft, "shorts")
+
+
+def project_review(selected_item_id, project_notes, description_draft, thumbnail_notes, shorts_ideas_draft):
+    return project_ai_helper(selected_item_id, project_notes, description_draft, thumbnail_notes, shorts_ideas_draft, "review")
+
+
 def load_content_calendar():
     try:
         if os.path.exists(CONTENT_CALENDAR_FILE):
@@ -229,6 +522,12 @@ def add_content_item(title, content_type, game_topic, status, publish_date, note
         "status": status,
         "publish_date": parsed_date.isoformat(),
         "notes": (notes or "").strip(),
+        "project_notes": (notes or "").strip(),
+        "checklist": PROJECT_CHECKLIST_TEMPLATE.copy(),
+        "description_draft": "",
+        "thumbnail_notes": "",
+        "shorts_ideas_draft": "",
+        "workspace_history": [],
         "created_at": datetime.now().isoformat()
     })
 
@@ -307,7 +606,7 @@ def render_content_calendar(month=None, year=None, status_filter="All", type_fil
                 status = item.get("status", "Idea")
                 emoji = type_emoji.get(content_type, "🎬")
                 css_class = status_class.get(status, "status-idea")
-                progress = STATUS_PROGRESS.get(status, 10)
+                progress = calculate_item_progress(item)
 
                 title = html.escape(item.get("title", "Untitled"))
                 game_topic = html.escape(item.get("game_topic", ""))
@@ -370,7 +669,7 @@ def render_upcoming_content(limit=6):
         content_type = item.get("content_type", "Long Video")
         emoji = type_emoji.get(content_type, "🎬")
         status = item.get("status", "Idea")
-        progress = STATUS_PROGRESS.get(status, 10)
+        progress = calculate_item_progress(item)
 
         if item_date == today:
             when = "Today"
@@ -594,7 +893,7 @@ def render_creator_dashboard():
     next_date = stats["next_item_date"]
 
     if next_item and next_date:
-        progress = STATUS_PROGRESS.get(next_item.get("status", "Idea"), 10)
+        progress = calculate_item_progress(next_item)
         next_upload_html = f"""
         <div class=\"cc-next-upload-card\">
             <div class=\"cc-small-label\">Next Upload</div>
@@ -1102,6 +1401,76 @@ label, .block-label {
     padding: 12px;
     margin-bottom: 14px;
     font-weight: 700;
+}
+
+
+/* Project Workspace */
+.cc-project-empty,
+.cc-project-overview,
+.cc-project-progress-card,
+.cc-project-checklist-card {
+    background: rgba(18,21,33,.85);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 14px;
+}
+
+.cc-project-hero {
+    background: linear-gradient(135deg, rgba(139,92,246,.22), rgba(34,211,238,.12));
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 14px;
+}
+
+.cc-project-hero h2 {
+    color: var(--text);
+    margin: 4px 0;
+    font-size: 1.7rem;
+}
+
+.cc-project-hero p {
+    color: var(--muted);
+    margin-bottom: 0;
+}
+
+.cc-project-progress-top,
+.cc-project-meta-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    color: var(--muted);
+    font-size: .86rem;
+    margin-bottom: 8px;
+}
+
+.cc-project-progress-top strong {
+    color: var(--text);
+    font-size: 1.05rem;
+}
+
+.cc-project-progress-big {
+    height: 10px;
+    margin: 10px 0;
+}
+
+.cc-project-checklist-card h3 {
+    margin-top: 0;
+    color: var(--text);
+}
+
+.cc-project-check-row {
+    display: grid;
+    grid-template-columns: 28px 1fr;
+    gap: 8px;
+    color: var(--text);
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(255,255,255,.06);
+}
+
+.cc-project-check-row:last-child {
+    border-bottom: none;
 }
 
 
@@ -1694,6 +2063,142 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
             plan_my_week,
             inputs=[],
             outputs=plan_week_output
+        )
+
+
+    with gr.Tab("Project Workspace"):
+        gr.Markdown(
+            """
+            ## 🎬 Project Workspace
+            Open any calendar item as a full creator project. Track real checklist progress, save notes, and generate project-specific AI help.
+            """
+        )
+
+        workspace_project_picker = gr.Dropdown(
+            choices=get_calendar_choices(),
+            label="Choose Project"
+        )
+        workspace_load_button = gr.Button("Load Project")
+        workspace_overview = gr.HTML(value=render_project_workspace_overview(None))
+
+        with gr.Row():
+            with gr.Column(scale=1):
+                workspace_title = gr.Textbox(label="Project Title")
+                workspace_content_type = gr.Dropdown(CONTENT_TYPES, value="Long Video", label="Content Type")
+                workspace_game_topic = gr.Textbox(label="Game / Topic")
+                workspace_status = gr.Dropdown(CONTENT_STATUSES, value="Idea", label="Status")
+                workspace_publish_date = gr.Textbox(label="Target Publish Date", value=date.today().isoformat())
+
+                gr.Markdown("### Production Checklist")
+                workspace_script_written = gr.Checkbox(label="Script written")
+                workspace_gameplay_recorded = gr.Checkbox(label="Gameplay recorded")
+                workspace_voiceover_recorded = gr.Checkbox(label="Voiceover recorded")
+                workspace_editing_complete = gr.Checkbox(label="Editing complete")
+                workspace_thumbnail_finished = gr.Checkbox(label="Thumbnail finished")
+                workspace_description_done = gr.Checkbox(label="Description done")
+                workspace_uploaded_scheduled = gr.Checkbox(label="Uploaded / scheduled")
+                workspace_shared_social = gr.Checkbox(label="Shared on social media")
+
+                workspace_save_button = gr.Button("Save Project Workspace")
+                workspace_message = gr.Textbox(label="Workspace Status", lines=2)
+
+            with gr.Column(scale=2):
+                workspace_project_notes = gr.Textbox(label="Project Notes", lines=6)
+                workspace_description_draft = gr.Textbox(label="Description Draft", lines=7)
+                workspace_thumbnail_notes = gr.Textbox(label="Thumbnail Notes", lines=5)
+                workspace_shorts_ideas_draft = gr.Textbox(label="Shorts Ideas / Clip Notes", lines=5)
+
+                gr.Markdown("### AI Project Assistant")
+                with gr.Row():
+                    workspace_titles_button = gr.Button("Generate Titles")
+                    workspace_description_button = gr.Button("Generate Description")
+                    workspace_thumbnail_button = gr.Button("Thumbnail Ideas")
+
+                with gr.Row():
+                    workspace_shorts_button = gr.Button("Shorts Ideas")
+                    workspace_review_button = gr.Button("Project Review")
+
+                workspace_ai_output = gr.Textbox(label="AI Project Output", lines=14)
+
+        workspace_load_button.click(
+            load_project_workspace,
+            inputs=workspace_project_picker,
+            outputs=[
+                workspace_overview,
+                workspace_title,
+                workspace_content_type,
+                workspace_game_topic,
+                workspace_status,
+                workspace_publish_date,
+                workspace_project_notes,
+                workspace_script_written,
+                workspace_gameplay_recorded,
+                workspace_voiceover_recorded,
+                workspace_editing_complete,
+                workspace_thumbnail_finished,
+                workspace_description_done,
+                workspace_uploaded_scheduled,
+                workspace_shared_social,
+                workspace_description_draft,
+                workspace_thumbnail_notes,
+                workspace_shorts_ideas_draft,
+                workspace_message
+            ]
+        )
+
+        workspace_save_button.click(
+            save_project_workspace,
+            inputs=[
+                workspace_project_picker,
+                workspace_title,
+                workspace_content_type,
+                workspace_game_topic,
+                workspace_status,
+                workspace_publish_date,
+                workspace_project_notes,
+                workspace_script_written,
+                workspace_gameplay_recorded,
+                workspace_voiceover_recorded,
+                workspace_editing_complete,
+                workspace_thumbnail_finished,
+                workspace_description_done,
+                workspace_uploaded_scheduled,
+                workspace_shared_social,
+                workspace_description_draft,
+                workspace_thumbnail_notes,
+                workspace_shorts_ideas_draft
+            ],
+            outputs=[workspace_overview, workspace_project_picker, workspace_message]
+        )
+
+        workspace_titles_button.click(
+            project_generate_titles,
+            inputs=[workspace_project_picker, workspace_project_notes, workspace_description_draft, workspace_thumbnail_notes, workspace_shorts_ideas_draft],
+            outputs=workspace_ai_output
+        )
+
+        workspace_description_button.click(
+            project_generate_description,
+            inputs=[workspace_project_picker, workspace_project_notes, workspace_description_draft, workspace_thumbnail_notes, workspace_shorts_ideas_draft],
+            outputs=workspace_ai_output
+        )
+
+        workspace_thumbnail_button.click(
+            project_generate_thumbnail,
+            inputs=[workspace_project_picker, workspace_project_notes, workspace_description_draft, workspace_thumbnail_notes, workspace_shorts_ideas_draft],
+            outputs=workspace_ai_output
+        )
+
+        workspace_shorts_button.click(
+            project_generate_shorts,
+            inputs=[workspace_project_picker, workspace_project_notes, workspace_description_draft, workspace_thumbnail_notes, workspace_shorts_ideas_draft],
+            outputs=workspace_ai_output
+        )
+
+        workspace_review_button.click(
+            project_review,
+            inputs=[workspace_project_picker, workspace_project_notes, workspace_description_draft, workspace_thumbnail_notes, workspace_shorts_ideas_draft],
+            outputs=workspace_ai_output
         )
 
 
