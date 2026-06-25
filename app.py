@@ -1,8 +1,12 @@
 import os
 import json
 import base64
+import uuid
+import calendar
+import html
 import cv2
 import gradio as gr
+from datetime import date, datetime
 from dotenv import load_dotenv
 from openai import OpenAI
 from fastapi.staticfiles import StaticFiles
@@ -120,6 +124,288 @@ Creator Profile Memory:
 
 Use this creator profile in your answer. Be specific to this creator whenever possible.
 """
+
+
+# =========================
+# CONTENT CALENDAR
+# =========================
+# On Render, set CONTENT_CALENDAR_FILE to a path on a persistent disk if you want
+# the calendar to survive redeploys/restarts. Example:
+# CONTENT_CALENDAR_FILE=/data/content_calendar.json
+
+CONTENT_CALENDAR_FILE = os.getenv("CONTENT_CALENDAR_FILE", "content_calendar.json")
+
+CONTENT_STATUSES = [
+    "Idea",
+    "Script",
+    "Recording",
+    "Editing",
+    "Thumbnail",
+    "Scheduled",
+    "Published"
+]
+
+CONTENT_TYPES = [
+    "Long Video",
+    "Short",
+    "Livestream",
+    "Community Post"
+]
+
+
+def load_content_calendar():
+    try:
+        if os.path.exists(CONTENT_CALENDAR_FILE):
+            with open(CONTENT_CALENDAR_FILE, "r", encoding="utf-8") as f:
+                items = json.load(f)
+
+            if isinstance(items, list):
+                return items
+    except Exception:
+        return []
+
+    return []
+
+
+def save_content_calendar(items):
+    calendar_dir = os.path.dirname(CONTENT_CALENDAR_FILE)
+    if calendar_dir:
+        os.makedirs(calendar_dir, exist_ok=True)
+
+    with open(CONTENT_CALENDAR_FILE, "w", encoding="utf-8") as f:
+        json.dump(items, f, indent=4)
+
+
+def validate_calendar_date(date_text):
+    try:
+        return datetime.strptime(date_text.strip(), "%Y-%m-%d").date()
+    except Exception:
+        return None
+
+
+def item_label(item):
+    return f'{item.get("publish_date", "No date")} | {item.get("status", "")} | {item.get("title", "Untitled")}'
+
+
+def get_calendar_choices():
+    items = sorted(load_content_calendar(), key=lambda x: x.get("publish_date", "9999-12-31"))
+    return [(item_label(item), item.get("id")) for item in items]
+
+
+def add_content_item(title, content_type, game_topic, status, publish_date, notes, month, year, status_filter, type_filter):
+    if not title or not title.strip():
+        return (
+            render_content_calendar(month, year, status_filter, type_filter),
+            gr.update(choices=get_calendar_choices()),
+            "❌ Please enter a title."
+        )
+
+    parsed_date = validate_calendar_date(publish_date or "")
+    if parsed_date is None:
+        return (
+            render_content_calendar(month, year, status_filter, type_filter),
+            gr.update(choices=get_calendar_choices()),
+            "❌ Please enter the date like this: YYYY-MM-DD"
+        )
+
+    items = load_content_calendar()
+    items.append({
+        "id": str(uuid.uuid4()),
+        "title": title.strip(),
+        "content_type": content_type,
+        "game_topic": (game_topic or "").strip(),
+        "status": status,
+        "publish_date": parsed_date.isoformat(),
+        "notes": (notes or "").strip(),
+        "created_at": datetime.now().isoformat()
+    })
+
+    save_content_calendar(items)
+
+    return (
+        render_content_calendar(month, year, status_filter, type_filter),
+        gr.update(choices=get_calendar_choices()),
+        "✅ Added to your content calendar!"
+    )
+
+
+def render_content_calendar(month=None, year=None, status_filter="All", type_filter="All"):
+    today = date.today()
+
+    try:
+        month = int(month or today.month)
+        year = int(year or today.year)
+    except Exception:
+        month = today.month
+        year = today.year
+
+    items = load_content_calendar()
+
+    if status_filter != "All":
+        items = [item for item in items if item.get("status") == status_filter]
+
+    if type_filter != "All":
+        items = [item for item in items if item.get("content_type") == type_filter]
+
+    cal = calendar.Calendar(firstweekday=6)
+    weeks = cal.monthdatescalendar(year, month)
+
+    type_emoji = {
+        "Long Video": "🎮",
+        "Short": "📱",
+        "Livestream": "🔴",
+        "Community Post": "💬"
+    }
+
+    status_class = {
+        "Idea": "status-idea",
+        "Script": "status-script",
+        "Recording": "status-recording",
+        "Editing": "status-editing",
+        "Thumbnail": "status-thumbnail",
+        "Scheduled": "status-scheduled",
+        "Published": "status-published"
+    }
+
+    html_output = f"""
+    <div class="cc-calendar-wrap">
+        <h2>{html.escape(calendar.month_name[month])} {year}</h2>
+        <div class="cc-calendar-grid cc-calendar-header">
+    """
+
+    for day_name in ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]:
+        html_output += f'<div class="cc-day-name">{day_name}</div>'
+
+    html_output += "</div><div class=\"cc-calendar-grid\">"
+
+    for week in weeks:
+        for day in week:
+            muted = " cc-muted" if day.month != month else ""
+            today_class = " cc-today" if day == today else ""
+
+            html_output += f"""
+            <div class="cc-calendar-day{muted}{today_class}">
+                <div class="cc-day-number">{day.day}</div>
+            """
+
+            day_items = [item for item in items if item.get("publish_date") == day.isoformat()]
+
+            for item in day_items:
+                content_type = item.get("content_type", "Long Video")
+                status = item.get("status", "Idea")
+                emoji = type_emoji.get(content_type, "🎬")
+                css_class = status_class.get(status, "status-idea")
+
+                title = html.escape(item.get("title", "Untitled"))
+                game_topic = html.escape(item.get("game_topic", ""))
+                notes = html.escape(item.get("notes", ""))
+
+                html_output += f"""
+                <div class="cc-content-card {css_class}" title="{notes}">
+                    <div class="cc-card-title">{emoji} {title}</div>
+                    <div class="cc-card-meta">{html.escape(status)} · {html.escape(content_type)}</div>
+                    <div class="cc-card-topic">{game_topic}</div>
+                </div>
+                """
+
+            html_output += "</div>"
+
+    html_output += """
+        </div>
+    </div>
+    """
+
+    return html_output
+
+
+def refresh_content_calendar(month, year, status_filter, type_filter):
+    return render_content_calendar(month, year, status_filter, type_filter)
+
+
+def load_selected_content_item(selected_item_id):
+    if not selected_item_id:
+        return "", "Long Video", "", "Idea", date.today().isoformat(), "", "Choose an item to edit."
+
+    items = load_content_calendar()
+    for item in items:
+        if item.get("id") == selected_item_id:
+            return (
+                item.get("title", ""),
+                item.get("content_type", "Long Video"),
+                item.get("game_topic", ""),
+                item.get("status", "Idea"),
+                item.get("publish_date", date.today().isoformat()),
+                item.get("notes", ""),
+                "Loaded item. Make changes, then click Save Edit."
+            )
+
+    return "", "Long Video", "", "Idea", date.today().isoformat(), "", "Could not find that calendar item."
+
+
+def update_content_item(selected_item_id, title, content_type, game_topic, status, publish_date, notes, month, year, status_filter, type_filter):
+    if not selected_item_id:
+        return (
+            render_content_calendar(month, year, status_filter, type_filter),
+            gr.update(choices=get_calendar_choices()),
+            "❌ Choose an item to edit first."
+        )
+
+    parsed_date = validate_calendar_date(publish_date or "")
+    if parsed_date is None:
+        return (
+            render_content_calendar(month, year, status_filter, type_filter),
+            gr.update(choices=get_calendar_choices()),
+            "❌ Please enter the date like this: YYYY-MM-DD"
+        )
+
+    items = load_content_calendar()
+    updated = False
+
+    for item in items:
+        if item.get("id") == selected_item_id:
+            item.update({
+                "title": (title or "Untitled").strip(),
+                "content_type": content_type,
+                "game_topic": (game_topic or "").strip(),
+                "status": status,
+                "publish_date": parsed_date.isoformat(),
+                "notes": (notes or "").strip(),
+                "updated_at": datetime.now().isoformat()
+            })
+            updated = True
+            break
+
+    save_content_calendar(items)
+
+    if updated:
+        message = "✅ Calendar item updated."
+    else:
+        message = "❌ Could not find that calendar item."
+
+    return (
+        render_content_calendar(month, year, status_filter, type_filter),
+        gr.update(choices=get_calendar_choices(), value=selected_item_id),
+        message
+    )
+
+
+def delete_content_item(selected_item_id, month, year, status_filter, type_filter):
+    if not selected_item_id:
+        return (
+            render_content_calendar(month, year, status_filter, type_filter),
+            gr.update(choices=get_calendar_choices()),
+            "❌ Choose an item to delete first."
+        )
+
+    items = load_content_calendar()
+    new_items = [item for item in items if item.get("id") != selected_item_id]
+    save_content_calendar(new_items)
+
+    return (
+        render_content_calendar(month, year, status_filter, type_filter),
+        gr.update(choices=get_calendar_choices(), value=None),
+        "🗑️ Calendar item deleted."
+    )
 
 
 # =========================
@@ -318,6 +604,100 @@ label, .block-label {
 .footer, footer {
     display: none !important;
 }
+
+
+/* Content Calendar */
+.cc-calendar-wrap h2 {
+    color: var(--text) !important;
+    margin: 10px 0 16px 0 !important;
+}
+
+.cc-calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 8px;
+    width: 100%;
+}
+
+.cc-calendar-header {
+    margin-bottom: 8px;
+}
+
+.cc-day-name {
+    color: var(--muted);
+    text-align: center;
+    font-weight: 800;
+    font-size: 0.85rem;
+}
+
+.cc-calendar-day {
+    min-height: 132px;
+    background: #121521;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 8px;
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
+.cc-calendar-day.cc-muted {
+    opacity: 0.35;
+}
+
+.cc-calendar-day.cc-today {
+    border-color: var(--accent2);
+    box-shadow: 0 0 0 2px rgba(34,211,238,.16);
+}
+
+.cc-day-number {
+    color: var(--text);
+    font-weight: 800;
+    margin-bottom: 7px;
+}
+
+.cc-content-card {
+    border-radius: 10px;
+    padding: 7px;
+    margin-bottom: 6px;
+    border-left: 4px solid var(--accent);
+    background: rgba(255,255,255,.07);
+}
+
+.cc-card-title {
+    color: var(--text);
+    font-weight: 800;
+    font-size: 0.78rem;
+    line-height: 1.2;
+}
+
+.cc-card-meta, .cc-card-topic {
+    color: var(--muted);
+    font-size: 0.68rem;
+    line-height: 1.25;
+}
+
+.status-idea { border-left-color: #a78bfa; }
+.status-script { border-left-color: #f472b6; }
+.status-recording { border-left-color: #fb923c; }
+.status-editing { border-left-color: #22d3ee; }
+.status-thumbnail { border-left-color: #facc15; }
+.status-scheduled { border-left-color: #60a5fa; }
+.status-published { border-left-color: #4ade80; }
+
+@media (max-width: 768px) {
+    .cc-calendar-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .cc-calendar-header {
+        display: none !important;
+    }
+
+    .cc-calendar-day {
+        min-height: auto !important;
+    }
+}
+
 """
 
 # =========================
@@ -677,6 +1057,183 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
         )
 
 
+    with gr.Tab("Content Calendar"):
+        gr.Markdown(
+            """
+            ## 📅 Content Calendar
+            Plan your long videos, Shorts, livestreams, and community posts.
+
+            Date format: **YYYY-MM-DD**. Example: **2026-06-28**
+            """
+        )
+
+        with gr.Row():
+            with gr.Column(scale=1):
+                calendar_title = gr.Textbox(
+                    label="Title",
+                    placeholder="Example: Getting the Ice Rod"
+                )
+                calendar_content_type = gr.Dropdown(
+                    CONTENT_TYPES,
+                    value="Long Video",
+                    label="Content Type"
+                )
+                calendar_game_topic = gr.Textbox(
+                    label="Game / Topic",
+                    placeholder="Example: Zelda ALTTP"
+                )
+                calendar_status = gr.Dropdown(
+                    CONTENT_STATUSES,
+                    value="Idea",
+                    label="Status"
+                )
+                calendar_publish_date = gr.Textbox(
+                    label="Target Publish Date",
+                    value=date.today().isoformat(),
+                    placeholder="YYYY-MM-DD"
+                )
+                calendar_notes = gr.Textbox(
+                    label="Notes",
+                    lines=4,
+                    placeholder="Example: Need thumbnail, voiceover, and final export."
+                )
+
+                calendar_add_button = gr.Button("Add to Calendar")
+                calendar_message = gr.Textbox(label="Calendar Status", lines=2)
+
+            with gr.Column(scale=2):
+                with gr.Row():
+                    calendar_month = gr.Dropdown(
+                        choices=list(range(1, 13)),
+                        value=date.today().month,
+                        label="Month"
+                    )
+                    calendar_year = gr.Number(
+                        value=date.today().year,
+                        label="Year",
+                        precision=0
+                    )
+
+                with gr.Row():
+                    calendar_status_filter = gr.Dropdown(
+                        ["All"] + CONTENT_STATUSES,
+                        value="All",
+                        label="Status Filter"
+                    )
+                    calendar_type_filter = gr.Dropdown(
+                        ["All"] + CONTENT_TYPES,
+                        value="All",
+                        label="Type Filter"
+                    )
+
+                calendar_output = gr.HTML(value=render_content_calendar())
+                calendar_refresh_button = gr.Button("Refresh Calendar")
+
+        gr.Markdown("### Edit or Delete Calendar Item")
+
+        calendar_item_picker = gr.Dropdown(
+            choices=get_calendar_choices(),
+            label="Choose Calendar Item"
+        )
+
+        calendar_load_button = gr.Button("Load Selected Item")
+
+        with gr.Row():
+            calendar_update_button = gr.Button("Save Edit")
+            calendar_delete_button = gr.Button("Delete Selected Item")
+
+        calendar_add_button.click(
+            add_content_item,
+            inputs=[
+                calendar_title,
+                calendar_content_type,
+                calendar_game_topic,
+                calendar_status,
+                calendar_publish_date,
+                calendar_notes,
+                calendar_month,
+                calendar_year,
+                calendar_status_filter,
+                calendar_type_filter
+            ],
+            outputs=[calendar_output, calendar_item_picker, calendar_message]
+        )
+
+        calendar_refresh_button.click(
+            refresh_content_calendar,
+            inputs=[calendar_month, calendar_year, calendar_status_filter, calendar_type_filter],
+            outputs=calendar_output
+        )
+
+        calendar_month.change(
+            refresh_content_calendar,
+            inputs=[calendar_month, calendar_year, calendar_status_filter, calendar_type_filter],
+            outputs=calendar_output
+        )
+
+        calendar_year.change(
+            refresh_content_calendar,
+            inputs=[calendar_month, calendar_year, calendar_status_filter, calendar_type_filter],
+            outputs=calendar_output
+        )
+
+        calendar_status_filter.change(
+            refresh_content_calendar,
+            inputs=[calendar_month, calendar_year, calendar_status_filter, calendar_type_filter],
+            outputs=calendar_output
+        )
+
+        calendar_type_filter.change(
+            refresh_content_calendar,
+            inputs=[calendar_month, calendar_year, calendar_status_filter, calendar_type_filter],
+            outputs=calendar_output
+        )
+
+        calendar_load_button.click(
+            load_selected_content_item,
+            inputs=calendar_item_picker,
+            outputs=[
+                calendar_title,
+                calendar_content_type,
+                calendar_game_topic,
+                calendar_status,
+                calendar_publish_date,
+                calendar_notes,
+                calendar_message
+            ]
+        )
+
+        calendar_update_button.click(
+            update_content_item,
+            inputs=[
+                calendar_item_picker,
+                calendar_title,
+                calendar_content_type,
+                calendar_game_topic,
+                calendar_status,
+                calendar_publish_date,
+                calendar_notes,
+                calendar_month,
+                calendar_year,
+                calendar_status_filter,
+                calendar_type_filter
+            ],
+            outputs=[calendar_output, calendar_item_picker, calendar_message]
+        )
+
+        calendar_delete_button.click(
+            delete_content_item,
+            inputs=[
+                calendar_item_picker,
+                calendar_month,
+                calendar_year,
+                calendar_status_filter,
+                calendar_type_filter
+            ],
+            outputs=[calendar_output, calendar_item_picker, calendar_message]
+        )
+
+
     with gr.Tab("Title Help"):
         title_input = gr.Textbox(label="Video Idea", lines=4)
         title_platform = gr.Dropdown(
@@ -805,4 +1362,4 @@ app.launch(
     server_port=port,
     share=False
 )
-      
+    
