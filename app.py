@@ -106,6 +106,38 @@ def save_creator_profile(
         return f"❌ Could not save creator profile: {e}"
 
 
+def save_creator_profile_and_refresh_dashboard(
+    channel_name,
+    creator_name,
+    niche,
+    target_audience,
+    content_style,
+    current_games,
+    main_platforms,
+    goals,
+    preferred_tone,
+    things_to_avoid
+):
+    """
+    Save the creator profile, then immediately re-render the dashboard
+    so the welcome card updates from "Creator" to the saved creator name.
+    """
+    message = save_creator_profile(
+        channel_name,
+        creator_name,
+        niche,
+        target_audience,
+        content_style,
+        current_games,
+        main_platforms,
+        goals,
+        preferred_tone,
+        things_to_avoid
+    )
+
+    return message, render_creator_dashboard()
+
+
 def creator_profile_context():
     profile = load_creator_profile()
 
@@ -2415,7 +2447,7 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
             profile_save_status = gr.Textbox(label="Save Status", lines=2)
 
             profile_save_button.click(
-                save_creator_profile,
+                save_creator_profile_and_refresh_dashboard,
                 inputs=[
                     profile_channel_name,
                     profile_creator_name,
@@ -2428,7 +2460,7 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
                     profile_preferred_tone,
                     profile_things_to_avoid
                 ],
-                outputs=profile_save_status
+                outputs=[profile_save_status, dashboard_output]
             )
 
 
@@ -2459,4 +2491,3 @@ app.launch(
     share=False
 )
     
-
