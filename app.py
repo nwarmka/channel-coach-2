@@ -1687,6 +1687,13 @@ def shorts_review(shorts_file, notes):
     return analyze_video_with_frames(shorts_file, notes, "Short, Reel, or TikTok")
 
 
+def video_analyzer(video_file, notes, content_type):
+    if content_type == "Long-form YouTube Video":
+        return analyze_video_with_frames(video_file, notes, "long-form YouTube video")
+
+    return analyze_video_with_frames(video_file, notes, content_type)
+
+
 def shorts_ideas(niche, topic):
     prompt = f"""
 Create 10 Shorts ideas.
@@ -2257,28 +2264,41 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
             outputs=desc_output
         )
 
-    with gr.Tab("Video Review"):
-        video_upload = gr.Video(label="Upload Long-Form Video")
-        video_notes = gr.Textbox(label="Optional notes", lines=6)
-        video_button = gr.Button("Analyze Video")
-        video_output = gr.Textbox(label="Video Feedback", lines=18)
-
-        video_button.click(
-            video_review,
-            inputs=[video_upload, video_notes],
-            outputs=video_output
+    with gr.Tab("Video Analyzer"):
+        gr.Markdown(
+            """
+            ## 🎥 Video Analyzer
+            Upload a long-form video, Short, Reel, TikTok, or Facebook Reel and get creator feedback.
+            """
         )
 
-    with gr.Tab("Shorts Review"):
-        shorts_upload = gr.Video(label="Upload Short / Reel / TikTok")
-        shorts_notes = gr.Textbox(label="Optional notes", lines=6)
-        shorts_button = gr.Button("Analyze Short")
-        shorts_output = gr.Textbox(label="Shorts Feedback", lines=18)
+        analyzer_upload = gr.Video(label="Upload Video")
 
-        shorts_button.click(
-            shorts_review,
-            inputs=[shorts_upload, shorts_notes],
-            outputs=shorts_output
+        analyzer_type = gr.Dropdown(
+            [
+                "Long-form YouTube Video",
+                "YouTube Short",
+                "TikTok",
+                "Instagram Reel",
+                "Facebook Reel"
+            ],
+            value="Long-form YouTube Video",
+            label="Video Type"
+        )
+
+        analyzer_notes = gr.Textbox(
+            label="Optional Notes",
+            lines=6,
+            placeholder="Example: This is my Ice Rod guide. Tell me what to cut, where to add text, and if the pacing feels good."
+        )
+
+        analyzer_button = gr.Button("Analyze Video")
+        analyzer_output = gr.Textbox(label="Video Feedback", lines=18)
+
+        analyzer_button.click(
+            video_analyzer,
+            inputs=[analyzer_upload, analyzer_notes, analyzer_type],
+            outputs=analyzer_output
         )
 
     with gr.Tab("Shorts Idea Generator"):
@@ -2330,4 +2350,3 @@ app.launch(
     server_port=port,
     share=False
 )
-     
