@@ -162,6 +162,77 @@ STATUS_PROGRESS = {
     "Published": 100
 }
 
+# These checklist items make the progress bar more accurate than status alone.
+# Progress is calculated from how many of these tasks are checked off.
+CONTENT_CHECKLIST_TASKS = [
+    ("idea_ready", "Idea is clear"),
+    ("script_done", "Script / outline done"),
+    ("recorded", "Gameplay / footage recorded"),
+    ("voiceover_done", "Voiceover recorded"),
+    ("edited", "Editing done"),
+    ("thumbnail_done", "Thumbnail done"),
+    ("description_done", "Title / description / SEO done"),
+    ("uploaded", "Uploaded / scheduled"),
+    ("published", "Published")
+]
+
+
+def default_checklist():
+    return {key: False for key, _label in CONTENT_CHECKLIST_TASKS}
+
+
+def build_checklist(
+    idea_ready,
+    script_done,
+    recorded,
+    voiceover_done,
+    edited,
+    thumbnail_done,
+    description_done,
+    uploaded,
+    published
+):
+    return {
+        "idea_ready": bool(idea_ready),
+        "script_done": bool(script_done),
+        "recorded": bool(recorded),
+        "voiceover_done": bool(voiceover_done),
+        "edited": bool(edited),
+        "thumbnail_done": bool(thumbnail_done),
+        "description_done": bool(description_done),
+        "uploaded": bool(uploaded),
+        "published": bool(published)
+    }
+
+
+def get_item_checklist(item):
+    checklist = default_checklist()
+    saved_checklist = item.get("checklist", {})
+
+    if isinstance(saved_checklist, dict):
+        for key in checklist:
+            checklist[key] = bool(saved_checklist.get(key, False))
+
+    return checklist
+
+
+def calculate_item_progress(item):
+    checklist = get_item_checklist(item)
+    total_tasks = len(CONTENT_CHECKLIST_TASKS)
+    completed_tasks = sum(1 for key, _label in CONTENT_CHECKLIST_TASKS if checklist.get(key))
+
+    if total_tasks == 0:
+        return STATUS_PROGRESS.get(item.get("status", "Idea"), 10)
+
+    return round((completed_tasks / total_tasks) * 100)
+
+
+def checklist_summary_text(item):
+    checklist = get_item_checklist(item)
+    completed_tasks = sum(1 for key, _label in CONTENT_CHECKLIST_TASKS if checklist.get(key))
+    total_tasks = len(CONTENT_CHECKLIST_TASKS)
+    return f"{completed_tasks}/{total_tasks} tasks done"
+
 
 def load_content_calendar():
     try:
@@ -202,7 +273,11 @@ def get_calendar_choices():
     return [(item_label(item), item.get("id")) for item in items]
 
 
-def add_content_item(title, content_type, game_topic, status, publish_date, notes, month, year, status_filter, type_filter):
+def add_content_item(
+    title, content_type, game_topic, status, publish_date, notes,
+    idea_ready, script_done, recorded, voiceover_done, edited, thumbnail_done, description_done, uploaded, published,
+    month, year, status_filter, type_filter
+):
     if not title or not title.strip():
         return (
             render_content_calendar(month, year, status_filter, type_filter),
@@ -229,6 +304,10 @@ def add_content_item(title, content_type, game_topic, status, publish_date, note
         "status": status,
         "publish_date": parsed_date.isoformat(),
         "notes": (notes or "").strip(),
+        "checklist": build_checklist(
+            idea_ready, script_done, recorded, voiceover_done, edited,
+            thumbnail_done, description_done, uploaded, published
+        ),
         "created_at": datetime.now().isoformat()
     })
 
@@ -307,7 +386,7 @@ def render_content_calendar(month=None, year=None, status_filter="All", type_fil
                 status = item.get("status", "Idea")
                 emoji = type_emoji.get(content_type, "🎬")
                 css_class = status_class.get(status, "status-idea")
-                progress = STATUS_PROGRESS.get(status, 10)
+                progress = calculate_item_progress(item)
 
                 title = html.escape(item.get("title", "Untitled"))
                 game_topic = html.escape(item.get("game_topic", ""))
@@ -321,7 +400,7 @@ def render_content_calendar(month=None, year=None, status_filter="All", type_fil
                     <div class="cc-progress-wrap">
                         <div class="cc-progress-fill" style="width:{progress}%"></div>
                     </div>
-                    <div class="cc-progress-label">{progress}% complete</div>
+                    <div class="cc-progress-label">{progress}% complete · {html.escape(checklist_summary_text(item))}</div>
                 </div>
                 """
 
@@ -370,7 +449,7 @@ def render_upcoming_content(limit=6):
         content_type = item.get("content_type", "Long Video")
         emoji = type_emoji.get(content_type, "🎬")
         status = item.get("status", "Idea")
-        progress = STATUS_PROGRESS.get(status, 10)
+        progress = calculate_item_progress(item)
 
         if item_date == today:
             when = "Today"
@@ -438,11 +517,12 @@ def refresh_content_calendar(month, year, status_filter, type_filter):
 
 def load_selected_content_item(selected_item_id):
     if not selected_item_id:
-        return "", "Long Video", "", "Idea", date.today().isoformat(), "", "Choose an item to edit."
+        return "", "Long Video", "", "Idea", date.today().isoformat(), "", False, False, False, False, False, False, False, False, False, "Choose an item to edit."
 
     items = load_content_calendar()
     for item in items:
         if item.get("id") == selected_item_id:
+            checklist = get_item_checklist(item)
             return (
                 item.get("title", ""),
                 item.get("content_type", "Long Video"),
@@ -450,13 +530,26 @@ def load_selected_content_item(selected_item_id):
                 item.get("status", "Idea"),
                 item.get("publish_date", date.today().isoformat()),
                 item.get("notes", ""),
+                checklist.get("idea_ready", False),
+                checklist.get("script_done", False),
+                checklist.get("recorded", False),
+                checklist.get("voiceover_done", False),
+                checklist.get("edited", False),
+                checklist.get("thumbnail_done", False),
+                checklist.get("description_done", False),
+                checklist.get("uploaded", False),
+                checklist.get("published", False),
                 "Loaded item. Make changes, then click Save Edit."
             )
 
-    return "", "Long Video", "", "Idea", date.today().isoformat(), "", "Could not find that calendar item."
+    return "", "Long Video", "", "Idea", date.today().isoformat(), "", False, False, False, False, False, False, False, False, False, "Could not find that calendar item."
 
 
-def update_content_item(selected_item_id, title, content_type, game_topic, status, publish_date, notes, month, year, status_filter, type_filter):
+def update_content_item(
+    selected_item_id, title, content_type, game_topic, status, publish_date, notes,
+    idea_ready, script_done, recorded, voiceover_done, edited, thumbnail_done, description_done, uploaded, published,
+    month, year, status_filter, type_filter
+):
     if not selected_item_id:
         return (
             render_content_calendar(month, year, status_filter, type_filter),
@@ -486,6 +579,10 @@ def update_content_item(selected_item_id, title, content_type, game_topic, statu
                 "status": status,
                 "publish_date": parsed_date.isoformat(),
                 "notes": (notes or "").strip(),
+                "checklist": build_checklist(
+                    idea_ready, script_done, recorded, voiceover_done, edited,
+                    thumbnail_done, description_done, uploaded, published
+                ),
                 "updated_at": datetime.now().isoformat()
             })
             updated = True
@@ -1279,6 +1376,18 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
                     placeholder="Example: Need thumbnail, voiceover, and final export."
                 )
 
+                gr.Markdown("### Accurate Progress Checklist")
+                gr.Markdown("Check off what is actually done. The progress bar uses this checklist instead of guessing from the status.")
+                calendar_idea_ready = gr.Checkbox(label="Idea is clear", value=False)
+                calendar_script_done = gr.Checkbox(label="Script / outline done", value=False)
+                calendar_recorded = gr.Checkbox(label="Gameplay / footage recorded", value=False)
+                calendar_voiceover_done = gr.Checkbox(label="Voiceover recorded", value=False)
+                calendar_edited = gr.Checkbox(label="Editing done", value=False)
+                calendar_thumbnail_done = gr.Checkbox(label="Thumbnail done", value=False)
+                calendar_description_done = gr.Checkbox(label="Title / description / SEO done", value=False)
+                calendar_uploaded = gr.Checkbox(label="Uploaded / scheduled", value=False)
+                calendar_published = gr.Checkbox(label="Published", value=False)
+
                 calendar_add_button = gr.Button("Add to Calendar")
                 calendar_message = gr.Textbox(label="Calendar Status", lines=2)
 
@@ -1337,6 +1446,15 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
                 calendar_status,
                 calendar_publish_date,
                 calendar_notes,
+                calendar_idea_ready,
+                calendar_script_done,
+                calendar_recorded,
+                calendar_voiceover_done,
+                calendar_edited,
+                calendar_thumbnail_done,
+                calendar_description_done,
+                calendar_uploaded,
+                calendar_published,
                 calendar_month,
                 calendar_year,
                 calendar_status_filter,
@@ -1385,6 +1503,15 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
                 calendar_status,
                 calendar_publish_date,
                 calendar_notes,
+                calendar_idea_ready,
+                calendar_script_done,
+                calendar_recorded,
+                calendar_voiceover_done,
+                calendar_edited,
+                calendar_thumbnail_done,
+                calendar_description_done,
+                calendar_uploaded,
+                calendar_published,
                 calendar_message
             ]
         )
@@ -1399,6 +1526,15 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
                 calendar_status,
                 calendar_publish_date,
                 calendar_notes,
+                calendar_idea_ready,
+                calendar_script_done,
+                calendar_recorded,
+                calendar_voiceover_done,
+                calendar_edited,
+                calendar_thumbnail_done,
+                calendar_description_done,
+                calendar_uploaded,
+                calendar_published,
                 calendar_month,
                 calendar_year,
                 calendar_status_filter,
@@ -1554,4 +1690,4 @@ app.launch(
     server_port=port,
     share=False
 )
-      
+     
