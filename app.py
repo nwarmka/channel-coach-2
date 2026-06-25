@@ -6,7 +6,7 @@ import calendar
 import html
 import cv2
 import gradio as gr
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from dotenv import load_dotenv
 from openai import OpenAI
 from fastapi.staticfiles import StaticFiles
@@ -152,6 +152,16 @@ CONTENT_TYPES = [
     "Community Post"
 ]
 
+STATUS_PROGRESS = {
+    "Idea": 10,
+    "Script": 25,
+    "Recording": 45,
+    "Editing": 65,
+    "Thumbnail": 80,
+    "Scheduled": 90,
+    "Published": 100
+}
+
 
 def load_content_calendar():
     try:
@@ -196,6 +206,7 @@ def add_content_item(title, content_type, game_topic, status, publish_date, note
     if not title or not title.strip():
         return (
             render_content_calendar(month, year, status_filter, type_filter),
+            render_upcoming_content(),
             gr.update(choices=get_calendar_choices()),
             "❌ Please enter a title."
         )
@@ -204,6 +215,7 @@ def add_content_item(title, content_type, game_topic, status, publish_date, note
     if parsed_date is None:
         return (
             render_content_calendar(month, year, status_filter, type_filter),
+            render_upcoming_content(),
             gr.update(choices=get_calendar_choices()),
             "❌ Please enter the date like this: YYYY-MM-DD"
         )
@@ -224,10 +236,10 @@ def add_content_item(title, content_type, game_topic, status, publish_date, note
 
     return (
         render_content_calendar(month, year, status_filter, type_filter),
+        render_upcoming_content(),
         gr.update(choices=get_calendar_choices()),
         "✅ Added to your content calendar!"
     )
-
 
 def render_content_calendar(month=None, year=None, status_filter="All", type_filter="All"):
     today = date.today()
@@ -295,6 +307,7 @@ def render_content_calendar(month=None, year=None, status_filter="All", type_fil
                 status = item.get("status", "Idea")
                 emoji = type_emoji.get(content_type, "🎬")
                 css_class = status_class.get(status, "status-idea")
+                progress = STATUS_PROGRESS.get(status, 10)
 
                 title = html.escape(item.get("title", "Untitled"))
                 game_topic = html.escape(item.get("game_topic", ""))
@@ -305,6 +318,10 @@ def render_content_calendar(month=None, year=None, status_filter="All", type_fil
                     <div class="cc-card-title">{emoji} {title}</div>
                     <div class="cc-card-meta">{html.escape(status)} · {html.escape(content_type)}</div>
                     <div class="cc-card-topic">{game_topic}</div>
+                    <div class="cc-progress-wrap">
+                        <div class="cc-progress-fill" style="width:{progress}%"></div>
+                    </div>
+                    <div class="cc-progress-label">{progress}% complete</div>
                 </div>
                 """
 
@@ -318,8 +335,105 @@ def render_content_calendar(month=None, year=None, status_filter="All", type_fil
     return html_output
 
 
+def render_upcoming_content(limit=6):
+    today = date.today()
+    items = []
+
+    for item in load_content_calendar():
+        parsed_date = validate_calendar_date(item.get("publish_date", ""))
+        if parsed_date and parsed_date >= today and item.get("status") != "Published":
+            items.append((parsed_date, item))
+
+    items.sort(key=lambda x: x[0])
+
+    type_emoji = {
+        "Long Video": "🎮",
+        "Short": "📱",
+        "Livestream": "🔴",
+        "Community Post": "💬"
+    }
+
+    if not items:
+        return """
+        <div class="cc-upcoming-box">
+            <h3>🔥 Coming Up</h3>
+            <p class="cc-empty">No upcoming content yet. Add something to your calendar.</p>
+        </div>
+        """
+
+    html_output = """
+    <div class="cc-upcoming-box">
+        <h3>🔥 Coming Up</h3>
+    """
+
+    for item_date, item in items[:limit]:
+        content_type = item.get("content_type", "Long Video")
+        emoji = type_emoji.get(content_type, "🎬")
+        status = item.get("status", "Idea")
+        progress = STATUS_PROGRESS.get(status, 10)
+
+        if item_date == today:
+            when = "Today"
+        elif item_date == today + timedelta(days=1):
+            when = "Tomorrow"
+        else:
+            when = item_date.strftime("%b %d")
+
+        html_output += f"""
+        <div class="cc-upcoming-item">
+            <div class="cc-upcoming-date">{html.escape(when)}</div>
+            <div class="cc-upcoming-title">{emoji} {html.escape(item.get("title", "Untitled"))}</div>
+            <div class="cc-upcoming-meta">{html.escape(status)} · {html.escape(item.get("game_topic", ""))}</div>
+            <div class="cc-progress-wrap">
+                <div class="cc-progress-fill" style="width:{progress}%"></div>
+            </div>
+        </div>
+        """
+
+    html_output += "</div>"
+    return html_output
+
+
+def plan_my_week():
+    items = load_content_calendar()
+    today = date.today()
+    end_date = today + timedelta(days=7)
+
+    upcoming = []
+    for item in items:
+        parsed_date = validate_calendar_date(item.get("publish_date", ""))
+        if parsed_date and today <= parsed_date <= end_date and item.get("status") != "Published":
+            upcoming.append(item)
+
+    if not upcoming:
+        return "Add a few upcoming videos or Shorts to your calendar first, then I can plan your week."
+
+    calendar_summary = json.dumps(upcoming, indent=2)
+
+    prompt = f"""
+You are Channel Coach acting like a friendly creator production manager.
+
+Use this creator profile:
+{creator_profile_context()}
+
+Here is the creator's content calendar for the next 7 days:
+{calendar_summary}
+
+Create a realistic weekly production plan.
+
+Give:
+- what to work on each day
+- what should be prioritized first
+- which items are at risk of falling behind
+- 2 Shorts opportunities
+- a simple checklist for the week
+
+Keep it motivating and practical.
+"""
+    return ask_channel_coach(prompt, use_profile=False)
+
 def refresh_content_calendar(month, year, status_filter, type_filter):
-    return render_content_calendar(month, year, status_filter, type_filter)
+    return render_content_calendar(month, year, status_filter, type_filter), render_upcoming_content()
 
 
 def load_selected_content_item(selected_item_id):
@@ -346,6 +460,7 @@ def update_content_item(selected_item_id, title, content_type, game_topic, statu
     if not selected_item_id:
         return (
             render_content_calendar(month, year, status_filter, type_filter),
+            render_upcoming_content(),
             gr.update(choices=get_calendar_choices()),
             "❌ Choose an item to edit first."
         )
@@ -354,6 +469,7 @@ def update_content_item(selected_item_id, title, content_type, game_topic, statu
     if parsed_date is None:
         return (
             render_content_calendar(month, year, status_filter, type_filter),
+            render_upcoming_content(),
             gr.update(choices=get_calendar_choices()),
             "❌ Please enter the date like this: YYYY-MM-DD"
         )
@@ -384,6 +500,7 @@ def update_content_item(selected_item_id, title, content_type, game_topic, statu
 
     return (
         render_content_calendar(month, year, status_filter, type_filter),
+        render_upcoming_content(),
         gr.update(choices=get_calendar_choices(), value=selected_item_id),
         message
     )
@@ -393,6 +510,7 @@ def delete_content_item(selected_item_id, month, year, status_filter, type_filte
     if not selected_item_id:
         return (
             render_content_calendar(month, year, status_filter, type_filter),
+            render_upcoming_content(),
             gr.update(choices=get_calendar_choices()),
             "❌ Choose an item to delete first."
         )
@@ -403,6 +521,7 @@ def delete_content_item(selected_item_id, month, year, status_filter, type_filte
 
     return (
         render_content_calendar(month, year, status_filter, type_filter),
+        render_upcoming_content(),
         gr.update(choices=get_calendar_choices(), value=None),
         "🗑️ Calendar item deleted."
     )
@@ -683,6 +802,68 @@ label, .block-label {
 .status-thumbnail { border-left-color: #facc15; }
 .status-scheduled { border-left-color: #60a5fa; }
 .status-published { border-left-color: #4ade80; }
+
+
+.cc-progress-wrap {
+    width: 100%;
+    height: 6px;
+    background: rgba(255,255,255,.10);
+    border-radius: 999px;
+    overflow: hidden;
+    margin-top: 6px;
+}
+
+.cc-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 999px;
+}
+
+.cc-progress-label {
+    color: var(--muted);
+    font-size: 0.62rem;
+    margin-top: 2px;
+}
+
+.cc-upcoming-box {
+    background: rgba(18,21,33,.85);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 14px;
+    margin-bottom: 14px;
+}
+
+.cc-upcoming-box h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    color: var(--text);
+}
+
+.cc-upcoming-item {
+    padding: 10px;
+    margin-bottom: 8px;
+    border-radius: 12px;
+    background: rgba(255,255,255,.07);
+    border-left: 4px solid var(--accent2);
+}
+
+.cc-upcoming-date {
+    color: var(--accent2);
+    font-size: 0.75rem;
+    font-weight: 800;
+}
+
+.cc-upcoming-title {
+    color: var(--text);
+    font-weight: 800;
+    font-size: 0.9rem;
+}
+
+.cc-upcoming-meta, .cc-empty {
+    color: var(--muted);
+    font-size: 0.78rem;
+}
+
 
 @media (max-width: 768px) {
     .cc-calendar-grid {
@@ -1101,6 +1282,11 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
                 calendar_add_button = gr.Button("Add to Calendar")
                 calendar_message = gr.Textbox(label="Calendar Status", lines=2)
 
+                upcoming_output = gr.HTML(value=render_upcoming_content())
+
+                plan_week_button = gr.Button("✨ Plan My Week")
+                plan_week_output = gr.Textbox(label="AI Weekly Plan", lines=12)
+
             with gr.Column(scale=2):
                 with gr.Row():
                     calendar_month = gr.Dropdown(
@@ -1156,37 +1342,37 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
                 calendar_status_filter,
                 calendar_type_filter
             ],
-            outputs=[calendar_output, calendar_item_picker, calendar_message]
+            outputs=[calendar_output, upcoming_output, calendar_item_picker, calendar_message]
         )
 
         calendar_refresh_button.click(
             refresh_content_calendar,
             inputs=[calendar_month, calendar_year, calendar_status_filter, calendar_type_filter],
-            outputs=calendar_output
+            outputs=[calendar_output, upcoming_output]
         )
 
         calendar_month.change(
             refresh_content_calendar,
             inputs=[calendar_month, calendar_year, calendar_status_filter, calendar_type_filter],
-            outputs=calendar_output
+            outputs=[calendar_output, upcoming_output]
         )
 
         calendar_year.change(
             refresh_content_calendar,
             inputs=[calendar_month, calendar_year, calendar_status_filter, calendar_type_filter],
-            outputs=calendar_output
+            outputs=[calendar_output, upcoming_output]
         )
 
         calendar_status_filter.change(
             refresh_content_calendar,
             inputs=[calendar_month, calendar_year, calendar_status_filter, calendar_type_filter],
-            outputs=calendar_output
+            outputs=[calendar_output, upcoming_output]
         )
 
         calendar_type_filter.change(
             refresh_content_calendar,
             inputs=[calendar_month, calendar_year, calendar_status_filter, calendar_type_filter],
-            outputs=calendar_output
+            outputs=[calendar_output, upcoming_output]
         )
 
         calendar_load_button.click(
@@ -1218,7 +1404,7 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
                 calendar_status_filter,
                 calendar_type_filter
             ],
-            outputs=[calendar_output, calendar_item_picker, calendar_message]
+            outputs=[calendar_output, upcoming_output, calendar_item_picker, calendar_message]
         )
 
         calendar_delete_button.click(
@@ -1230,7 +1416,13 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
                 calendar_status_filter,
                 calendar_type_filter
             ],
-            outputs=[calendar_output, calendar_item_picker, calendar_message]
+            outputs=[calendar_output, upcoming_output, calendar_item_picker, calendar_message]
+        )
+
+        plan_week_button.click(
+            plan_my_week,
+            inputs=[],
+            outputs=plan_week_output
         )
 
 
@@ -1362,4 +1554,4 @@ app.launch(
     server_port=port,
     share=False
 )
-    
+      
