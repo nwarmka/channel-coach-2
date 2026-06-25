@@ -1497,6 +1497,74 @@ label, .block-label {
     }
 }
 
+
+/* =========================
+   POLISH UPGRADES
+========================= */
+
+.gr-button {
+    transition: all 0.18s ease-in-out !important;
+}
+
+.gr-button:hover {
+    box-shadow: 0 0 18px rgba(34, 211, 238, 0.35) !important;
+}
+
+textarea {
+    line-height: 1.5 !important;
+}
+
+input::placeholder,
+textarea::placeholder {
+    color: rgba(184, 192, 217, 0.65) !important;
+}
+
+.gradio-container .prose h2 {
+    color: var(--text) !important;
+    letter-spacing: -0.02em !important;
+}
+
+.gradio-container .prose p {
+    color: var(--muted) !important;
+}
+
+.cc-tool-note {
+    color: var(--muted);
+    font-size: 0.9rem;
+    margin-top: -6px;
+    margin-bottom: 14px;
+}
+
+.cc-section-card {
+    background: rgba(18,21,33,.75);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 16px;
+    margin-bottom: 14px;
+}
+
+.cc-small-title {
+    color: var(--text);
+    font-weight: 800;
+    font-size: 0.95rem;
+    margin-bottom: 6px;
+}
+
+.cc-muted {
+    color: var(--muted);
+    font-size: 0.85rem;
+}
+
+.output-class textarea,
+textarea[aria-label*="Output"],
+textarea[aria-label*="Feedback"],
+textarea[aria-label*="Ideas"],
+textarea[aria-label*="Results"],
+textarea[aria-label*="Description"] {
+    font-size: 0.95rem !important;
+}
+
+
 """
 
 # =========================
@@ -1775,12 +1843,12 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
 
     saved_profile = load_creator_profile()
 
-    with gr.Tab("Dashboard"):
-        gr.Markdown("## 🕹️ Creator Dashboard")
+    with gr.Tab("🏠 Dashboard"):
+        gr.Markdown("## 🕹️ Creator Dashboard\n\nYour home base for upcoming content, overdue projects, and quick AI guidance.")
         dashboard_output = gr.HTML(value=render_creator_dashboard())
 
         with gr.Row():
-            dashboard_refresh_button = gr.Button("Refresh Dashboard")
+            dashboard_refresh_button = gr.Button("🔄 Refresh Dashboard")
             dashboard_tip_button = gr.Button("✨ Give Me One AI Tip")
 
         dashboard_tip_output = gr.Textbox(label="AI Dashboard Tip", lines=5)
@@ -1794,10 +1862,11 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
         dashboard_tip_button.click(
             dashboard_ai_tip,
             inputs=[],
-            outputs=dashboard_tip_output
+            outputs=dashboard_tip_output,
+            show_progress="full"
         )
 
-    with gr.Tab("Creator Profile"):
+    with gr.Tab("👤 Creator Profile"):
         gr.Markdown(
             """
             ## 🧠 Creator Profile Memory
@@ -1864,7 +1933,7 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
             lines=3
         )
 
-        profile_save_button = gr.Button("Save Creator Profile")
+        profile_save_button = gr.Button("💾 Save Creator Profile")
         profile_save_status = gr.Textbox(label="Save Status", lines=2)
 
         profile_save_button.click(
@@ -1885,7 +1954,7 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
         )
 
 
-    with gr.Tab("Content Calendar"):
+    with gr.Tab("📅 Content Calendar"):
         gr.Markdown(
             """
             ## 📅 Content Calendar
@@ -1926,7 +1995,7 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
                     placeholder="Example: Need thumbnail, voiceover, and final export."
                 )
 
-                calendar_add_button = gr.Button("Add to Calendar")
+                calendar_add_button = gr.Button("➕ Add to Calendar")
                 calendar_message = gr.Textbox(label="Calendar Status", lines=2)
 
                 upcoming_output = gr.HTML(value=render_upcoming_content())
@@ -1960,7 +2029,7 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
                     )
 
                 calendar_output = gr.HTML(value=render_content_calendar())
-                calendar_refresh_button = gr.Button("Refresh Calendar")
+                calendar_refresh_button = gr.Button("🔄 Refresh Calendar")
 
         gr.Markdown("### Edit or Delete Calendar Item")
 
@@ -1969,11 +2038,11 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
             label="Choose Calendar Item"
         )
 
-        calendar_load_button = gr.Button("Load Selected Item")
+        calendar_load_button = gr.Button("📂 Load Selected Item")
 
         with gr.Row():
-            calendar_update_button = gr.Button("Save Edit")
-            calendar_delete_button = gr.Button("Delete Selected Item")
+            calendar_update_button = gr.Button("💾 Save Edit")
+            calendar_delete_button = gr.Button("🗑️ Delete Selected Item")
 
         calendar_add_button.click(
             add_content_item,
@@ -2069,11 +2138,12 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
         plan_week_button.click(
             plan_my_week,
             inputs=[],
-            outputs=plan_week_output
+            outputs=plan_week_output,
+            show_progress="full"
         )
 
 
-    with gr.Tab("Project Workspace"):
+    with gr.Tab("🎬 Project Workspace"):
         gr.Markdown(
             """
             ## 🎬 Project Workspace
@@ -2085,7 +2155,7 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
             choices=get_calendar_choices(),
             label="Choose Project"
         )
-        workspace_load_button = gr.Button("Load Project")
+        workspace_load_button = gr.Button("📂 Load Project")
         workspace_overview = gr.HTML(value=render_project_workspace_overview(None))
 
         with gr.Row():
@@ -2106,7 +2176,7 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
                 workspace_uploaded_scheduled = gr.Checkbox(label="Uploaded / scheduled")
                 workspace_shared_social = gr.Checkbox(label="Shared on social media")
 
-                workspace_save_button = gr.Button("Save Project Workspace")
+                workspace_save_button = gr.Button("💾 Save Project Workspace")
                 workspace_message = gr.Textbox(label="Workspace Status", lines=2)
 
             with gr.Column(scale=2):
@@ -2117,13 +2187,13 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
 
                 gr.Markdown("### AI Project Assistant")
                 with gr.Row():
-                    workspace_titles_button = gr.Button("Generate Titles")
-                    workspace_description_button = gr.Button("Generate Description")
-                    workspace_thumbnail_button = gr.Button("Thumbnail Ideas")
+                    workspace_titles_button = gr.Button("✨ Generate Titles")
+                    workspace_description_button = gr.Button("📝 Generate Description")
+                    workspace_thumbnail_button = gr.Button("🖼 Thumbnail Ideas")
 
                 with gr.Row():
-                    workspace_shorts_button = gr.Button("Shorts Ideas")
-                    workspace_review_button = gr.Button("Project Review")
+                    workspace_shorts_button = gr.Button("📱 Shorts Ideas")
+                    workspace_review_button = gr.Button("🎬 Project Review")
 
                 workspace_ai_output = gr.Textbox(label="AI Project Output", lines=14)
 
@@ -2181,35 +2251,40 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
         workspace_titles_button.click(
             project_generate_titles,
             inputs=[workspace_project_picker, workspace_project_notes, workspace_description_draft, workspace_thumbnail_notes, workspace_shorts_ideas_draft],
-            outputs=workspace_ai_output
+            outputs=workspace_ai_output,
+            show_progress="full"
         )
 
         workspace_description_button.click(
             project_generate_description,
             inputs=[workspace_project_picker, workspace_project_notes, workspace_description_draft, workspace_thumbnail_notes, workspace_shorts_ideas_draft],
-            outputs=workspace_ai_output
+            outputs=workspace_ai_output,
+            show_progress="full"
         )
 
         workspace_thumbnail_button.click(
             project_generate_thumbnail,
             inputs=[workspace_project_picker, workspace_project_notes, workspace_description_draft, workspace_thumbnail_notes, workspace_shorts_ideas_draft],
-            outputs=workspace_ai_output
+            outputs=workspace_ai_output,
+            show_progress="full"
         )
 
         workspace_shorts_button.click(
             project_generate_shorts,
             inputs=[workspace_project_picker, workspace_project_notes, workspace_description_draft, workspace_thumbnail_notes, workspace_shorts_ideas_draft],
-            outputs=workspace_ai_output
+            outputs=workspace_ai_output,
+            show_progress="full"
         )
 
         workspace_review_button.click(
             project_review,
             inputs=[workspace_project_picker, workspace_project_notes, workspace_description_draft, workspace_thumbnail_notes, workspace_shorts_ideas_draft],
-            outputs=workspace_ai_output
+            outputs=workspace_ai_output,
+            show_progress="full"
         )
 
 
-    with gr.Tab("Title Help"):
+    with gr.Tab("🏷 Title Generator"):
         title_input = gr.Textbox(label="Video Idea", lines=4)
         title_platform = gr.Dropdown(
             ["YouTube Shorts", "TikTok", "Instagram Reels", "YouTube Long Form"],
@@ -2221,16 +2296,17 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
             value="Bold",
             label="Tone"
         )
-        title_button = gr.Button("Generate Titles")
+        title_button = gr.Button("✨ Generate Titles")
         title_output = gr.Textbox(label="Title Ideas", lines=12)
 
         title_button.click(
             generate_titles,
             inputs=[title_input, title_platform, title_tone],
-            outputs=title_output
+            outputs=title_output,
+            show_progress="full"
         )
 
-    with gr.Tab("SEO Help"):
+    with gr.Tab("🔍 SEO Optimizer"):
         seo_input = gr.Textbox(label="Video Idea", lines=4)
         seo_platform = gr.Dropdown(
             ["YouTube Shorts", "TikTok", "Instagram Reels", "YouTube Long Form"],
@@ -2238,16 +2314,17 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
             label="Platform"
         )
         seo_niche = gr.Textbox(label="Niche", value="Gaming creator")
-        seo_button = gr.Button("Generate SEO Help")
+        seo_button = gr.Button("🔍 Generate SEO Plan")
         seo_output = gr.Textbox(label="SEO Results", lines=14)
 
         seo_button.click(
             seo_help,
             inputs=[seo_input, seo_platform, seo_niche],
-            outputs=seo_output
+            outputs=seo_output,
+            show_progress="full"
         )
 
-    with gr.Tab("Description Help"):
+    with gr.Tab("📝 Description Writer"):
         desc_input = gr.Textbox(label="Video Idea", lines=4)
         desc_platform = gr.Dropdown(
             ["YouTube Shorts", "TikTok", "Instagram Reels", "YouTube Long Form"],
@@ -2255,20 +2332,21 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
             label="Platform"
         )
         desc_niche = gr.Textbox(label="Niche", value="Gaming creator")
-        desc_button = gr.Button("Write Description")
+        desc_button = gr.Button("📝 Write Description")
         desc_output = gr.Textbox(label="Description", lines=14)
 
         desc_button.click(
             description_help,
             inputs=[desc_input, desc_platform, desc_niche],
-            outputs=desc_output
+            outputs=desc_output,
+            show_progress="full"
         )
 
-    with gr.Tab("Video Analyzer"):
+    with gr.Tab("🎥 Video Analyzer"):
         gr.Markdown(
             """
             ## 🎥 Video Analyzer
-            Upload a long-form video, Short, Reel, TikTok, or Facebook Reel and get creator feedback.
+            Upload a long-form video, Short, Reel, TikTok, or Facebook Reel and get creator feedback. Channel Coach will sample frames and give pacing, hook, thumbnail, title, and editing advice.
             """
         )
 
@@ -2292,36 +2370,39 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
             placeholder="Example: This is my Ice Rod guide. Tell me what to cut, where to add text, and if the pacing feels good."
         )
 
-        analyzer_button = gr.Button("Analyze Video")
+        analyzer_button = gr.Button("🎥 Analyze Video")
         analyzer_output = gr.Textbox(label="Video Feedback", lines=18)
 
         analyzer_button.click(
             video_analyzer,
             inputs=[analyzer_upload, analyzer_notes, analyzer_type],
-            outputs=analyzer_output
+            outputs=analyzer_output,
+            show_progress="full"
         )
 
-    with gr.Tab("Shorts Idea Generator"):
+    with gr.Tab("💡 Content Ideas"):
         niche_input = gr.Textbox(label="Niche", value="Retro gaming")
         topic_input = gr.Textbox(label="Game or Topic", value="A Link to the Past")
-        ideas_button = gr.Button("Generate Shorts Ideas")
+        ideas_button = gr.Button("💡 Generate Ideas")
         ideas_output = gr.Textbox(label="Shorts Ideas", lines=16)
 
         ideas_button.click(
             shorts_ideas,
             inputs=[niche_input, topic_input],
-            outputs=ideas_output
+            outputs=ideas_output,
+            show_progress="full"
         )
 
-    with gr.Tab("Thumbnail Analyzer"):
+    with gr.Tab("🖼 Thumbnail Review"):
         thumbnail_input = gr.Image(type="filepath", label="Upload Thumbnail")
-        thumbnail_button = gr.Button("Analyze Thumbnail")
+        thumbnail_button = gr.Button("🖼 Review Thumbnail")
         thumbnail_output = gr.Textbox(label="Thumbnail Feedback", lines=16)
 
         thumbnail_button.click(
             analyze_thumbnail,
             inputs=thumbnail_input,
-            outputs=thumbnail_output
+            outputs=thumbnail_output,
+            show_progress="full"
         )
 
 
