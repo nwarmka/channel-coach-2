@@ -49,6 +49,11 @@ VIDEO_REVIEW_HISTORY_FILE = os.getenv(
     "video_review_history.json"
 )
 
+ANALYTICS_TRACKER_FILE = os.getenv(
+    "ANALYTICS_TRACKER_FILE",
+    "analytics_tracker.json"
+)
+
 DEFAULT_PROFILE = {
     "channel_name": "",
     "creator_name": "",
@@ -2748,6 +2753,170 @@ Give:
 # GRADIO APP
 # =========================
 
+
+
+# =========================
+# ANALYTICS TRACKER
+# =========================
+# Manual analytics tracker for creators who are not connected to the YouTube API yet.
+# On Render, set ANALYTICS_TRACKER_FILE to a persistent disk path if you want entries
+# to survive redeploys/restarts. Example: ANALYTICS_TRACKER_FILE=/data/analytics_tracker.json
+
+def load_analytics_entries():
+    try:
+        if os.path.exists(ANALYTICS_TRACKER_FILE):
+            with open(ANALYTICS_TRACKER_FILE, "r", encoding="utf-8") as f:
+                entries = json.load(f)
+
+            if isinstance(entries, list):
+                return entries
+    except Exception:
+        return []
+
+    return []
+
+
+def save_analytics_entries(entries):
+    analytics_dir = os.path.dirname(ANALYTICS_TRACKER_FILE)
+
+    if analytics_dir:
+        os.makedirs(analytics_dir, exist_ok=True)
+
+    with open(ANALYTICS_TRACKER_FILE, "w", encoding="utf-8") as f:
+        json.dump(entries, f, indent=4)
+
+
+def safe_float(value, default=0):
+    try:
+        if value is None or value == "":
+            return default
+        return float(str(value).replace(",", "").strip())
+    except Exception:
+        return default
+
+
+def safe_int(value, default=0):
+    try:
+        if value is None or value == "":
+            return default
+        return int(float(str(value).replace(",", "").strip()))
+    except Exception:
+        return default
+
+
+def format_metric(value, decimals=0, suffix=""):
+    try:
+        number = float(value)
+        if decimals == 0:
+            return f"{int(number):,}{suffix}"
+        return f"{number:,.{decimals}f}{suffix}"
+    except Exception:
+        return f"0{suffix}"
+
+
+def format_delta(delta, decimals=0, suffix=""):
+    try:
+        number = float(delta)
+        sign = "+" if number >= 0 else ""
+        if decimals == 0:
+            return f"{sign}{int(number):,}{suffix}"
+        return f"{sign}{number:,.{decimals}f}{suffix}"
+    except Exception:
+        return f"+0{suffix}"
+
+
+def calculate_analytics_growth(entries):
+    if len(entries) < 2:
+        return None
+
+    latest = entries[0]
+    previous = entries[1]
+
+    return {
+        "views": safe_int(latest.get("views")) - safe_int(previous.get("views")),
+        "subscribers": safe_int(latest.get("subscribers")) - safe_int(previous.get("subscribers")),
+        "watch_time": safe_float(latest.get("watch_time_hours")) - safe_float(previous.get("watch_time_hours")),
+        "ctr": safe_float(latest.get("ctr")) - safe_float(previous.get("ctr")),
+    }
+
+
+def render_analytics_tracker(limit=8):
+    entries = load_analytics_entries()
+
+    if not entries:
+        return """
+        <div class="cc-upcoming-box">
+            <h3>📊 Analytics Tracker</h3>
+            <p class="cc-empty">No analytics snapshots saved yet. Add your first entry below.</p>
+        </div>
+        """
+
+    latest = entries[0]
+    growth = calculate_analytics_growth(entries)
+
+    if growth:
+        growth_html = f"""
+        <div class="cc-dashboard-grid">
+            <div class="cc-stat-card"><div class="cc-stat-number">{format_delta(growth['views'])}</div><div class="cc-stat-label">Views Since Last Entry</div></div>
+            <div class="cc-stat-card"><div class="cc-stat-number">{format_delta(growth['subscribers'])}</div><div class="cc-stat-label">Subscribers</div></div>
+            <div class="cc-stat-card"><div class="cc-stat-number">{format_delta(growth['watch_time'], 1, 'h')}</div><div class="cc-stat-label">Watch Time</div></div>
+            <div class="cc-stat-card"><div class="cc-stat-number">{format_delta(growth['ctr'], 1, '%')}</div><div class="cc-stat-label">CTR</div></div>
+        </div>
+        """
+    else:
+        growth_html = '<p class="cc-empty">Add one more snapshot to calculate growth.</p>'
+
+    rows = ""
+    for item in entries[:limit]:
+        captured_at = item.get("captured_at", "")
+        try:
+            date_label = datetime.fromisoformat(captured_at).strftime("%b %d, %Y")
+        except Exception:
+            date_label = "Unknown date"
+
+        notes = html.escape((item.get("notes") or "")[:160])
+        notes_html = f'<div class="cc-upcoming-meta"><strong>Notes:</strong> {notes}</div>' if notes else ""
+
+        rows += f"""
+        <div class="cc-upcoming-item">
+            <div class="cc-upcoming-date">{date_label}</div>
+            <div class="cc-upcoming-title">Views: {format_metric(item.get('views'))} · Subs: {format_metric(item.get('subscribers'))}</div>
+            <div class="cc-upcoming-meta">Watch Time: {format_metric(item.get('watch_time_hours'), 1, 'h')} · CTR: {format_metric(item.get('ctr'), 1, '%')}</div>
+            {notes_html}
+        </div>
+        """
+
+    return f"""
+    <div class="cc-upcoming-box">
+        <h3>📊 Analytics Tracker</h3>
+        <p class="cc-empty">Latest snapshot: {format_metric(latest.get('views'))} views · {format_metric(latest.get('subscribers'))} subscribers · {format_metric(latest.get('watch_time_hours'), 1, 'h')} watch time · {format_metric(latest.get('ctr'), 1, '%')} CTR</p>
+        {growth_html}
+        <h4>Recent Snapshots</h4>
+        {rows}
+    </div>
+    """
+
+
+def save_analytics_snapshot(views, subscribers, watch_time_hours, ctr, notes):
+    entries = load_analytics_entries()
+
+    record = {
+        "id": str(uuid.uuid4()),
+        "captured_at": datetime.now().isoformat(),
+        "views": safe_int(views),
+        "subscribers": safe_int(subscribers),
+        "watch_time_hours": safe_float(watch_time_hours),
+        "ctr": safe_float(ctr),
+        "notes": notes or ""
+    }
+
+    entries.insert(0, record)
+    entries = entries[:100]
+    save_analytics_entries(entries)
+
+    return "✅ Analytics snapshot saved!", render_analytics_tracker()
+
+
 with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
 
     gr.HTML(
@@ -3290,11 +3459,40 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
 
     with gr.Tab("📊 Analytics"):
         gr.Markdown("""
-        ## 📊 Analytics
-        Coming soon.
-
-        This section will eventually track views, CTR, watch time, subscribers, top videos, and what content performs best.
+        ## 📊 Analytics Tracker
+        Manually save your YouTube stats so Channel Coach can track growth over time.
         """)
+
+        analytics_output = gr.HTML(value=render_analytics_tracker())
+
+        with gr.Accordion("➕ Add Analytics Snapshot", open=True):
+            with gr.Row():
+                analytics_views = gr.Number(label="Total Views", value=0, precision=0)
+                analytics_subscribers = gr.Number(label="Subscribers", value=0, precision=0)
+            with gr.Row():
+                analytics_watch_time = gr.Number(label="Watch Time Hours", value=0)
+                analytics_ctr = gr.Number(label="CTR %", value=0)
+
+            analytics_notes = gr.Textbox(
+                label="Notes",
+                placeholder="Example: Posted 3 Shorts this week, Zelda guide performed well, took a 2-week break...",
+                lines=3
+            )
+            analytics_save_button = gr.Button("💾 Save Analytics Snapshot")
+            analytics_status = gr.Markdown()
+
+            analytics_save_button.click(
+                save_analytics_snapshot,
+                inputs=[analytics_views, analytics_subscribers, analytics_watch_time, analytics_ctr, analytics_notes],
+                outputs=[analytics_status, analytics_output]
+            )
+
+        analytics_refresh_button = gr.Button("🔄 Refresh Analytics")
+        analytics_refresh_button.click(
+            render_analytics_tracker,
+            inputs=[],
+            outputs=analytics_output
+        )
 
     with gr.Tab("⚙️ Settings"):
         gr.Markdown("## ⚙️ Settings\n\nManage creator profile memory and future app preferences.")
