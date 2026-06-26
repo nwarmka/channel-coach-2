@@ -1597,39 +1597,58 @@ textarea[aria-label*="Description"] {
 }
 
 
-/* Logo Header */
+/* Logo Header - clean centered brand hero */
 #channel-coach-header {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 10px 0 22px 0 !important;
+    margin-bottom: 14px !important;
     display: flex !important;
+    flex-direction: column !important;
     align-items: center !important;
-    gap: 22px !important;
+    justify-content: center !important;
+    text-align: center !important;
 }
 
 .cc-header-logo {
-    max-width: 300px !important;
-    width: 100% !important;
+    max-width: 520px !important;
+    width: min(90vw, 520px) !important;
     height: auto !important;
     display: block !important;
+    margin: 0 auto 8px auto !important;
+    filter: drop-shadow(0 0 22px rgba(34, 211, 238, 0.20))
+            drop-shadow(0 0 28px rgba(139, 92, 246, 0.18)) !important;
 }
 
-.cc-header-text {
-    flex: 1 !important;
-}
-
-#channel-coach-header p {
-    font-size: 1.05rem !important;
+.cc-header-subtitle {
     color: var(--muted) !important;
+    font-size: 1rem !important;
+    font-weight: 600 !important;
     margin: 0 !important;
+    letter-spacing: 0.02em !important;
+}
+
+.cc-header-subtitle span {
+    color: var(--accent2) !important;
 }
 
 @media (max-width: 768px) {
     #channel-coach-header {
-        flex-direction: column !important;
-        align-items: flex-start !important;
-        gap: 10px !important;
+        padding: 4px 0 14px 0 !important;
+        margin-bottom: 10px !important;
     }
 
     .cc-header-logo {
-        max-width: 230px !important;
+        width: min(92vw, 360px) !important;
+        max-width: 360px !important;
+        margin-bottom: 4px !important;
+    }
+
+    .cc-header-subtitle {
+        font-size: 0.82rem !important;
+        line-height: 1.35 !important;
+        padding: 0 12px !important;
     }
 }
 
@@ -1909,9 +1928,9 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
                 alt="Channel Coach Logo"
                 class="cc-header-logo"
             >
-            <div class="cc-header-text">
-                <p>AI creator tools for planning, videos, thumbnails, SEO, and content ideas.</p>
-            </div>
+            <p class="cc-header-subtitle">
+                Your AI Creator Workspace <span>•</span> Plan <span>•</span> Analyze <span>•</span> Publish <span>•</span> Grow
+            </p>
         </div>
         """
     )
