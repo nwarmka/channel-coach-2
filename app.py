@@ -1712,6 +1712,87 @@ textarea[aria-label*="Description"] {
     }
 }
 
+
+
+/* =========================
+   TRUE FLOATING LOGO HEADER
+   Removes the big empty Gradio card around the logo
+========================= */
+#cc-logo-header-block,
+#cc-logo-header-block.block,
+#cc-logo-header-block.gr-box,
+#cc-logo-header-block > div,
+#cc-logo-header-block .prose,
+#cc-logo-header-block .html-container {
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 auto 8px auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+}
+
+.cc-logo-float {
+    width: 100% !important;
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    padding: 0 0 6px 0 !important;
+    margin: 0 auto 8px auto !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+}
+
+.cc-logo-float .cc-header-logo {
+    width: 300px !important;
+    min-width: 300px !important;
+    max-width: 300px !important;
+    height: auto !important;
+    display: block !important;
+    margin: 0 auto !important;
+    object-fit: contain !important;
+    filter:
+        drop-shadow(0 0 10px rgba(34, 211, 238, 0.28))
+        drop-shadow(0 0 14px rgba(139, 92, 246, 0.18)) !important;
+}
+
+/* Hide any older header wrapper styles if they still exist */
+#channel-coach-header {
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    min-height: 0 !important;
+}
+
+@media (max-width: 768px) {
+    #cc-logo-header-block,
+    #cc-logo-header-block.block,
+    #cc-logo-header-block.gr-box,
+    #cc-logo-header-block > div,
+    #cc-logo-header-block .prose,
+    #cc-logo-header-block .html-container {
+        padding: 0 !important;
+        margin: 0 auto 6px auto !important;
+        min-height: 0 !important;
+    }
+
+    .cc-logo-float {
+        padding: 0 0 4px 0 !important;
+        margin-bottom: 6px !important;
+    }
+
+    .cc-logo-float .cc-header-logo {
+        width: 240px !important;
+        min-width: 240px !important;
+        max-width: 240px !important;
+    }
+}
+
 """
 
 # =========================
@@ -1982,15 +2063,19 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
 
     gr.HTML(
         f"""
-        <div id="channel-coach-header">
+        <div class="cc-logo-float">
             <img
                 src="data:image/png;base64,{CHANNEL_COACH_LOGO_BASE64}"
                 alt="Channel Coach Logo"
                 class="cc-header-logo"
-                style="width:320px;max-width:320px;min-width:320px;height:auto;"
+                style="width:300px;max-width:300px;min-width:300px;height:auto;"
             >
         </div>
-        """
+        """,
+        elem_id="cc-logo-header-block",
+        container=False,
+        padding=False,
+        min_height=0
     )
 
     saved_profile = load_creator_profile()
@@ -2611,3 +2696,5 @@ app.launch(
     share=False
 )
     
+ 
+      
