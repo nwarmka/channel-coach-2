@@ -2489,6 +2489,179 @@ def ask_channel_coach(prompt, use_profile=True):
     return response.output_text
 
 
+
+
+# =========================
+# COACH CHAT
+# =========================
+
+def _safe_list(value):
+    return value if isinstance(value, list) else []
+
+
+def _summarize_creator_profile_for_coach(profile):
+    if not isinstance(profile, dict):
+        profile = {}
+
+    fields = [
+        "channel_name",
+        "creator_name",
+        "niche",
+        "target_audience",
+        "content_style",
+        "current_games",
+        "main_platforms",
+        "goals",
+        "preferred_tone",
+        "things_to_avoid"
+    ]
+
+    return {field: profile.get(field, "") for field in fields}
+
+
+def _summarize_calendar_for_coach(items, limit=8):
+    today = date.today()
+    cleaned = []
+
+    for item in _safe_list(items):
+        item_date = validate_calendar_date(item.get("publish_date", "")) if "validate_calendar_date" in globals() else None
+        cleaned.append({
+            "title": item.get("title", "Untitled"),
+            "publish_date": item.get("publish_date", ""),
+            "content_type": item.get("content_type", ""),
+            "status": item.get("status", ""),
+            "progress": calculate_item_progress(item) if "calculate_item_progress" in globals() else None,
+            "days_from_today": (item_date - today).days if item_date else None
+        })
+
+    cleaned.sort(key=lambda x: 9999 if x.get("days_from_today") is None else abs(x.get("days_from_today")))
+    return cleaned[:limit]
+
+
+def _summarize_reviews_for_coach(history, limit=5):
+    cleaned = []
+
+    for item in _safe_list(history)[:limit]:
+        feedback = str(item.get("feedback", ""))
+        notes = str(item.get("notes", ""))
+        cleaned.append({
+            "reviewed_at": item.get("reviewed_at", ""),
+            "video_type": item.get("video_type", ""),
+            "score": item.get("score", None),
+            "notes": notes[:300],
+            "feedback_preview": feedback[:700]
+        })
+
+    return cleaned
+
+
+def _summarize_analytics_for_coach(entries, limit=5):
+    cleaned = []
+
+    for item in _safe_list(entries)[:limit]:
+        cleaned.append({
+            "date": item.get("date", item.get("created_at", "")),
+            "views": item.get("views", ""),
+            "subscribers": item.get("subscribers", ""),
+            "watch_time": item.get("watch_time", ""),
+            "ctr": item.get("ctr", "")
+        })
+
+    return cleaned
+
+
+def build_creator_coach_context():
+    """
+    Builds a compact workspace snapshot so Coach Chat can answer using
+    the creator's real Channel Coach data instead of giving generic advice.
+    """
+    try:
+        profile = load_creator_profile()
+    except Exception:
+        profile = {}
+
+    try:
+        calendar_items = load_content_calendar()
+    except Exception:
+        calendar_items = []
+
+    try:
+        review_history = load_video_review_history()
+    except Exception:
+        review_history = []
+
+    try:
+        analytics_entries = load_analytics_entries()
+    except Exception:
+        analytics_entries = []
+
+    try:
+        dashboard_stats = get_dashboard_stats()
+    except Exception:
+        dashboard_stats = {}
+
+    try:
+        health_html = render_creator_health()
+        health_text = html.unescape(str(health_html))
+        health_text = health_text.replace("<", " <").replace(">", "> ")[:1200]
+    except Exception:
+        health_text = ""
+
+    context = {
+        "creator_profile": _summarize_creator_profile_for_coach(profile),
+        "dashboard_stats": dashboard_stats,
+        "creator_health_snapshot": health_text,
+        "nearest_calendar_items": _summarize_calendar_for_coach(calendar_items),
+        "recent_video_reviews": _summarize_reviews_for_coach(review_history),
+        "recent_analytics": _summarize_analytics_for_coach(analytics_entries),
+        "data_status": {
+            "has_creator_profile": any(str(v).strip() for v in profile.values()) if isinstance(profile, dict) else False,
+            "calendar_items_count": len(calendar_items) if isinstance(calendar_items, list) else 0,
+            "video_reviews_count": len(review_history) if isinstance(review_history, list) else 0,
+            "analytics_snapshots_count": len(analytics_entries) if isinstance(analytics_entries, list) else 0
+        }
+    }
+
+    return json.dumps(context, indent=2, ensure_ascii=False)
+
+
+def ask_creator_coach(user_question):
+    if not user_question or not str(user_question).strip():
+        return "Ask me something like: **What should I work on today?**"
+
+    if not os.getenv("OPENAI_API_KEY"):
+        return "Missing OPENAI_API_KEY. Add your OpenAI API key to your Render environment variables."
+
+    creator_context = build_creator_coach_context()
+
+    prompt = f"""
+You are Coach Chat inside Channel Coach, a supportive AI creator mentor for small content creators.
+
+Use the creator's saved workspace data to give practical, specific advice.
+Do not pretend data exists if it is missing.
+If the workspace is empty, give the creator a simple next step instead of generic strategy.
+Prioritize actions that help the creator publish consistently and improve over time.
+Use a warm, direct tone. Keep the response organized and not too long.
+
+Creator Workspace Data:
+{creator_context}
+
+Creator's Question:
+{user_question}
+
+Answer as Coach Chat.
+"""
+
+    try:
+        response = client.responses.create(
+            model="gpt-4.1-mini",
+            input=prompt
+        )
+        return response.output_text
+    except Exception as e:
+        return f"Coach Chat error: {e}"
+
+
 # =========================
 # IMAGE / VIDEO HELPERS
 # =========================
@@ -3613,6 +3786,33 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
 
     with gr.Tab("🤖 AI Tools"):
         gr.Markdown("## 🤖 AI Tools\n\nAnalyze videos, improve thumbnails, generate titles, optimize SEO, write descriptions, and brainstorm content ideas.")
+
+
+        with gr.Accordion("🤖 Coach Chat", open=True):
+            gr.Markdown(
+                """
+                ## 🤖 Coach Chat
+                Ask your AI Creator Coach what to work on next, what to improve, or how to grow your channel.
+
+                Coach Chat uses your saved profile, calendar, projects, reviews, analytics, and Creator Health data.
+                """
+            )
+
+            coach_question = gr.Textbox(
+                label="Ask Coach Chat",
+                placeholder="Example: What should I work on today?",
+                lines=3
+            )
+
+            coach_button = gr.Button("Ask Coach")
+            coach_output = gr.Markdown()
+
+            coach_button.click(
+                ask_creator_coach,
+                inputs=coach_question,
+                outputs=coach_output,
+                show_progress="full"
+            )
 
         with gr.Accordion("🎥 Video Analyzer", open=True):
             gr.Markdown(
