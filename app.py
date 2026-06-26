@@ -1662,14 +1662,14 @@ textarea[aria-label*="Description"] {
 
 /* =========================
    FINAL LOGO HEADER OVERRIDE
-   Big centered logo, no box, embedded image friendly
+   Compact centered logo, no tagline
 ========================= */
 #channel-coach-header {
     background: transparent !important;
     border: none !important;
     box-shadow: none !important;
-    padding: 0 0 20px 0 !important;
-    margin: 0 auto 16px auto !important;
+    padding: 6px 0 10px 0 !important;
+    margin: 0 auto 12px auto !important;
     width: 100% !important;
     max-width: 100% !important;
     display: flex !important;
@@ -1679,64 +1679,36 @@ textarea[aria-label*="Description"] {
     text-align: center !important;
 }
 
+#channel-coach-header img.cc-header-logo,
 .cc-header-logo {
-    width: min(92vw, 560px) !important;
-    max-width: 560px !important;
+    width: 320px !important;
+    min-width: 320px !important;
+    max-width: 320px !important;
     height: auto !important;
     display: block !important;
-    margin: 0 auto 4px auto !important;
+    margin: 0 auto !important;
     object-fit: contain !important;
-    filter: drop-shadow(0 0 18px rgba(34, 211, 238, 0.22))
-            drop-shadow(0 0 24px rgba(236, 72, 153, 0.18)) !important;
+    filter:
+        drop-shadow(0 0 12px rgba(34, 211, 238, 0.25))
+        drop-shadow(0 0 18px rgba(139, 92, 246, 0.18)) !important;
 }
 
-.cc-header-pill {
-    display: inline-block !important;
-    color: var(--text) !important;
-    font-weight: 900 !important;
-    font-size: 1.1rem !important;
-    letter-spacing: 0.02em !important;
-    margin-top: 2px !important;
-    padding: 7px 16px !important;
-    border: 1px solid rgba(34, 211, 238, 0.35) !important;
-    border-radius: 999px !important;
-    background: rgba(18, 21, 33, 0.45) !important;
-}
-
+.cc-header-pill,
 .cc-header-subtitle {
-    color: var(--muted) !important;
-    font-size: 0.95rem !important;
-    font-weight: 700 !important;
-    margin: 8px 0 0 0 !important;
-    letter-spacing: 0.03em !important;
-}
-
-.cc-header-subtitle span {
-    color: var(--accent2) !important;
-    margin: 0 4px !important;
+    display: none !important;
 }
 
 @media (max-width: 768px) {
     #channel-coach-header {
-        padding: 0 0 12px 0 !important;
+        padding: 4px 0 8px 0 !important;
         margin-bottom: 8px !important;
     }
 
+    #channel-coach-header img.cc-header-logo,
     .cc-header-logo {
-        width: min(96vw, 390px) !important;
-        max-width: 390px !important;
-        margin-bottom: 0 !important;
-    }
-
-    .cc-header-pill {
-        font-size: 0.9rem !important;
-        padding: 6px 12px !important;
-    }
-
-    .cc-header-subtitle {
-        font-size: 0.78rem !important;
-        line-height: 1.35 !important;
-        padding: 0 10px !important;
+        width: 260px !important;
+        min-width: 260px !important;
+        max-width: 260px !important;
     }
 }
 
@@ -2015,11 +1987,8 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
                 src="data:image/png;base64,{CHANNEL_COACH_LOGO_BASE64}"
                 alt="Channel Coach Logo"
                 class="cc-header-logo"
+                style="width:320px;max-width:320px;min-width:320px;height:auto;"
             >
-            <div class="cc-header-pill">AI Creator Workspace</div>
-            <p class="cc-header-subtitle">
-                Plan <span>•</span> Create <span>•</span> Analyze <span>•</span> Publish <span>•</span> Grow
-            </p>
         </div>
         """
     )
