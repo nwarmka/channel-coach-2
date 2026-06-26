@@ -927,6 +927,180 @@ def get_dashboard_stats():
     }
 
 
+
+def render_needs_attention():
+    """
+    Builds a smart dashboard checklist from the creator profile, calendar,
+    project workspace progress, and saved video review history.
+    """
+    profile = load_creator_profile()
+    stats = get_dashboard_stats()
+    items = load_content_calendar()
+    history = load_video_review_history()
+
+    alerts = []
+
+    important_profile_fields = [
+        "channel_name",
+        "creator_name",
+        "niche",
+        "target_audience",
+        "content_style",
+        "goals"
+    ]
+    missing_profile_fields = [
+        field.replace("_", " ").title()
+        for field in important_profile_fields
+        if not str(profile.get(field, "")).strip()
+    ]
+
+    if missing_profile_fields:
+        shown_missing = ", ".join(missing_profile_fields[:3])
+        if len(missing_profile_fields) > 3:
+            shown_missing += "..."
+        alerts.append({
+            "level": "warning",
+            "icon": "👤",
+            "title": "Creator profile needs more detail",
+            "detail": f"Missing: {html.escape(shown_missing)}"
+        })
+
+    if stats.get("planned_this_week", 0) == 0:
+        alerts.append({
+            "level": "warning",
+            "icon": "📅",
+            "title": "No content scheduled this week",
+            "detail": "Add at least one video, Short, or post to your Content Calendar."
+        })
+
+    if stats.get("overdue", 0) > 0:
+        alerts.append({
+            "level": "danger",
+            "icon": "⏰",
+            "title": f"{stats.get('overdue')} overdue calendar item(s)",
+            "detail": "Update the status, move the date, or finish the project."
+        })
+
+    active_projects = []
+    stalled_projects = []
+
+    for item in items:
+        item = normalize_project_item(item)
+        status = item.get("status", "Idea")
+        if status == "Published":
+            continue
+
+        progress = calculate_item_progress(item)
+        active_projects.append((item, progress))
+
+        item_date = validate_calendar_date(item.get("publish_date", ""))
+        if item_date and item_date <= date.today() + timedelta(days=3) and progress < 80:
+            stalled_projects.append((item, progress, item_date))
+
+    if not active_projects:
+        alerts.append({
+            "level": "info",
+            "icon": "🎬",
+            "title": "No active projects yet",
+            "detail": "Create a calendar item and use the Project Workspace checklist to track progress."
+        })
+    elif stalled_projects:
+        item, progress, item_date = sorted(stalled_projects, key=lambda x: x[2])[0]
+        alerts.append({
+            "level": "warning",
+            "icon": "🛠️",
+            "title": "A project is close to its target date",
+            "detail": f"{html.escape(item.get('title', 'Untitled'))} is only {progress}% complete for {item_date.strftime('%b %d')}."
+        })
+
+    if not history:
+        alerts.append({
+            "level": "info",
+            "icon": "🎥",
+            "title": "No video reviews saved yet",
+            "detail": "Analyze a long video or Short so Channel Coach can start tracking improvement."
+        })
+    elif len(history) < 3:
+        alerts.append({
+            "level": "info",
+            "icon": "🧠",
+            "title": "More reviews needed for stronger insights",
+            "detail": f"{len(history)} review(s) saved. Review at least 3 videos for better creator memory patterns."
+        })
+    else:
+        scores = [item.get("score") for item in history if item.get("score") is not None]
+        if scores:
+            avg_score = round(sum(scores) / len(scores), 1)
+            latest_score = history[0].get("score")
+
+            if latest_score is not None and latest_score < avg_score:
+                alerts.append({
+                    "level": "warning",
+                    "icon": "📉",
+                    "title": "Latest review scored below your average",
+                    "detail": f"Latest: {latest_score}/10 · Average: {avg_score}/10. Check the feedback for what slipped."
+                })
+
+        combined_feedback = " ".join(
+            str(item.get("feedback", "")).lower()
+            for item in history[:8]
+        )
+
+        common_focuses = [
+            ("hook", "Hooks are showing up repeatedly", "Your reviews keep mentioning the hook. Focus on the first 10–15 seconds."),
+            ("pacing", "Pacing may need attention", "Your reviews mention pacing. Tighten slow sections and cut pauses."),
+            ("thumbnail", "Thumbnail feedback keeps appearing", "Thumbnail clarity may be a recurring improvement area."),
+            ("title", "Titles may need stronger packaging", "Your reviews mention titles. Make the promise clearer and more clickable."),
+            ("audio", "Audio may need a quick check", "Your reviews mention audio. Check voice/game balance before publishing.")
+        ]
+
+        for keyword, title, detail in common_focuses:
+            if combined_feedback.count(keyword) >= 2:
+                alerts.append({
+                    "level": "warning",
+                    "icon": "🎯",
+                    "title": title,
+                    "detail": detail
+                })
+                break
+
+    if not alerts:
+        alerts.append({
+            "level": "success",
+            "icon": "✅",
+            "title": "Everything looks good",
+            "detail": "Your profile, schedule, projects, and review history are in good shape."
+        })
+
+    alerts = alerts[:5]
+
+    alert_html = ""
+    for alert in alerts:
+        level = html.escape(alert.get("level", "info"))
+        icon = html.escape(alert.get("icon", "•"))
+        title = html.escape(alert.get("title", "Needs attention"))
+        detail = html.escape(alert.get("detail", ""))
+
+        alert_html += f"""
+        <div class="cc-attention-item cc-attention-{level}">
+            <div class="cc-attention-icon">{icon}</div>
+            <div>
+                <div class="cc-attention-title">{title}</div>
+                <div class="cc-attention-detail">{detail}</div>
+            </div>
+        </div>
+        """
+
+    return f"""
+    <div class="cc-needs-attention-card">
+        <div class="cc-needs-attention-header">
+            <h3>⚠️ Needs Attention</h3>
+            <span>{len(alerts)} item(s)</span>
+        </div>
+        {alert_html}
+    </div>
+    """
+
 def render_creator_dashboard():
     profile = load_creator_profile()
     stats = get_dashboard_stats()
@@ -972,6 +1146,8 @@ def render_creator_dashboard():
         </div>
 
         {warning}
+
+        {render_needs_attention()}
 
         <div class=\"cc-dashboard-grid\">
             <div class=\"cc-stat-card\">
@@ -1967,6 +2143,81 @@ textarea[aria-label*="Description"] {
     }
 }
 
+
+
+.cc-needs-attention-card {
+    background: linear-gradient(135deg, rgba(37,43,59,.96), rgba(30,34,48,.96)) !important;
+    border: 1px solid rgba(255,255,255,.10) !important;
+    border-radius: 18px !important;
+    padding: 18px !important;
+    margin: 18px 0 !important;
+    box-shadow: 0 12px 30px rgba(0,0,0,.22) !important;
+}
+
+.cc-needs-attention-header {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    gap: 12px !important;
+    margin-bottom: 12px !important;
+}
+
+.cc-needs-attention-header h3 {
+    margin: 0 !important;
+    font-size: 1.05rem !important;
+    color: var(--text) !important;
+}
+
+.cc-needs-attention-header span {
+    color: var(--muted) !important;
+    font-size: .85rem !important;
+}
+
+.cc-attention-item {
+    display: flex !important;
+    gap: 12px !important;
+    align-items: flex-start !important;
+    padding: 12px !important;
+    margin-top: 10px !important;
+    border-radius: 14px !important;
+    background: rgba(15,17,23,.52) !important;
+    border: 1px solid rgba(255,255,255,.08) !important;
+}
+
+.cc-attention-icon {
+    width: 34px !important;
+    height: 34px !important;
+    min-width: 34px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 12px !important;
+    background: rgba(139,92,246,.16) !important;
+}
+
+.cc-attention-title {
+    color: var(--text) !important;
+    font-weight: 800 !important;
+    margin-bottom: 3px !important;
+}
+
+.cc-attention-detail {
+    color: var(--muted) !important;
+    font-size: .9rem !important;
+    line-height: 1.45 !important;
+}
+
+.cc-attention-danger {
+    border-color: rgba(248,113,113,.30) !important;
+}
+
+.cc-attention-warning {
+    border-color: rgba(251,191,36,.24) !important;
+}
+
+.cc-attention-success {
+    border-color: rgba(34,197,94,.25) !important;
+}
 """
 
 # =========================
