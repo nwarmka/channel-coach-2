@@ -24,6 +24,16 @@ load_dotenv()
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
+# =========================
+# PERSISTENT STORAGE (Render Disk)
+# =========================
+DATA_DIR = os.getenv("DATA_DIR", "/data")
+os.makedirs(DATA_DIR, exist_ok=True)
+
+def data_file(name):
+    return os.path.join(DATA_DIR, name)
+
+
 
 # =========================
 # EMBEDDED LOGO
@@ -42,11 +52,11 @@ CHANNEL_COACH_LOGO_BASE64 = """iVBORw0KGgoAAAANSUhEUgAAAYIAAAFdCAYAAAAOkmpzAAEAA
 # the profile to survive redeploys/restarts. Example:
 # CREATOR_PROFILE_FILE=/data/creator_profile.json
 
-PROFILE_FILE = os.getenv("CREATOR_PROFILE_FILE", "creator_profile.json")
+PROFILE_FILE = os.getenv("CREATOR_PROFILE_FILE", data_file("creator_profile.json"))
 
 VIDEO_REVIEW_HISTORY_FILE = os.getenv(
     "VIDEO_REVIEW_HISTORY_FILE",
-    "video_review_history.json"
+    data_file("video_review_history.json")
 )
 
 ANALYTICS_TRACKER_FILE = os.getenv(
