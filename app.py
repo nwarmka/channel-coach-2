@@ -1857,6 +1857,111 @@ textarea[aria-label*="Description"] {
     }
 }
 
+
+/* =========================
+   FINAL HEADER POLISH OVERRIDE
+   Smaller transparent logo + tighter navigation spacing
+========================= */
+#cc-logo-header-block,
+#cc-logo-header-block.block,
+#cc-logo-header-block.gr-box,
+#cc-logo-header-block > div,
+#cc-logo-header-block .prose,
+#cc-logo-header-block .html-container,
+.cc-logo-float,
+#channel-coach-header {
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 auto 4px auto !important;
+    min-height: 0 !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    text-align: center !important;
+}
+
+.cc-logo-float {
+    padding: 4px 0 2px 0 !important;
+}
+
+.cc-logo-float .cc-header-logo,
+#channel-coach-header img.cc-header-logo,
+.cc-header-logo,
+.cc-main-logo {
+    width: 250px !important;
+    min-width: 250px !important;
+    max-width: 250px !important;
+    height: auto !important;
+    display: block !important;
+    margin: 0 auto !important;
+    object-fit: contain !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    filter:
+        drop-shadow(0 0 12px rgba(34,211,238,.28))
+        drop-shadow(0 0 18px rgba(139,92,246,.22)) !important;
+}
+
+.cc-header-pill,
+.cc-header-subtitle {
+    display: none !important;
+}
+
+/* Pull the top navigation closer to the logo */
+.gradio-container {
+    padding-top: 6px !important;
+}
+
+.tabs,
+.tab-nav {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+}
+
+.tab-nav {
+    border-bottom: 1px solid rgba(255,255,255,.18) !important;
+}
+
+/* Slightly tighten the first dashboard/content panel under the tabs */
+.tabitem,
+[role='tabpanel'] {
+    margin-top: 8px !important;
+}
+
+@media (max-width: 768px) {
+    #cc-logo-header-block,
+    #cc-logo-header-block.block,
+    #cc-logo-header-block.gr-box,
+    #cc-logo-header-block > div,
+    #cc-logo-header-block .prose,
+    #cc-logo-header-block .html-container,
+    .cc-logo-float,
+    #channel-coach-header {
+        padding: 0 !important;
+        margin: 0 auto 3px auto !important;
+        min-height: 0 !important;
+    }
+
+    .cc-logo-float .cc-header-logo,
+    #channel-coach-header img.cc-header-logo,
+    .cc-header-logo,
+    .cc-main-logo {
+        width: 210px !important;
+        min-width: 210px !important;
+        max-width: 210px !important;
+    }
+
+    .gradio-container {
+        padding-top: 4px !important;
+    }
+}
+
 """
 
 # =========================
@@ -2132,7 +2237,7 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
                 src="data:image/png;base64,{CHANNEL_COACH_LOGO_BASE64}"
                 alt="Channel Coach Logo"
                 class="cc-header-logo"
-                style="width:260px !important; max-width:260px !important; min-width:260px !important; height:auto !important;"
+                style="width:250px !important; max-width:250px !important; min-width:250px !important; height:auto !important;"
             >
         </div>
         """,
