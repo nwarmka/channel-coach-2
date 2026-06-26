@@ -152,7 +152,7 @@ def save_creator_profile_and_refresh_dashboard(
         things_to_avoid
     )
 
-    return message, render_creator_dashboard()
+    return message, render_creator_dashboard(), render_getting_started_checklist()
 
 
 def creator_profile_context():
@@ -2917,6 +2917,74 @@ def save_analytics_snapshot(views, subscribers, watch_time_hours, ctr, notes):
     return "✅ Analytics snapshot saved!", render_analytics_tracker()
 
 
+# =========================
+# GETTING STARTED / TESTER ONBOARDING
+# =========================
+# This checklist gives new testers a clear path through the app so they know
+# what to try first instead of clicking around without direction.
+
+def render_getting_started_checklist():
+    profile = load_creator_profile()
+    calendar_items = load_content_calendar()
+    review_history = load_video_review_history()
+    analytics_entries = load_analytics_entries()
+
+    profile_complete = bool(
+        (profile.get("channel_name") or "").strip()
+        and (profile.get("creator_name") or "").strip()
+        and (profile.get("niche") or "").strip()
+    )
+
+    has_content_idea = len(calendar_items) > 0
+    has_scheduled_content = any(
+        (item.get("status") or "") in ["Scheduled", "Filming", "Editing", "Published"]
+        for item in calendar_items
+    )
+    has_video_review = len(review_history) > 0
+    has_analytics_snapshot = len(analytics_entries) > 0
+
+    checklist = [
+        ("Creator Profile", profile_complete, "Fill out your channel name, creator name, and niche."),
+        ("Add a content idea", has_content_idea, "Add one video or Short idea to the content calendar."),
+        ("Schedule content", has_scheduled_content, "Move one calendar item beyond Idea, such as Scheduled or Editing."),
+        ("Review a video", has_video_review, "Upload a video or Short and save feedback to review history."),
+        ("Add analytics snapshot", has_analytics_snapshot, "Enter your current views, subscribers, watch time, and CTR."),
+    ]
+
+    completed = sum(1 for _, done, _ in checklist if done)
+    total = len(checklist)
+    percent = int((completed / total) * 100) if total else 0
+
+    items_html = ""
+    for label, done, helper in checklist:
+        icon = "✅" if done else "⬜"
+        status_class = "complete" if done else "todo"
+        items_html += f'''
+        <div class="cc-upcoming-item onboarding-{status_class}">
+            <div class="cc-upcoming-title">{icon} {html.escape(label)}</div>
+            <div class="cc-upcoming-meta">{html.escape(helper)}</div>
+        </div>
+        '''
+
+    if completed == total:
+        next_step = "🎉 Setup complete. Your tester has tried the core Channel Coach workflow."
+    else:
+        next_open = next((label for label, done, _ in checklist if not done), "Keep testing")
+        next_step = f"Next step: {html.escape(next_open)}"
+
+    return f'''
+    <div class="cc-upcoming-box">
+        <h3>🚀 Getting Started</h3>
+        <p class="cc-empty">Getting Started: {completed}/{total} complete · {percent}%</p>
+        <div style="height:10px;background:rgba(255,255,255,.10);border-radius:999px;overflow:hidden;margin:10px 0 16px 0;">
+            <div style="height:10px;width:{percent}%;background:linear-gradient(90deg,#22d3ee,#8b5cf6);border-radius:999px;"></div>
+        </div>
+        <p class="cc-empty">{next_step}</p>
+        {items_html}
+    </div>
+    '''
+
+
 with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
 
     gr.HTML(
@@ -3497,6 +3565,16 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
     with gr.Tab("⚙️ Settings"):
         gr.Markdown("## ⚙️ Settings\n\nManage creator profile memory and future app preferences.")
 
+        with gr.Accordion("🚀 Getting Started", open=True):
+            onboarding_output = gr.HTML(value=render_getting_started_checklist())
+            onboarding_refresh_button = gr.Button("🔄 Refresh Getting Started")
+
+            onboarding_refresh_button.click(
+                render_getting_started_checklist,
+                inputs=[],
+                outputs=onboarding_output
+            )
+
         with gr.Accordion("👤 Creator Profile", open=True):
             gr.Markdown(
                 """
@@ -3581,7 +3659,7 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
                     profile_preferred_tone,
                     profile_things_to_avoid
                 ],
-                outputs=[profile_save_status, dashboard_output]
+                outputs=[profile_save_status, dashboard_output, onboarding_output]
             )
 
 
