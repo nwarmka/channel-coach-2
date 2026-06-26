@@ -2309,6 +2309,125 @@ def video_analyzer_with_history(video_file, notes, content_type):
     return feedback, render_video_review_history()
 
 
+
+# =========================
+# CREATOR MEMORY INSIGHTS
+# =========================
+
+def generate_creator_memory_insights():
+    history = load_video_review_history()
+
+    if not history:
+        return """
+No creator memory insights yet.
+
+Analyze a few videos first. Once Channel Coach has review history, it can identify patterns in your hooks, pacing, editing, titles, thumbnails, and overall improvement.
+"""
+
+    recent_reviews = history[:10]
+
+    review_summary = []
+    for index, item in enumerate(recent_reviews, start=1):
+        reviewed_at = item.get("reviewed_at", "")
+        try:
+            reviewed_label = datetime.fromisoformat(reviewed_at).strftime("%b %d, %Y")
+        except Exception:
+            reviewed_label = "Unknown date"
+
+        review_summary.append(
+            {
+                "review_number": index,
+                "reviewed_at": reviewed_label,
+                "video_type": item.get("video_type", "Video"),
+                "score": item.get("score"),
+                "notes": (item.get("notes") or "")[:500],
+                "feedback": (item.get("feedback") or "")[:1500],
+            }
+        )
+
+    scores = [item.get("score") for item in history if item.get("score") is not None]
+    avg_score = round(sum(scores) / len(scores), 1) if scores else None
+
+    if len(scores) >= 2:
+        latest_score = scores[0]
+        oldest_score = scores[-1]
+        score_trend = round(latest_score - oldest_score, 1)
+    else:
+        score_trend = None
+
+    prompt = f"""
+You are Channel Coach, an AI creator coach.
+
+Use the creator profile and saved video review history to generate Creator Memory Insights.
+
+{creator_profile_context()}
+
+Review history summary:
+{json.dumps(review_summary, indent=2)}
+
+Stats:
+- Total saved reviews: {len(history)}
+- Average score: {avg_score}
+- Score trend, latest minus oldest available: {score_trend}
+
+Write helpful, practical insights for the creator.
+
+Format the answer with these sections:
+
+## 🧠 Creator Memory Insights
+
+### What you keep doing well
+Identify repeated strengths across reviews.
+
+### Patterns to fix
+Identify repeated problems, especially hooks, pacing, clarity, editing, thumbnails, titles, SEO, or retention.
+
+### Are you improving?
+Use the available score trend and feedback patterns. If there is not enough data, say that.
+
+### Your next focus
+Give 3 very specific things the creator should work on in the next video.
+
+### Suggested next experiment
+Suggest one small test they can try in their next upload.
+
+Keep it encouraging, specific, and not too long.
+"""
+
+    return ask_channel_coach(prompt)
+
+
+def render_creator_memory_snapshot():
+    history = load_video_review_history()
+
+    if not history:
+        return """
+        <div class="cc-upcoming-box">
+            <h3>🧠 Creator Memory</h3>
+            <p class="cc-empty">No memory yet. Analyze videos to start building creator insights.</p>
+        </div>
+        """
+
+    scores = [item.get("score") for item in history if item.get("score") is not None]
+    avg_score = round(sum(scores) / len(scores), 1) if scores else "N/A"
+
+    latest = history[0]
+    latest_type = html.escape(latest.get("video_type", "Video"))
+    latest_score = latest.get("score")
+    latest_score_label = f"{latest_score}/10" if latest_score is not None else "No score"
+
+    return f"""
+    <div class="cc-upcoming-box">
+        <h3>🧠 Creator Memory</h3>
+        <div class="cc-upcoming-item">
+            <div class="cc-upcoming-title">Saved reviews: {len(history)} · Average score: {avg_score}</div>
+            <div class="cc-upcoming-meta">Latest review: {latest_type} · {latest_score_label}</div>
+            <div class="cc-upcoming-meta">Generate insights to see repeated strengths, weak spots, and your next best focus.</div>
+        </div>
+    </div>
+    """
+
+
 def shorts_ideas(niche, topic):
     prompt = f"""
 Create 10 Shorts ideas.
@@ -2809,6 +2928,24 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
             outputs=[analyzer_output, review_history_output],
             show_progress="full"
         )
+
+
+        with gr.Accordion("🧠 Creator Memory Insights", open=False):
+            gr.Markdown(
+                """
+                Generate pattern-based insights from your saved video reviews. Channel Coach will look for repeated strengths, weak spots, score trends, and your next best focus.
+                """
+            )
+            creator_memory_snapshot = gr.HTML(value=render_creator_memory_snapshot())
+            creator_memory_button = gr.Button("✨ Generate Creator Insights")
+            creator_memory_output = gr.Textbox(label="Creator Memory Insights", lines=16)
+
+            creator_memory_button.click(
+                generate_creator_memory_insights,
+                inputs=[],
+                outputs=creator_memory_output,
+                show_progress="full"
+            )
 
 
         with gr.Accordion("🖼 Thumbnail Review", open=False):
