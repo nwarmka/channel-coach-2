@@ -935,16 +935,26 @@ def get_dashboard_stats():
 
 def render_needs_attention():
     """
-    Builds a smart dashboard checklist from the creator profile, calendar,
-    project workspace progress, and saved video review history.
+    Creator Health is a smarter dashboard summary.
+    It scores the workspace, hides unnecessary warnings, and recommends
+    the single best next action based on profile, calendar, projects,
+    video review history, and analytics snapshots.
     """
     profile = load_creator_profile()
     stats = get_dashboard_stats()
     items = load_content_calendar()
     history = load_video_review_history()
 
-    alerts = []
+    try:
+        analytics_entries = load_analytics_entries()
+    except Exception:
+        analytics_entries = []
 
+    today = date.today()
+
+    # -------------------------
+    # Profile health
+    # -------------------------
     important_profile_fields = [
         "channel_name",
         "creator_name",
@@ -953,45 +963,33 @@ def render_needs_attention():
         "content_style",
         "goals"
     ]
+
+    completed_profile_fields = [
+        field for field in important_profile_fields
+        if str(profile.get(field, "")).strip()
+    ]
+
     missing_profile_fields = [
         field.replace("_", " ").title()
         for field in important_profile_fields
         if not str(profile.get(field, "")).strip()
     ]
 
-    if missing_profile_fields:
-        shown_missing = ", ".join(missing_profile_fields[:3])
-        if len(missing_profile_fields) > 3:
-            shown_missing += "..."
-        alerts.append({
-            "level": "warning",
-            "icon": "👤",
-            "title": "Creator profile needs more detail",
-            "detail": f"Missing: {html.escape(shown_missing)}"
-        })
+    profile_complete = len(completed_profile_fields) >= 4
 
-    if stats.get("planned_this_week", 0) == 0:
-        alerts.append({
-            "level": "warning",
-            "icon": "📅",
-            "title": "No content scheduled this week",
-            "detail": "Add at least one video, Short, or post to your Content Calendar."
-        })
-
-    if stats.get("overdue", 0) > 0:
-        alerts.append({
-            "level": "danger",
-            "icon": "⏰",
-            "title": f"{stats.get('overdue')} overdue calendar item(s)",
-            "detail": "Update the status, move the date, or finish the project."
-        })
+    # -------------------------
+    # Calendar / project health
+    # -------------------------
+    planned_this_week = int(stats.get("planned_this_week", 0) or 0)
+    overdue_count = int(stats.get("overdue", 0) or 0)
 
     active_projects = []
     stalled_projects = []
 
-    for item in items:
-        item = normalize_project_item(item)
+    for raw_item in items:
+        item = normalize_project_item(raw_item)
         status = item.get("status", "Idea")
+
         if status == "Published":
             continue
 
@@ -999,94 +997,273 @@ def render_needs_attention():
         active_projects.append((item, progress))
 
         item_date = validate_calendar_date(item.get("publish_date", ""))
-        if item_date and item_date <= date.today() + timedelta(days=3) and progress < 80:
+        if item_date and item_date <= today + timedelta(days=3) and progress < 80:
             stalled_projects.append((item, progress, item_date))
 
-    if not active_projects:
-        alerts.append({
-            "level": "info",
-            "icon": "🎬",
-            "title": "No active projects yet",
-            "detail": "Create a calendar item and use the Project Workspace checklist to track progress."
-        })
-    elif stalled_projects:
-        item, progress, item_date = sorted(stalled_projects, key=lambda x: x[2])[0]
-        alerts.append({
-            "level": "warning",
-            "icon": "🛠️",
-            "title": "A project is close to its target date",
-            "detail": f"{html.escape(item.get('title', 'Untitled'))} is only {progress}% complete for {item_date.strftime('%b %d')}."
-        })
+    has_active_projects = len(active_projects) > 0
+    has_stalled_project = len(stalled_projects) > 0
 
-    if not history:
-        alerts.append({
-            "level": "info",
-            "icon": "🎥",
-            "title": "No video reviews saved yet",
-            "detail": "Analyze a long video or Short so Channel Coach can start tracking improvement."
-        })
-    elif len(history) < 3:
-        alerts.append({
-            "level": "info",
-            "icon": "🧠",
-            "title": "More reviews needed for stronger insights",
-            "detail": f"{len(history)} review(s) saved. Review at least 3 videos for better creator memory patterns."
-        })
-    else:
-        scores = [item.get("score") for item in history if item.get("score") is not None]
-        if scores:
-            avg_score = round(sum(scores) / len(scores), 1)
-            latest_score = history[0].get("score")
+    # -------------------------
+    # Review health
+    # -------------------------
+    review_count = len(history)
+    has_reviews = review_count > 0
+    enough_reviews_for_patterns = review_count >= 3
 
-            if latest_score is not None and latest_score < avg_score:
-                alerts.append({
-                    "level": "warning",
-                    "icon": "📉",
-                    "title": "Latest review scored below your average",
-                    "detail": f"Latest: {latest_score}/10 · Average: {avg_score}/10. Check the feedback for what slipped."
-                })
+    review_scores = [
+        item.get("score")
+        for item in history
+        if item.get("score") is not None
+    ]
 
+    avg_review_score = None
+    if review_scores:
+        avg_review_score = round(sum(review_scores) / len(review_scores), 1)
+
+    latest_review_score = None
+    if history:
+        latest_review_score = history[0].get("score")
+
+    recurring_feedback = ""
+    if history:
         combined_feedback = " ".join(
             str(item.get("feedback", "")).lower()
             for item in history[:8]
         )
 
         common_focuses = [
-            ("hook", "Hooks are showing up repeatedly", "Your reviews keep mentioning the hook. Focus on the first 10–15 seconds."),
-            ("pacing", "Pacing may need attention", "Your reviews mention pacing. Tighten slow sections and cut pauses."),
-            ("thumbnail", "Thumbnail feedback keeps appearing", "Thumbnail clarity may be a recurring improvement area."),
-            ("title", "Titles may need stronger packaging", "Your reviews mention titles. Make the promise clearer and more clickable."),
-            ("audio", "Audio may need a quick check", "Your reviews mention audio. Check voice/game balance before publishing.")
+            ("hook", "Hooks are showing up repeatedly", "Improve the first 10–15 seconds of your next video."),
+            ("pacing", "Pacing may need attention", "Tighten slow sections and cut dead air."),
+            ("thumbnail", "Thumbnail feedback keeps appearing", "Make the thumbnail clearer and easier to read."),
+            ("title", "Titles may need stronger packaging", "Make the title promise clearer and more clickable."),
+            ("audio", "Audio may need a quick check", "Check voice/game balance before publishing.")
         ]
 
         for keyword, title, detail in common_focuses:
             if combined_feedback.count(keyword) >= 2:
-                alerts.append({
-                    "level": "warning",
-                    "icon": "🎯",
-                    "title": title,
-                    "detail": detail
-                })
+                recurring_feedback = detail
                 break
 
-    if not alerts:
-        alerts.append({
-            "level": "success",
-            "icon": "✅",
-            "title": "Everything looks good",
-            "detail": "Your profile, schedule, projects, and review history are in good shape."
+    # -------------------------
+    # Analytics health
+    # -------------------------
+    has_analytics = len(analytics_entries) > 0
+    analytics_recent = False
+
+    if has_analytics:
+        latest_analytics_date = analytics_entries[0].get("date") or analytics_entries[0].get("created_at") or ""
+        try:
+            parsed_latest = datetime.fromisoformat(str(latest_analytics_date).replace("Z", "")).date()
+            analytics_recent = parsed_latest >= today - timedelta(days=14)
+        except Exception:
+            # If date parsing fails, still give credit for having an analytics snapshot.
+            analytics_recent = True
+
+    # -------------------------
+    # Build health rows
+    # -------------------------
+    rows = []
+
+    def add_row(level, icon, title, detail, points, action=""):
+        rows.append({
+            "level": level,
+            "icon": icon,
+            "title": title,
+            "detail": detail,
+            "points": points,
+            "action": action
         })
 
-    alerts = alerts[:5]
+    if profile_complete:
+        add_row(
+            "success",
+            "✅",
+            "Creator profile looks good",
+            f"{len(completed_profile_fields)}/{len(important_profile_fields)} key profile fields complete.",
+            20
+        )
+    else:
+        shown_missing = ", ".join(missing_profile_fields[:3])
+        if len(missing_profile_fields) > 3:
+            shown_missing += "..."
+        add_row(
+            "warning",
+            "👤",
+            "Creator profile needs more detail",
+            f"Missing: {html.escape(shown_missing)}",
+            max(0, int((len(completed_profile_fields) / len(important_profile_fields)) * 20)),
+            "Fill out your Creator Profile in Settings."
+        )
 
-    alert_html = ""
-    for alert in alerts:
-        level = html.escape(alert.get("level", "info"))
-        icon = html.escape(alert.get("icon", "•"))
-        title = html.escape(alert.get("title", "Needs attention"))
-        detail = html.escape(alert.get("detail", ""))
+    if planned_this_week > 0:
+        add_row(
+            "success",
+            "✅",
+            "Content is scheduled this week",
+            f"{planned_this_week} item(s) planned for this week.",
+            20
+        )
+    else:
+        add_row(
+            "warning",
+            "📅",
+            "No content scheduled this week",
+            "Add at least one video, Short, or post to your Content Calendar.",
+            0,
+            "Schedule one piece of content this week."
+        )
 
-        alert_html += f"""
+    if overdue_count > 0:
+        add_row(
+            "danger",
+            "⏰",
+            f"{overdue_count} overdue calendar item(s)",
+            "Update the status, move the date, or finish the project.",
+            0,
+            "Clean up overdue calendar items first."
+        )
+    elif has_active_projects:
+        add_row(
+            "success",
+            "✅",
+            "Active projects found",
+            f"{len(active_projects)} active project(s) in progress.",
+            15
+        )
+    else:
+        add_row(
+            "info",
+            "🎬",
+            "No active projects yet",
+            "Create a calendar item and use the Project Workspace checklist to track progress.",
+            0,
+            "Create your first active project."
+        )
+
+    if has_stalled_project:
+        item, progress, item_date = sorted(stalled_projects, key=lambda x: x[2])[0]
+        add_row(
+            "warning",
+            "🛠️",
+            "A project is close to its target date",
+            f"{html.escape(item.get('title', 'Untitled'))} is only {progress}% complete for {item_date.strftime('%b %d')}.",
+            0,
+            "Update that project checklist."
+        )
+
+    if enough_reviews_for_patterns:
+        review_detail = f"{review_count} review(s) saved"
+        if avg_review_score is not None:
+            review_detail += f" · Average score: {avg_review_score}/10"
+        add_row(
+            "success",
+            "✅",
+            "Video review history is building",
+            review_detail,
+            20
+        )
+    elif has_reviews:
+        add_row(
+            "info",
+            "🧠",
+            "More reviews needed for stronger insights",
+            f"{review_count} review(s) saved. Review at least 3 videos for better creator memory patterns.",
+            10,
+            "Review another video or Short."
+        )
+    else:
+        add_row(
+            "info",
+            "🎥",
+            "No video reviews saved yet",
+            "Analyze a long video or Short so Channel Coach can start tracking improvement.",
+            0,
+            "Analyze one video."
+        )
+
+    if recurring_feedback:
+        add_row(
+            "warning",
+            "🎯",
+            "Recurring feedback pattern found",
+            recurring_feedback,
+            0,
+            recurring_feedback
+        )
+
+    if has_analytics and analytics_recent:
+        add_row(
+            "success",
+            "✅",
+            "Analytics snapshot is recent",
+            "Your analytics tracker has a recent update.",
+            15
+        )
+    elif has_analytics:
+        add_row(
+            "warning",
+            "📊",
+            "Analytics snapshot may be stale",
+            "Add a fresh analytics snapshot so growth tracking stays useful.",
+            8,
+            "Update your analytics snapshot."
+        )
+    else:
+        add_row(
+            "info",
+            "📊",
+            "No analytics snapshot yet",
+            "Add views, subscribers, watch time, and CTR in the Analytics tab.",
+            0,
+            "Add your first analytics snapshot."
+        )
+
+    # -------------------------
+    # Score + next best action
+    # -------------------------
+    workspace_score = max(0, min(100, sum(row["points"] for row in rows)))
+
+    if overdue_count > 0:
+        next_action = "Clean up overdue calendar items first."
+    elif not profile_complete:
+        next_action = "Finish your Creator Profile so the AI tools personalize better."
+    elif planned_this_week == 0:
+        next_action = "Schedule one video or Short for this week."
+    elif not has_active_projects:
+        next_action = "Create one active project and start tracking its checklist."
+    elif not has_reviews:
+        next_action = "Analyze one video so Channel Coach can start learning your patterns."
+    elif not has_analytics:
+        next_action = "Add your first analytics snapshot."
+    elif recurring_feedback:
+        next_action = recurring_feedback
+    elif has_stalled_project:
+        next_action = "Update the project that is close to its target date."
+    else:
+        next_action = "Everything looks healthy. Keep your calendar and analytics updated."
+
+    if workspace_score >= 85:
+        health_label = "Strong"
+        health_icon = "🟢"
+    elif workspace_score >= 60:
+        health_label = "Good"
+        health_icon = "🟡"
+    else:
+        health_label = "Needs setup"
+        health_icon = "🔴"
+
+    # Show the most important rows first, but keep successful context too.
+    priority_order = {"danger": 0, "warning": 1, "info": 2, "success": 3}
+    rows = sorted(rows, key=lambda row: priority_order.get(row["level"], 4))[:6]
+
+    row_html = ""
+    for row in rows:
+        level = html.escape(row.get("level", "info"))
+        icon = html.escape(row.get("icon", "•"))
+        title = html.escape(row.get("title", "Creator Health"))
+        detail = html.escape(row.get("detail", ""))
+
+        row_html += f"""
         <div class="cc-attention-item cc-attention-{level}">
             <div class="cc-attention-icon">{icon}</div>
             <div>
@@ -1097,12 +1274,28 @@ def render_needs_attention():
         """
 
     return f"""
-    <div class="cc-needs-attention-card">
+    <div class="cc-needs-attention-card cc-creator-health-card">
         <div class="cc-needs-attention-header">
-            <h3>⚠️ Needs Attention</h3>
-            <span>{len(alerts)} item(s)</span>
+            <h3>{health_icon} Creator Health</h3>
+            <span>{workspace_score}% · {health_label}</span>
         </div>
-        {alert_html}
+
+        <div class="cc-health-score-row">
+            <div class="cc-health-score-text">
+                <strong>Workspace Score</strong>
+                <span>{workspace_score}%</span>
+            </div>
+            <div class="cc-health-score-bar">
+                <div class="cc-health-score-fill" style="width:{workspace_score}%"></div>
+            </div>
+        </div>
+
+        <div class="cc-next-action-box">
+            <div class="cc-small-label">Next best action</div>
+            <div>{html.escape(next_action)}</div>
+        </div>
+
+        {row_html}
     </div>
     """
 
@@ -2222,6 +2415,59 @@ textarea[aria-label*="Description"] {
 
 .cc-attention-success {
     border-color: rgba(34,197,94,.25) !important;
+}
+
+.cc-creator-health-card {
+    overflow: hidden !important;
+}
+
+.cc-health-score-row {
+    margin: 4px 0 14px 0 !important;
+    padding: 12px !important;
+    border-radius: 14px !important;
+    background: rgba(15,17,23,.38) !important;
+    border: 1px solid rgba(255,255,255,.08) !important;
+}
+
+.cc-health-score-text {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    gap: 12px !important;
+    margin-bottom: 8px !important;
+    color: var(--text) !important;
+}
+
+.cc-health-score-text span {
+    color: var(--accent2) !important;
+    font-weight: 900 !important;
+}
+
+.cc-health-score-bar {
+    height: 10px !important;
+    border-radius: 999px !important;
+    background: rgba(255,255,255,.08) !important;
+    overflow: hidden !important;
+}
+
+.cc-health-score-fill {
+    height: 100% !important;
+    border-radius: 999px !important;
+    background: linear-gradient(90deg, var(--accent), var(--accent2)) !important;
+}
+
+.cc-next-action-box {
+    padding: 13px !important;
+    margin: 0 0 12px 0 !important;
+    border-radius: 14px !important;
+    background: linear-gradient(135deg, rgba(139,92,246,.18), rgba(34,211,238,.10)) !important;
+    border: 1px solid rgba(34,211,238,.18) !important;
+    color: var(--text) !important;
+    font-weight: 800 !important;
+}
+
+.cc-next-action-box .cc-small-label {
+    margin-bottom: 4px !important;
 }
 """
 
