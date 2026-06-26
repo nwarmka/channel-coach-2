@@ -44,6 +44,11 @@ CHANNEL_COACH_LOGO_BASE64 = """iVBORw0KGgoAAAANSUhEUgAAAYIAAAFdCAYAAAAOkmpzAAEAA
 
 PROFILE_FILE = os.getenv("CREATOR_PROFILE_FILE", "creator_profile.json")
 
+VIDEO_REVIEW_HISTORY_FILE = os.getenv(
+    "VIDEO_REVIEW_HISTORY_FILE",
+    "video_review_history.json"
+)
+
 DEFAULT_PROFILE = {
     "channel_name": "",
     "creator_name": "",
@@ -2159,6 +2164,151 @@ def video_analyzer(video_file, notes, content_type):
     return analyze_video_with_frames(video_file, notes, content_type)
 
 
+# =========================
+# VIDEO REVIEW HISTORY
+# =========================
+
+def load_video_review_history():
+    try:
+        if os.path.exists(VIDEO_REVIEW_HISTORY_FILE):
+            with open(VIDEO_REVIEW_HISTORY_FILE, "r", encoding="utf-8") as f:
+                history = json.load(f)
+
+            if isinstance(history, list):
+                return history
+
+    except Exception:
+        return []
+
+    return []
+
+
+def save_video_review_history(history):
+    history_dir = os.path.dirname(VIDEO_REVIEW_HISTORY_FILE)
+
+    if history_dir:
+        os.makedirs(history_dir, exist_ok=True)
+
+    with open(VIDEO_REVIEW_HISTORY_FILE, "w", encoding="utf-8") as f:
+        json.dump(history, f, indent=4)
+
+
+def extract_score_from_feedback(feedback):
+    """
+    Looks for common score formats like:
+    - 8/10
+    - Score: 7.5 out of 10
+    """
+    import re
+
+    if not feedback:
+        return None
+
+    patterns = [
+        r"(\d+(?:\.\d+)?)\s*/\s*10",
+        r"score\s*[:\-]?\s*(\d+(?:\.\d+)?)",
+        r"(\d+(?:\.\d+)?)\s*out of\s*10"
+    ]
+
+    for pattern in patterns:
+        match = re.search(pattern, feedback, re.IGNORECASE)
+        if match:
+            try:
+                score = float(match.group(1))
+                if 0 <= score <= 10:
+                    return score
+            except Exception:
+                pass
+
+    return None
+
+
+def save_video_review_record(video_type, notes, feedback):
+    history = load_video_review_history()
+
+    record = {
+        "id": str(uuid.uuid4()),
+        "reviewed_at": datetime.now().isoformat(),
+        "video_type": video_type,
+        "notes": notes or "",
+        "feedback": feedback or "",
+        "score": extract_score_from_feedback(feedback)
+    }
+
+    history.insert(0, record)
+
+    # Keep the history from growing forever.
+    history = history[:50]
+
+    save_video_review_history(history)
+    return record
+
+
+def render_video_review_history(limit=10):
+    history = load_video_review_history()
+
+    if not history:
+        return """
+        <div class="cc-upcoming-box">
+            <h3>📚 Video Review History</h3>
+            <p class="cc-empty">No reviews saved yet. Analyze a video first.</p>
+        </div>
+        """
+
+    scores = [item.get("score") for item in history if item.get("score") is not None]
+    avg_score = round(sum(scores) / len(scores), 1) if scores else "N/A"
+
+    html_output = f"""
+    <div class="cc-upcoming-box">
+        <h3>📚 Video Review History</h3>
+        <p class="cc-empty">Saved reviews: {len(history)} · Average score: {avg_score}</p>
+    """
+
+    for item in history[:limit]:
+        reviewed_at = item.get("reviewed_at", "")
+
+        try:
+            reviewed_label = datetime.fromisoformat(reviewed_at).strftime("%b %d, %Y")
+        except Exception:
+            reviewed_label = "Unknown date"
+
+        score = item.get("score")
+        score_label = f"{score}/10" if score is not None else "No score"
+
+        notes = html.escape((item.get("notes") or "No notes")[:160])
+        video_type = html.escape(item.get("video_type", "Video"))
+        feedback_preview = html.escape((item.get("feedback") or "")[:220])
+
+        html_output += f"""
+        <div class="cc-upcoming-item">
+            <div class="cc-upcoming-date">{reviewed_label}</div>
+            <div class="cc-upcoming-title">🎥 {video_type} · {score_label}</div>
+            <div class="cc-upcoming-meta"><strong>Notes:</strong> {notes}</div>
+            <div class="cc-upcoming-meta"><strong>Feedback:</strong> {feedback_preview}...</div>
+        </div>
+        """
+
+    html_output += "</div>"
+    return html_output
+
+
+def video_analyzer_with_history(video_file, notes, content_type):
+    feedback = video_analyzer(video_file, notes, content_type)
+
+    error_starts = (
+        "Please upload",
+        "I could not",
+        "Could not",
+        "Error",
+        "❌"
+    )
+
+    if feedback and not str(feedback).startswith(error_starts):
+        save_video_review_record(content_type, notes, feedback)
+
+    return feedback, render_video_review_history()
+
+
 def shorts_ideas(niche, topic):
     prompt = f"""
 Create 10 Shorts ideas.
@@ -2642,12 +2792,23 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
             analyzer_button = gr.Button("🎥 Analyze Video")
             analyzer_output = gr.Textbox(label="Video Feedback", lines=18)
 
-            analyzer_button.click(
-                video_analyzer,
-                inputs=[analyzer_upload, analyzer_notes, analyzer_type],
-                outputs=analyzer_output,
-                show_progress="full"
+
+        with gr.Accordion("📚 Review History", open=False):
+            review_history_output = gr.HTML(value=render_video_review_history())
+            review_history_refresh = gr.Button("🔄 Refresh Review History")
+
+            review_history_refresh.click(
+                render_video_review_history,
+                inputs=[],
+                outputs=review_history_output
             )
+
+        analyzer_button.click(
+            video_analyzer_with_history,
+            inputs=[analyzer_upload, analyzer_notes, analyzer_type],
+            outputs=[analyzer_output, review_history_output],
+            show_progress="full"
+        )
 
 
         with gr.Accordion("🖼 Thumbnail Review", open=False):
