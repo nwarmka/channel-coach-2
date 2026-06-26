@@ -1597,6 +1597,42 @@ textarea[aria-label*="Description"] {
 }
 
 
+/* Logo Header */
+#channel-coach-header {
+    display: flex !important;
+    align-items: center !important;
+    gap: 22px !important;
+}
+
+.cc-header-logo {
+    max-width: 300px !important;
+    width: 100% !important;
+    height: auto !important;
+    display: block !important;
+}
+
+.cc-header-text {
+    flex: 1 !important;
+}
+
+#channel-coach-header p {
+    font-size: 1.05rem !important;
+    color: var(--muted) !important;
+    margin: 0 !important;
+}
+
+@media (max-width: 768px) {
+    #channel-coach-header {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 10px !important;
+    }
+
+    .cc-header-logo {
+        max-width: 230px !important;
+    }
+}
+
 """
 
 # =========================
@@ -1865,12 +1901,19 @@ Give:
 
 with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
 
-    gr.Markdown(
+    gr.HTML(
         """
-        # 🎬 Channel Coach
-        AI creator tools for titles, SEO, thumbnails, Shorts, and video reviews.
-        """,
-        elem_id="channel-coach-header"
+        <div id="channel-coach-header">
+            <img
+                src="/static/channel-coach-logo.png"
+                alt="Channel Coach Logo"
+                class="cc-header-logo"
+            >
+            <div class="cc-header-text">
+                <p>AI creator tools for planning, videos, thumbnails, SEO, and content ideas.</p>
+            </div>
+        </div>
+        """
     )
 
     saved_profile = load_creator_profile()
