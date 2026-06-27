@@ -4,3 +4,4 @@ python-dotenv
 opencv-python-headless
 requests
 fastapi
+supabase
