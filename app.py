@@ -695,7 +695,7 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
 
         analyzer_button.click(
             video_analyzer_with_history,
-            inputs=[analyzer_upload, analyzer_notes, analyzer_type, workspace_name],
+            inputs=[analyzer_upload, analyzer_notes, analyzer_type],
             outputs=[analyzer_output, review_history_output],
             show_progress="full"
         )
@@ -707,13 +707,13 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
                 Generate pattern-based insights from your saved video reviews. Channel Coach will look for repeated strengths, weak spots, score trends, and your next best focus.
                 """
             )
-            creator_memory_snapshot = gr.HTML(value=render_creator_memory_snapshot("main"))
+            creator_memory_snapshot = gr.HTML(value=render_creator_memory_snapshot())
             creator_memory_button = gr.Button("✨ Generate Creator Insights")
             creator_memory_output = gr.Textbox(label="Creator Memory Insights", lines=16)
 
             creator_memory_button.click(
                 generate_creator_memory_insights,
-                inputs=[workspace_name],
+                inputs=[],
                 outputs=creator_memory_output,
                 show_progress="full"
             )
