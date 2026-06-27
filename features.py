@@ -769,10 +769,10 @@ def render_content_calendar(month=None, year=None, status_filter="All", type_fil
 
     next_project = None
     next_project_date = None
-    if today_items:
-        next_project_date, next_project = today_items[0]
-    elif overdue_items:
+    if overdue_items:
         next_project_date, next_project = sorted(overdue_items, key=lambda x: x[0])[0]
+    elif today_items:
+        next_project_date, next_project = today_items[0]
     elif week_items:
         next_project_date, next_project = week_items[0]
     elif upcoming_items:
@@ -830,9 +830,24 @@ def render_content_calendar(month=None, year=None, status_filter="All", type_fil
         </div>
         """
 
+    quick_actions_html = """
+        <div class="cc-quick-actions cc-card-panel">
+            <div class="cc-planner-section-head">
+                <h3>⚡ Quick Actions</h3>
+                <p>Jump into the most common creator tasks.</p>
+            </div>
+            <div class="cc-action-grid">
+                <div class="cc-action-card">➕<span>New Project</span></div>
+                <div class="cc-action-card">💡<span>Save Idea</span></div>
+                <div class="cc-action-card">📅<span>Plan Week</span></div>
+                <div class="cc-action-card">📈<span>Check Progress</span></div>
+            </div>
+        </div>
+    """
+
     html_output = f"""
-    <div class="cc-planner-wrap cc-card-dashboard">
-        <div class="cc-dashboard-hero cc-card-hero">
+    <div class="cc-planner-wrap cc-card-dashboard cc-balanced-dashboard">
+        <div class="cc-dashboard-hero cc-card-hero cc-balanced-hero">
             <div>
                 <div class="cc-small-label">Creator Dashboard</div>
                 <h2>What would you like to work on today?</h2>
@@ -840,24 +855,26 @@ def render_content_calendar(month=None, year=None, status_filter="All", type_fil
             </div>
         </div>
 
-        <div class="cc-focus-grid">
-            <div class="cc-focus-card cc-card-panel">
-                <div class="cc-planner-section-head">
+        <div class="cc-next-project-wide cc-card-panel">
+            <div class="cc-planner-section-head cc-wide-head">
+                <div>
                     <h3>🎯 Next Project</h3>
                     <p>The first thing to focus on right now.</p>
                 </div>
-                {next_project_html}
             </div>
-
-            <div class="cc-stats-card-grid">
-                <div class="cc-stat-card cc-stat-soft"><div class="cc-stat-icon">📌</div><div class="cc-stat-number">{len(active_projects)}</div><div class="cc-stat-label">Active</div></div>
-                <div class="cc-stat-card cc-stat-soft"><div class="cc-stat-icon">📅</div><div class="cc-stat-number">{len(today_items) + len(week_items)}</div><div class="cc-stat-label">Due Soon</div></div>
-                <div class="cc-stat-card cc-stat-soft"><div class="cc-stat-icon">⚠️</div><div class="cc-stat-number">{len(overdue_items)}</div><div class="cc-stat-label">Overdue</div></div>
-                <div class="cc-stat-card cc-stat-soft"><div class="cc-stat-icon">✅</div><div class="cc-stat-number">{published_count}</div><div class="cc-stat-label">Done</div></div>
-            </div>
+            {next_project_html}
         </div>
 
-        <div class="cc-planner-layout cc-card-layout">
+        <div class="cc-balanced-stats-row">
+            <div class="cc-stat-card cc-stat-soft"><div class="cc-stat-icon">📌</div><div class="cc-stat-number">{len(active_projects)}</div><div class="cc-stat-label">Active</div></div>
+            <div class="cc-stat-card cc-stat-soft"><div class="cc-stat-icon">📅</div><div class="cc-stat-number">{len(today_items) + len(week_items)}</div><div class="cc-stat-label">Due Soon</div></div>
+            <div class="cc-stat-card cc-stat-soft"><div class="cc-stat-icon">⚠️</div><div class="cc-stat-number">{len(overdue_items)}</div><div class="cc-stat-label">Overdue</div></div>
+            <div class="cc-stat-card cc-stat-soft"><div class="cc-stat-icon">✅</div><div class="cc-stat-number">{published_count}</div><div class="cc-stat-label">Done</div></div>
+        </div>
+
+        {quick_actions_html}
+
+        <div class="cc-balanced-main-grid">
             <div>
                 {render_card_section("📅 This Week", "Projects due in the next 7 days.", today_items + week_items, "Nothing due this week. Pick one project to move forward.")}
                 {render_card_section("🚀 Upcoming Projects", "Scheduled projects after this week.", upcoming_items, "No later scheduled projects yet.", limit=6)}
@@ -880,7 +897,6 @@ def render_content_calendar(month=None, year=None, status_filter="All", type_fil
     """
 
     return html_output
-
 
 def render_upcoming_content(limit=6):
     today = date.today()
@@ -2137,6 +2153,90 @@ label, .block-label {
     .cc-dashboard-grid { grid-template-columns: 1fr; }
     .cc-card-hero h2,
     .cc-planner-hero h2 { font-size: 1.55rem; }
+}
+
+
+/* Balanced Creator Dashboard layout polish */
+.cc-balanced-dashboard {
+    max-width: 1180px;
+    margin: 0 auto;
+}
+.cc-balanced-hero {
+    margin-bottom: 14px;
+}
+.cc-next-project-wide {
+    margin-bottom: 14px;
+    padding: 18px;
+}
+.cc-next-project-wide .cc-planner-project-card {
+    margin-bottom: 0;
+    min-height: 86px;
+}
+.cc-wide-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 14px;
+}
+.cc-balanced-stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+    margin-bottom: 14px;
+}
+.cc-balanced-stats-row .cc-stat-card {
+    min-height: 118px;
+}
+.cc-quick-actions {
+    margin-bottom: 14px;
+}
+.cc-action-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+}
+.cc-action-card {
+    min-height: 72px;
+    border-radius: 16px;
+    border: 1px solid rgba(255,255,255,.12);
+    background: rgba(255,255,255,.07);
+    color: var(--text);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-size: 1.35rem;
+    font-weight: 950;
+    text-align: center;
+    transition: transform .15s ease, background .15s ease;
+}
+.cc-action-card span {
+    font-size: .82rem;
+    color: var(--muted);
+}
+.cc-action-card:hover {
+    transform: translateY(-1px);
+    background: rgba(255,255,255,.105);
+}
+.cc-balanced-main-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(330px, .85fr);
+    gap: 14px;
+    align-items: start;
+}
+@media (max-width: 900px) {
+    .cc-balanced-stats-row,
+    .cc-action-grid,
+    .cc-balanced-main-grid {
+        grid-template-columns: 1fr;
+    }
+}
+@media (min-width: 901px) and (max-width: 1100px) {
+    .cc-balanced-stats-row,
+    .cc-action-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
 }
 
 
