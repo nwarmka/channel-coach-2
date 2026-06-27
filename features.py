@@ -3376,4 +3376,21 @@ def render_getting_started_checklist():
         '''
 
     if completed == total:
-        next_step = "🎉 Setup complete. Your tester ha
+       next_step = "🎉 Setup complete. Your tester has everything they need."
+    else:
+        next_open = next((label for label, done, _ in checklist if not done), "Keep testing")
+        next_step = f"Next step: {html.escape(next_open)}"
+
+    return f'''
+    <div class="cc-upcoming-box">
+        <h3>🚀 Getting Started</h3>
+        <p class="cc-empty">Getting Started: {completed}/{total} complete · {percent}%</p>
+        <div style="height:10px;background:rgba(255,255,255,.10);border-radius:999px;overflow:hidden;margin:10px 0 16px 0;">
+            <div style="height:10px;width:{percent}%;background:linear-gradient(90deg,#22d3ee,#8b5cf6);border-radius:999px;"></div>
+        </div>
+        <p class="cc-empty">{next_step}</p>
+        {items_html}
+    </div>
+    '''
+
+
