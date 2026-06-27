@@ -14,6 +14,10 @@ from database import (
     load_creator_profile_record,
     save_creator_profile_record,
     supabase_is_ready,
+    add_calendar_item as db_add_calendar_item,
+    get_calendar_items as db_get_calendar_items,
+    update_calendar_item as db_update_calendar_item,
+    delete_calendar_item as db_delete_calendar_item,
 )
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -487,6 +491,36 @@ def project_review(selected_item_id, project_notes, description_draft, thumbnail
 
 
 def load_content_calendar():
+    """Load calendar items from Supabase first, then local JSON as fallback."""
+    if supabase_is_ready():
+        try:
+            records = db_get_calendar_items()
+            items = []
+            for record in records:
+                item = dict(record)
+
+                # Channel Coach used to call this field game_topic.
+                # Supabase stores it in the tags column for now.
+                item["game_topic"] = item.get("game_topic") or item.get("tags") or ""
+
+                # Keep older project-workspace code from breaking.
+                item.setdefault("notes", "")
+                item.setdefault("content_type", "Long Video")
+                item.setdefault("status", "Idea")
+                item.setdefault("publish_date", "")
+                item.setdefault("project_notes", item.get("notes", ""))
+                item.setdefault("checklist", PROJECT_CHECKLIST_TEMPLATE.copy())
+                item.setdefault("description_draft", "")
+                item.setdefault("thumbnail_notes", "")
+                item.setdefault("shorts_ideas_draft", "")
+                item.setdefault("workspace_history", [])
+
+                items.append(item)
+
+            return items
+        except Exception:
+            pass
+
     try:
         if os.path.exists(CONTENT_CALENDAR_FILE):
             with open(CONTENT_CALENDAR_FILE, "r", encoding="utf-8") as f:
@@ -499,15 +533,17 @@ def load_content_calendar():
 
     return []
 
-
 def save_content_calendar(items):
+    """
+    Local fallback save only.
+    Calendar add/edit/delete now uses Supabase directly through database.py.
+    """
     calendar_dir = os.path.dirname(CONTENT_CALENDAR_FILE)
     if calendar_dir:
         os.makedirs(calendar_dir, exist_ok=True)
 
     with open(CONTENT_CALENDAR_FILE, "w", encoding="utf-8") as f:
         json.dump(items, f, indent=4)
-
 
 def validate_calendar_date(date_text):
     try:
@@ -543,31 +579,25 @@ def add_content_item(title, content_type, game_topic, status, publish_date, note
             "❌ Please enter the date like this: YYYY-MM-DD"
         )
 
-    items = load_content_calendar()
-    items.append({
-        "id": str(uuid.uuid4()),
-        "title": title.strip(),
-        "content_type": content_type,
-        "game_topic": (game_topic or "").strip(),
-        "status": status,
-        "publish_date": parsed_date.isoformat(),
-        "notes": (notes or "").strip(),
-        "project_notes": (notes or "").strip(),
-        "checklist": PROJECT_CHECKLIST_TEMPLATE.copy(),
-        "description_draft": "",
-        "thumbnail_notes": "",
-        "shorts_ideas_draft": "",
-        "workspace_history": [],
-        "created_at": datetime.now().isoformat()
-    })
-
-    save_content_calendar(items)
+    # Save to Supabase.
+    message = db_add_calendar_item(
+        title=(title or "Untitled").strip(),
+        platform="YouTube",
+        content_type=content_type,
+        status=status,
+        publish_date=parsed_date.isoformat(),
+        publish_time="",
+        priority="Medium",
+        notes=(notes or "").strip(),
+        tags=(game_topic or "").strip(),
+        user_id="main"
+    )
 
     return (
         render_content_calendar(month, year, status_filter, type_filter),
         render_upcoming_content(),
         gr.update(choices=get_calendar_choices()),
-        "✅ Added to your content calendar!"
+        message
     )
 
 def render_content_calendar(month=None, year=None, status_filter="All", type_filter="All"):
@@ -803,29 +833,18 @@ def update_content_item(selected_item_id, title, content_type, game_topic, statu
             "❌ Please enter the date like this: YYYY-MM-DD"
         )
 
-    items = load_content_calendar()
-    updated = False
-
-    for item in items:
-        if item.get("id") == selected_item_id:
-            item.update({
-                "title": (title or "Untitled").strip(),
-                "content_type": content_type,
-                "game_topic": (game_topic or "").strip(),
-                "status": status,
-                "publish_date": parsed_date.isoformat(),
-                "notes": (notes or "").strip(),
-                "updated_at": datetime.now().isoformat()
-            })
-            updated = True
-            break
-
-    save_content_calendar(items)
-
-    if updated:
-        message = "✅ Calendar item updated."
-    else:
-        message = "❌ Could not find that calendar item."
+    message = db_update_calendar_item(
+        item_id=selected_item_id,
+        title=(title or "Untitled").strip(),
+        platform="YouTube",
+        content_type=content_type,
+        status=status,
+        publish_date=parsed_date.isoformat(),
+        publish_time="",
+        priority="Medium",
+        notes=(notes or "").strip(),
+        tags=(game_topic or "").strip()
+    )
 
     return (
         render_content_calendar(month, year, status_filter, type_filter),
@@ -833,7 +852,6 @@ def update_content_item(selected_item_id, title, content_type, game_topic, statu
         gr.update(choices=get_calendar_choices(), value=selected_item_id),
         message
     )
-
 
 def delete_content_item(selected_item_id, month, year, status_filter, type_filter):
     if not selected_item_id:
@@ -844,23 +862,14 @@ def delete_content_item(selected_item_id, month, year, status_filter, type_filte
             "❌ Choose an item to delete first."
         )
 
-    items = load_content_calendar()
-    new_items = [item for item in items if item.get("id") != selected_item_id]
-    save_content_calendar(new_items)
+    message = db_delete_calendar_item(selected_item_id)
 
     return (
         render_content_calendar(month, year, status_filter, type_filter),
         render_upcoming_content(),
         gr.update(choices=get_calendar_choices(), value=None),
-        "🗑️ Calendar item deleted."
+        message
     )
-
-
-
-
-# =========================
-# CREATOR DASHBOARD
-# =========================
 
 def get_dashboard_stats():
     items = load_content_calendar()
@@ -3367,21 +3376,4 @@ def render_getting_started_checklist():
         '''
 
     if completed == total:
-        next_step = "🎉 Setup complete. Your tester has tried the core Channel Coach workflow."
-    else:
-        next_open = next((label for label, done, _ in checklist if not done), "Keep testing")
-        next_step = f"Next step: {html.escape(next_open)}"
-
-    return f'''
-    <div class="cc-upcoming-box">
-        <h3>🚀 Getting Started</h3>
-        <p class="cc-empty">Getting Started: {completed}/{total} complete · {percent}%</p>
-        <div style="height:10px;background:rgba(255,255,255,.10);border-radius:999px;overflow:hidden;margin:10px 0 16px 0;">
-            <div style="height:10px;width:{percent}%;background:linear-gradient(90deg,#22d3ee,#8b5cf6);border-radius:999px;"></div>
-        </div>
-        <p class="cc-empty">{next_step}</p>
-        {items_html}
-    </div>
-    '''
-
-
+        next_step = "🎉 Setup complete. Your tester ha
