@@ -68,7 +68,7 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
             f"Current workspace: **{safe_workspace}**",
             render_creator_dashboard(safe_workspace),
             render_content_calendar(user_id=safe_workspace),
-            render_upcoming_content(safe_workspace),
+            render_upcoming_content(user_id=safe_workspace),
             gr.update(choices=get_calendar_choices(safe_workspace)),
             gr.update(choices=get_calendar_choices(safe_workspace)),
             gr.update(choices=get_calendar_choices(safe_workspace)),
@@ -133,7 +133,7 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
                 cc_calendar_add_button = gr.Button("➕ Add to Calendar")
                 cc_calendar_message = gr.Textbox(label="Calendar Status", lines=2)
 
-                cc_upcoming_output = gr.HTML(value=render_upcoming_content("main"))
+                cc_upcoming_output = gr.HTML(value=render_upcoming_content(user_id="main"))
 
                 cc_plan_week_button = gr.Button("✨ Plan My Week")
                 cc_plan_week_output = gr.Textbox(label="AI Weekly Plan", lines=12)
@@ -329,7 +329,7 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
                     calendar_add_button = gr.Button("➕ Add to Calendar")
                     calendar_message = gr.Textbox(label="Calendar Status", lines=2)
 
-                    upcoming_output = gr.HTML(value=render_upcoming_content("main"))
+                    upcoming_output = gr.HTML(value=render_upcoming_content(user_id="main"))
 
                     plan_week_button = gr.Button("✨ Plan My Week")
                     plan_week_output = gr.Textbox(label="AI Weekly Plan", lines=12)
