@@ -600,7 +600,68 @@ def add_content_item(title, content_type, game_topic, status, publish_date, note
         message
     )
 
-def render_content_calendar(month=None, year=None, status_filter="All", type_filter="All"):
+def _calendar_type_emoji(content_type):
+    return {
+        "Long Video": "🎮",
+        "Short": "📱",
+        "Livestream": "🔴",
+        "Community Post": "💬"
+    }.get(content_type, "🎬")
+
+
+def _calendar_status_class(status):
+    return {
+        "Idea": "status-idea",
+        "Script": "status-script",
+        "Recording": "status-recording",
+        "Editing": "status-editing",
+        "Thumbnail": "status-thumbnail",
+        "Scheduled": "status-scheduled",
+        "Published": "status-published"
+    }.get(status, "status-idea")
+
+
+def _friendly_date_label(item_date, today=None):
+    today = today or date.today()
+    if item_date == today:
+        return "Today"
+    if item_date == today + timedelta(days=1):
+        return "Tomorrow"
+    if item_date == today - timedelta(days=1):
+        return "Yesterday"
+    return item_date.strftime("%a, %b %d")
+
+
+def _planner_project_card(item, item_date=None, compact=False):
+    item = normalize_project_item(item)
+    content_type = item.get("content_type", "Long Video")
+    status = item.get("status", "Idea")
+    progress = calculate_item_progress(item)
+    emoji = _calendar_type_emoji(content_type)
+    css_class = _calendar_status_class(status)
+
+    title = html.escape(item.get("title", "Untitled"))
+    game_topic = html.escape(item.get("game_topic", ""))
+    notes = html.escape(item.get("notes", ""))
+    date_label = html.escape(_friendly_date_label(item_date)) if item_date else "No date"
+    compact_class = " cc-planner-card-compact" if compact else ""
+
+    return f'''
+    <div class="cc-planner-project-card {css_class}{compact_class}" title="{notes}">
+        <div class="cc-planner-card-top">
+            <div class="cc-planner-title">{emoji} {title}</div>
+            <div class="cc-planner-pill">{progress}%</div>
+        </div>
+        <div class="cc-planner-meta">{html.escape(status)} · {html.escape(content_type)} · {date_label}</div>
+        <div class="cc-planner-topic">{game_topic}</div>
+        <div class="cc-progress-wrap">
+            <div class="cc-progress-fill" style="width:{progress}%"></div>
+        </div>
+    </div>
+    '''
+
+
+def render_monthly_schedule_view(month=None, year=None, status_filter="All", type_filter="All"):
     today = date.today()
 
     try:
@@ -621,75 +682,171 @@ def render_content_calendar(month=None, year=None, status_filter="All", type_fil
     cal = calendar.Calendar(firstweekday=6)
     weeks = cal.monthdatescalendar(year, month)
 
-    type_emoji = {
-        "Long Video": "🎮",
-        "Short": "📱",
-        "Livestream": "🔴",
-        "Community Post": "💬"
-    }
-
-    status_class = {
-        "Idea": "status-idea",
-        "Script": "status-script",
-        "Recording": "status-recording",
-        "Editing": "status-editing",
-        "Thumbnail": "status-thumbnail",
-        "Scheduled": "status-scheduled",
-        "Published": "status-published"
-    }
-
-    html_output = f"""
-    <div class="cc-calendar-wrap">
-        <h2>{html.escape(calendar.month_name[month])} {year}</h2>
-        <div class="cc-calendar-grid cc-calendar-header">
-    """
+    html_output = f'''
+    <details class="cc-monthly-details">
+        <summary>📅 Monthly Schedule View — {html.escape(calendar.month_name[month])} {year}</summary>
+        <div class="cc-calendar-wrap">
+            <div class="cc-calendar-grid cc-calendar-header">
+    '''
 
     for day_name in ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]:
         html_output += f'<div class="cc-day-name">{day_name}</div>'
 
-    html_output += "</div><div class=\"cc-calendar-grid\">"
+    html_output += '</div><div class="cc-calendar-grid">'
 
     for week in weeks:
         for day in week:
             muted = " cc-muted" if day.month != month else ""
             today_class = " cc-today" if day == today else ""
-
-            html_output += f"""
-            <div class="cc-calendar-day{muted}{today_class}">
-                <div class="cc-day-number">{day.day}</div>
-            """
-
             day_items = [item for item in items if item.get("publish_date") == day.isoformat()]
 
-            for item in day_items:
+            html_output += f'''
+            <div class="cc-calendar-day{muted}{today_class}">
+                <div class="cc-day-number">{day.day}</div>
+            '''
+
+            for item in day_items[:3]:
                 content_type = item.get("content_type", "Long Video")
                 status = item.get("status", "Idea")
-                emoji = type_emoji.get(content_type, "🎬")
-                css_class = status_class.get(status, "status-idea")
-                progress = calculate_item_progress(item)
-
+                emoji = _calendar_type_emoji(content_type)
+                css_class = _calendar_status_class(status)
                 title = html.escape(item.get("title", "Untitled"))
-                game_topic = html.escape(item.get("game_topic", ""))
-                notes = html.escape(item.get("notes", ""))
 
-                html_output += f"""
-                <div class="cc-content-card {css_class}" title="{notes}">
-                    <div class="cc-card-title">{emoji} {title}</div>
-                    <div class="cc-card-meta">{html.escape(status)} · {html.escape(content_type)}</div>
-                    <div class="cc-card-topic">{game_topic}</div>
-                    <div class="cc-progress-wrap">
-                        <div class="cc-progress-fill" style="width:{progress}%"></div>
-                    </div>
-                    <div class="cc-progress-label">{progress}% complete</div>
-                </div>
-                """
+                html_output += f'''
+                <div class="cc-content-chip {css_class}">{emoji} {title}</div>
+                '''
 
-            html_output += "</div>"
+            if len(day_items) > 3:
+                html_output += f'<div class="cc-more-chip">+{len(day_items) - 3} more</div>'
 
-    html_output += """
+            html_output += '</div>'
+
+    html_output += '''
+            </div>
         </div>
+    </details>
+    '''
+
+    return html_output
+
+
+def render_content_calendar(month=None, year=None, status_filter="All", type_filter="All"):
+    today = date.today()
+    items = load_content_calendar()
+
+    if status_filter != "All":
+        items = [item for item in items if item.get("status") == status_filter]
+
+    if type_filter != "All":
+        items = [item for item in items if item.get("content_type") == type_filter]
+
+    dated_items = []
+    undated_items = []
+
+    for item in items:
+        parsed_date = validate_calendar_date(item.get("publish_date", ""))
+        if parsed_date:
+            dated_items.append((parsed_date, item))
+        else:
+            undated_items.append(item)
+
+    active_dated = [(item_date, item) for item_date, item in dated_items if item.get("status") != "Published"]
+    active_dated.sort(key=lambda x: x[0])
+
+    today_items = [(item_date, item) for item_date, item in active_dated if item_date == today]
+    week_items = [(item_date, item) for item_date, item in active_dated if today < item_date <= today + timedelta(days=7)]
+    overdue_items = [(item_date, item) for item_date, item in active_dated if item_date < today]
+    upcoming_items = [(item_date, item) for item_date, item in active_dated if item_date > today + timedelta(days=7)]
+    published_count = sum(1 for _, item in dated_items if item.get("status") == "Published") + sum(1 for item in undated_items if item.get("status") == "Published")
+
+    active_projects = [item for _, item in active_dated] + [item for item in undated_items if item.get("status") != "Published"]
+    avg_progress = int(round(sum(calculate_item_progress(item) for item in active_projects) / len(active_projects))) if active_projects else 0
+
+    def render_section(title, subtitle, section_items, empty_text, limit=8):
+        cards = ""
+        for item_date, item in section_items[:limit]:
+            cards += _planner_project_card(item, item_date=item_date)
+
+        if len(section_items) > limit:
+            cards += f'<p class="cc-empty">+{len(section_items) - limit} more items. Use the monthly view below to see everything.</p>'
+
+        if not cards:
+            cards = f'<p class="cc-empty">{html.escape(empty_text)}</p>'
+
+        return f'''
+        <div class="cc-planner-section">
+            <div class="cc-planner-section-head">
+                <h3>{title}</h3>
+                <p>{subtitle}</p>
+            </div>
+            {cards}
+        </div>
+        '''
+
+    undated_cards = ""
+    for item in [item for item in undated_items if item.get("status") != "Published"][:6]:
+        undated_cards += _planner_project_card(item, item_date=None, compact=True)
+
+    undated_section = ""
+    if undated_cards:
+        undated_section = f'''
+        <div class="cc-planner-section">
+            <div class="cc-planner-section-head">
+                <h3>🧠 Ideas Without Dates</h3>
+                <p>These are saved, but not scheduled yet.</p>
+            </div>
+            {undated_cards}
+        </div>
+        '''
+
+    focus_text = "Add one project for today so your next step is obvious."
+    if today_items:
+        first = today_items[0][1]
+        focus_text = f"Start with: {html.escape(first.get('title', 'Untitled'))}"
+    elif overdue_items:
+        first = sorted(overdue_items, key=lambda x: x[0])[0][1]
+        focus_text = f"Catch up first: {html.escape(first.get('title', 'Untitled'))}"
+    elif week_items:
+        first = week_items[0][1]
+        focus_text = f"Next up: {html.escape(first.get('title', 'Untitled'))}"
+
+    html_output = f'''
+    <div class="cc-planner-wrap">
+        <div class="cc-planner-hero">
+            <div class="cc-small-label">Creator Planner</div>
+            <h2>What should I work on next?</h2>
+            <p>{focus_text}</p>
+        </div>
+
+        <div class="cc-planner-stats">
+            <div class="cc-stat-card"><div class="cc-stat-number">{len(today_items)}</div><div class="cc-stat-label">Today</div></div>
+            <div class="cc-stat-card"><div class="cc-stat-number">{len(week_items)}</div><div class="cc-stat-label">This Week</div></div>
+            <div class="cc-stat-card"><div class="cc-stat-number">{len(overdue_items)}</div><div class="cc-stat-label">Overdue</div></div>
+            <div class="cc-stat-card"><div class="cc-stat-number">{avg_progress}%</div><div class="cc-stat-label">Avg Progress</div></div>
+        </div>
+
+        <div class="cc-planner-layout">
+            <div>
+                {render_section("🎯 Today's Focus", "Only the projects due today.", today_items, "Nothing due today. Pick one project and move it forward.")}
+                {render_section("📅 This Week", "The next 7 days, in order.", week_items, "Nothing else due this week.")}
+                {render_section("🔥 Upcoming Videos", "Later projects that are already scheduled.", upcoming_items, "No later scheduled content yet.", limit=6)}
+            </div>
+            <div>
+                {render_section("⚠️ Overdue", "Items with past dates that are not published yet.", overdue_items, "Nothing overdue. Nice!", limit=6)}
+                {undated_section}
+                <div class="cc-planner-section">
+                    <div class="cc-planner-section-head">
+                        <h3>✅ Published</h3>
+                        <p>{published_count} completed item(s) saved in your planner.</p>
+                    </div>
+                    <p class="cc-empty">Completed projects stay out of the way so the planner focuses on what needs action.</p>
+                </div>
+            </div>
+        </div>
+
+        {render_monthly_schedule_view(month, year, status_filter, type_filter)}
     </div>
-    """
+    '''
 
     return html_output
 
@@ -705,53 +862,25 @@ def render_upcoming_content(limit=6):
 
     items.sort(key=lambda x: x[0])
 
-    type_emoji = {
-        "Long Video": "🎮",
-        "Short": "📱",
-        "Livestream": "🔴",
-        "Community Post": "💬"
-    }
-
     if not items:
-        return """
+        return '''
         <div class="cc-upcoming-box">
-            <h3>🔥 Coming Up</h3>
-            <p class="cc-empty">No upcoming content yet. Add something to your calendar.</p>
+            <h3>🎯 Next Creator Tasks</h3>
+            <p class="cc-empty">No upcoming content yet. Add a video, Short, livestream, or post to your planner.</p>
         </div>
-        """
+        '''
 
-    html_output = """
+    html_output = '''
     <div class="cc-upcoming-box">
-        <h3>🔥 Coming Up</h3>
-    """
+        <h3>🎯 Next Creator Tasks</h3>
+        <p class="cc-empty">A simple view of what is coming next.</p>
+    '''
 
     for item_date, item in items[:limit]:
-        content_type = item.get("content_type", "Long Video")
-        emoji = type_emoji.get(content_type, "🎬")
-        status = item.get("status", "Idea")
-        progress = calculate_item_progress(item)
-
-        if item_date == today:
-            when = "Today"
-        elif item_date == today + timedelta(days=1):
-            when = "Tomorrow"
-        else:
-            when = item_date.strftime("%b %d")
-
-        html_output += f"""
-        <div class="cc-upcoming-item">
-            <div class="cc-upcoming-date">{html.escape(when)}</div>
-            <div class="cc-upcoming-title">{emoji} {html.escape(item.get("title", "Untitled"))}</div>
-            <div class="cc-upcoming-meta">{html.escape(status)} · {html.escape(item.get("game_topic", ""))}</div>
-            <div class="cc-progress-wrap">
-                <div class="cc-progress-fill" style="width:{progress}%"></div>
-            </div>
-        </div>
-        """
+        html_output += _planner_project_card(item, item_date=item_date, compact=True)
 
     html_output += "</div>"
     return html_output
-
 
 def plan_my_week():
     items = load_content_calendar()
@@ -1809,6 +1938,85 @@ label, .block-label {
     padding: 12px;
     margin-bottom: 14px;
     font-weight: 700;
+}
+
+/* Creator Planner */
+.cc-planner-wrap { width: 100%; }
+.cc-planner-hero {
+    background: linear-gradient(135deg, rgba(139,92,246,.22), rgba(34,211,238,.12));
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 20px;
+    margin-bottom: 14px;
+}
+.cc-planner-hero h2 { color: var(--text); margin: 4px 0; font-size: 2rem; }
+.cc-planner-hero p { color: var(--muted); margin-bottom: 0; }
+.cc-planner-stats {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 14px;
+}
+.cc-planner-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) minmax(280px, .65fr);
+    gap: 14px;
+}
+.cc-planner-section {
+    background: rgba(18,21,33,.85);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 14px;
+    margin-bottom: 14px;
+}
+.cc-planner-section-head h3 { color: var(--text); margin: 0 0 4px 0; }
+.cc-planner-section-head p { color: var(--muted); margin: 0 0 12px 0; font-size: .82rem; }
+.cc-planner-project-card {
+    border-radius: 14px;
+    padding: 12px;
+    margin-bottom: 10px;
+    border-left: 5px solid var(--accent);
+    background: rgba(255,255,255,.07);
+}
+.cc-planner-card-compact { padding: 10px; }
+.cc-planner-card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.cc-planner-title { color: var(--text); font-weight: 900; line-height: 1.25; }
+.cc-planner-pill {
+    color: white;
+    background: rgba(139,92,246,.55);
+    border: 1px solid rgba(255,255,255,.14);
+    border-radius: 999px;
+    padding: 3px 8px;
+    font-size: .72rem;
+    font-weight: 900;
+    white-space: nowrap;
+}
+.cc-planner-meta, .cc-planner-topic { color: var(--muted); font-size: .78rem; margin-top: 3px; }
+.cc-monthly-details {
+    background: rgba(18,21,33,.85);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 14px;
+    margin-top: 14px;
+}
+.cc-monthly-details summary { color: var(--text); font-weight: 900; cursor: pointer; }
+.cc-content-chip {
+    border-radius: 999px;
+    padding: 4px 7px;
+    margin-bottom: 5px;
+    border-left: 4px solid var(--accent);
+    background: rgba(255,255,255,.08);
+    color: var(--text);
+    font-size: .68rem;
+    font-weight: 800;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.cc-more-chip { color: var(--muted); font-size: .68rem; font-weight: 800; }
+
+@media (max-width: 768px) {
+    .cc-planner-stats, .cc-planner-layout { grid-template-columns: 1fr; }
 }
 
 
