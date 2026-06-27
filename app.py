@@ -13,6 +13,7 @@ from database import (
     data_file,
     load_creator_profile_record,
     save_creator_profile_record,
+    supabase_is_ready,
 )
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -102,6 +103,7 @@ def save_creator_profile(
 
     return save_creator_profile_record(profile, PROFILE_FILE)
 
+
 def save_creator_profile_and_refresh_dashboard(
     channel_name,
     creator_name,
@@ -131,20 +133,7 @@ def save_creator_profile_and_refresh_dashboard(
         things_to_avoid
     )
 
-    freshly_saved_profile = {
-        "channel_name": channel_name,
-        "creator_name": creator_name,
-        "niche": niche,
-        "target_audience": target_audience,
-        "content_style": content_style,
-        "current_games": current_games,
-        "main_platforms": main_platforms,
-        "goals": goals,
-        "preferred_tone": preferred_tone,
-        "things_to_avoid": things_to_avoid
-    }
-
-    return message, render_creator_dashboard(freshly_saved_profile), render_getting_started_checklist()
+    return message, render_creator_dashboard(), render_getting_started_checklist()
 
 
 def creator_profile_context():
@@ -1291,15 +1280,11 @@ def render_needs_attention():
     </div>
     """
 
-def render_creator_dashboard(profile_override=None):
-    # Load the latest saved profile unless a freshly saved profile is passed in.
-    # The override makes the dashboard update immediately after clicking Save,
-    # even before the next page refresh.
-    profile = profile_override or load_creator_profile()
+def render_creator_dashboard():
+    profile = load_creator_profile()
     stats = get_dashboard_stats()
-
-    creator_name = (profile.get("creator_name") or "").strip() or "Creator"
-    channel_name = (profile.get("channel_name") or "").strip() or "Your Channel"
+    creator_name = profile.get("creator_name") or "Creator"
+    channel_name = profile.get("channel_name") or "Your Channel"
 
     next_item = stats["next_item"]
     next_date = stats["next_item_date"]
@@ -4132,3 +4117,5 @@ app.launch(
     share=False
 )
     
+ 
+      
