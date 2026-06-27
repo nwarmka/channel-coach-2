@@ -1,5 +1,6 @@
 import os
 import json
+import re
 from dotenv import load_dotenv
 
 try:
@@ -32,6 +33,22 @@ def supabase_is_ready():
 
 
 # =========================
+# USER / WORKSPACE HELPERS
+# =========================
+def clean_user_id(user_id="main"):
+    """
+    Converts a workspace name into a safe database ID.
+    Examples:
+    - "Nikki" -> "nikki"
+    - "Retro Gamer 92" -> "retro-gamer-92"
+    """
+    raw = str(user_id or "main").strip().lower()
+    raw = re.sub(r"[^a-z0-9_-]+", "-", raw)
+    raw = raw.strip("-_")
+    return raw or "main"
+
+
+# =========================
 # LOCAL FALLBACK STORAGE
 # =========================
 # Render free storage is not permanent, but this keeps the app usable if
@@ -42,6 +59,18 @@ os.makedirs(DATA_DIR, exist_ok=True)
 
 def data_file(name):
     return os.path.join(DATA_DIR, name)
+
+
+def user_data_file(name, user_id="main"):
+    """
+    Creates a user-specific fallback file name.
+    Example: creator_profile.json + nikki -> creator_profile_nikki.json
+    """
+    safe_user_id = clean_user_id(user_id)
+    root, ext = os.path.splitext(name)
+    if not ext:
+        ext = ".json"
+    return os.path.join(DATA_DIR, f"{root}_{safe_user_id}{ext}")
 
 
 def load_json_file(file_path, default_value):
@@ -68,18 +97,23 @@ def save_json_file(file_path, data):
 # =========================
 # CREATOR PROFILE STORAGE
 # =========================
-def load_creator_profile_record(default_profile, profile_file):
+def load_creator_profile_record(default_profile, profile_file, user_id="main"):
     """
-    Loads the creator profile from Supabase first.
-    If Supabase is unavailable, falls back to the local JSON file.
+    Loads the creator profile for one workspace/user from Supabase first.
+    If Supabase is unavailable, falls back to a user-specific local JSON file.
+
+    Backward compatible:
+    - If user_id is not provided, it still uses "main".
     """
+    safe_user_id = clean_user_id(user_id)
+
     if supabase_is_ready():
         try:
             result = (
                 supabase
                 .table("creator_profiles")
                 .select("data")
-                .eq("id", "main")
+                .eq("id", safe_user_id)
                 .limit(1)
                 .execute()
             )
@@ -93,7 +127,13 @@ def load_creator_profile_record(default_profile, profile_file):
         except Exception:
             pass
 
-    saved_profile = load_json_file(profile_file, {})
+    fallback_file = user_data_file(os.path.basename(profile_file), safe_user_id)
+    saved_profile = load_json_file(fallback_file, {})
+
+    # Backward compatibility for older local installs using the shared file.
+    if not saved_profile and safe_user_id == "main":
+        saved_profile = load_json_file(profile_file, {})
+
     profile = default_profile.copy()
 
     if isinstance(saved_profile, dict):
@@ -102,11 +142,12 @@ def load_creator_profile_record(default_profile, profile_file):
     return profile
 
 
-def save_creator_profile_record(profile, profile_file):
+def save_creator_profile_record(profile, profile_file, user_id="main"):
     """
-    Saves the creator profile to Supabase first.
-    If Supabase is unavailable, falls back to local JSON.
+    Saves the creator profile for one workspace/user to Supabase first.
+    If Supabase is unavailable, falls back to a user-specific local JSON file.
     """
+    safe_user_id = clean_user_id(user_id)
     supabase_error = None
 
     if supabase_is_ready():
@@ -115,13 +156,13 @@ def save_creator_profile_record(profile, profile_file):
                 supabase
                 .table("creator_profiles")
                 .upsert({
-                    "id": "main",
+                    "id": safe_user_id,
                     "data": profile
                 })
                 .execute()
             )
 
-            return "✅ Creator profile saved to Supabase! Channel Coach will remember this profile even after Render restarts."
+            return f"✅ Creator profile saved for workspace: {safe_user_id}"
 
         except Exception as e:
             supabase_error = str(e)
@@ -129,12 +170,12 @@ def save_creator_profile_record(profile, profile_file):
         supabase_error = "Supabase is not configured."
 
     try:
-        save_json_file(profile_file, profile)
-        return f"✅ Creator profile saved locally. Supabase fallback note: {supabase_error}"
+        fallback_file = user_data_file(os.path.basename(profile_file), safe_user_id)
+        save_json_file(fallback_file, profile)
+        return f"✅ Creator profile saved locally for workspace: {safe_user_id}. Supabase fallback note: {supabase_error}"
 
     except Exception as e:
         return f"❌ Could not save creator profile: {e}"
-
 
 
 # =========================
@@ -152,12 +193,14 @@ def add_calendar_item(
     tags,
     user_id="main"
 ):
+    safe_user_id = clean_user_id(user_id)
+
     if not supabase_is_ready():
         return "❌ Supabase is not configured. Calendar item was not saved."
 
     try:
         supabase.table("content_calendar").insert({
-            "user_id": user_id,
+            "user_id": safe_user_id,
             "title": title,
             "platform": platform,
             "content_type": content_type,
@@ -169,13 +212,15 @@ def add_calendar_item(
             "tags": tags
         }).execute()
 
-        return "✅ Calendar item saved to Supabase!"
+        return f"✅ Calendar item saved for workspace: {safe_user_id}"
 
     except Exception as e:
         return f"❌ Could not save calendar item: {e}"
 
 
 def get_calendar_items(user_id="main"):
+    safe_user_id = clean_user_id(user_id)
+
     if not supabase_is_ready():
         return []
 
@@ -184,7 +229,7 @@ def get_calendar_items(user_id="main"):
             supabase
             .table("content_calendar")
             .select("*")
-            .eq("user_id", user_id)
+            .eq("user_id", safe_user_id)
             .order("publish_date", desc=False)
             .execute()
         )
@@ -205,8 +250,11 @@ def update_calendar_item(
     publish_time,
     priority,
     notes,
-    tags
+    tags,
+    user_id="main"
 ):
+    safe_user_id = clean_user_id(user_id)
+
     if not supabase_is_ready():
         return "❌ Supabase is not configured. Calendar item was not updated."
 
@@ -221,7 +269,7 @@ def update_calendar_item(
             "priority": priority,
             "notes": notes,
             "tags": tags
-        }).eq("id", item_id).execute()
+        }).eq("id", item_id).eq("user_id", safe_user_id).execute()
 
         return "✅ Calendar item updated!"
 
@@ -229,12 +277,14 @@ def update_calendar_item(
         return f"❌ Could not update calendar item: {e}"
 
 
-def delete_calendar_item(item_id):
+def delete_calendar_item(item_id, user_id="main"):
+    safe_user_id = clean_user_id(user_id)
+
     if not supabase_is_ready():
         return "❌ Supabase is not configured. Calendar item was not deleted."
 
     try:
-        supabase.table("content_calendar").delete().eq("id", item_id).execute()
+        supabase.table("content_calendar").delete().eq("id", item_id).eq("user_id", safe_user_id).execute()
         return "✅ Calendar item deleted!"
 
     except Exception as e:
