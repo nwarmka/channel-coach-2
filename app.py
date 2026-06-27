@@ -22,11 +22,25 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
         min_height=0
     )
 
-    saved_profile = load_creator_profile()
+    # =========================
+    # WORKSPACE
+    # =========================
+    # Each tester should use their own workspace name so they do not see another creator's saved data.
+    workspace_name = gr.Textbox(
+        label="Workspace Name",
+        value="main",
+        placeholder="Example: Nikki, Tester1, RetroGamer92",
+        info="Use a unique name for your own private Channel Coach workspace."
+    )
+    workspace_status = gr.Markdown("Current workspace: **main**")
+
+    workspace_button = gr.Button("🔄 Load Workspace")
+
+    saved_profile = load_creator_profile("main")
 
     with gr.Tab("🏠 Dashboard"):
         gr.Markdown("## 🕹️ Creator Dashboard\n\nYour home base for upcoming content, overdue projects, and quick AI guidance.")
-        dashboard_output = gr.HTML(value=render_creator_dashboard())
+        dashboard_output = gr.HTML(value=render_creator_dashboard("main"))
 
         with gr.Row():
             dashboard_refresh_button = gr.Button("🔄 Refresh Dashboard")
@@ -36,16 +50,236 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
 
         dashboard_refresh_button.click(
             refresh_creator_dashboard,
-            inputs=[],
+            inputs=[workspace_name],
             outputs=dashboard_output
         )
 
         dashboard_tip_button.click(
             dashboard_ai_tip,
-            inputs=[],
+            inputs=[workspace_name],
             outputs=dashboard_tip_output,
             show_progress="full"
         )
+
+    def load_workspace_ui(current_workspace):
+        safe_workspace = current_workspace or "main"
+        profile = load_creator_profile(safe_workspace)
+        return (
+            f"Current workspace: **{safe_workspace}**",
+            render_creator_dashboard(safe_workspace),
+            render_content_calendar(user_id=safe_workspace),
+            render_upcoming_content(safe_workspace),
+            gr.update(choices=get_calendar_choices(safe_workspace)),
+            gr.update(choices=get_calendar_choices(safe_workspace)),
+            gr.update(choices=get_calendar_choices(safe_workspace)),
+            render_analytics_tracker(safe_workspace),
+            render_getting_started_checklist(safe_workspace),
+            profile.get("channel_name", ""),
+            profile.get("creator_name", ""),
+            profile.get("niche", ""),
+            profile.get("target_audience", ""),
+            profile.get("content_style", ""),
+            profile.get("current_games", ""),
+            profile.get("main_platforms", ""),
+            profile.get("goals", ""),
+            profile.get("preferred_tone", ""),
+            profile.get("things_to_avoid", "")
+        )
+
+
+
+
+    with gr.Tab("📅 Content Calendar"):
+        gr.Markdown(
+            """
+            ## 📅 Content Calendar
+            Plan your long videos, Shorts, Reels, TikToks, livestreams, and community posts.
+
+            Date format: **YYYY-MM-DD**. Example: **2026-06-28**
+            """
+        )
+
+        with gr.Row():
+            with gr.Column(scale=1):
+                cc_calendar_title = gr.Textbox(
+                    label="Title",
+                    placeholder="Example: Getting the Ice Rod"
+                )
+                cc_calendar_content_type = gr.Dropdown(
+                    CONTENT_TYPES,
+                    value="Long Video",
+                    label="Content Type"
+                )
+                cc_calendar_game_topic = gr.Textbox(
+                    label="Game / Topic",
+                    placeholder="Example: Zelda ALTTP"
+                )
+                cc_calendar_status = gr.Dropdown(
+                    CONTENT_STATUSES,
+                    value="Idea",
+                    label="Status"
+                )
+                cc_calendar_publish_date = gr.Textbox(
+                    label="Target Publish Date",
+                    value=date.today().isoformat(),
+                    placeholder="YYYY-MM-DD"
+                )
+                cc_calendar_notes = gr.Textbox(
+                    label="Notes",
+                    lines=4,
+                    placeholder="Example: Need thumbnail, voiceover, and final export."
+                )
+
+                cc_calendar_add_button = gr.Button("➕ Add to Calendar")
+                cc_calendar_message = gr.Textbox(label="Calendar Status", lines=2)
+
+                cc_upcoming_output = gr.HTML(value=render_upcoming_content("main"))
+
+                cc_plan_week_button = gr.Button("✨ Plan My Week")
+                cc_plan_week_output = gr.Textbox(label="AI Weekly Plan", lines=12)
+
+            with gr.Column(scale=2):
+                with gr.Row():
+                    cc_calendar_month = gr.Dropdown(
+                        choices=list(range(1, 13)),
+                        value=date.today().month,
+                        label="Month"
+                    )
+                    cc_calendar_year = gr.Number(
+                        value=date.today().year,
+                        label="Year",
+                        precision=0
+                    )
+
+                with gr.Row():
+                    cc_calendar_status_filter = gr.Dropdown(
+                        ["All"] + CONTENT_STATUSES,
+                        value="All",
+                        label="Status Filter"
+                    )
+                    cc_calendar_type_filter = gr.Dropdown(
+                        ["All"] + CONTENT_TYPES,
+                        value="All",
+                        label="Type Filter"
+                    )
+
+                cc_calendar_output = gr.HTML(value=render_content_calendar(user_id="main"))
+                cc_calendar_refresh_button = gr.Button("🔄 Refresh Calendar")
+
+        gr.Markdown("### Edit or Delete Calendar Item")
+
+        cc_calendar_item_picker = gr.Dropdown(
+            choices=get_calendar_choices("main"),
+            label="Choose Calendar Item"
+        )
+
+        cc_calendar_load_button = gr.Button("📂 Load Selected Item")
+
+        with gr.Row():
+            cc_calendar_update_button = gr.Button("💾 Save Edit")
+            cc_calendar_delete_button = gr.Button("🗑️ Delete Selected Item")
+
+        cc_calendar_add_button.click(
+            add_content_item,
+            inputs=[
+                cc_calendar_title,
+                cc_calendar_content_type,
+                cc_calendar_game_topic,
+                cc_calendar_status,
+                cc_calendar_publish_date,
+                cc_calendar_notes,
+                workspace_name,
+                cc_calendar_month,
+                cc_calendar_year,
+                cc_calendar_status_filter,
+                cc_calendar_type_filter
+            ],
+            outputs=[cc_calendar_output, cc_upcoming_output, cc_calendar_item_picker, cc_calendar_message]
+        )
+
+        cc_calendar_refresh_button.click(
+            refresh_content_calendar,
+            inputs=[workspace_name, cc_calendar_month, cc_calendar_year, cc_calendar_status_filter, cc_calendar_type_filter],
+            outputs=[cc_calendar_output, cc_upcoming_output]
+        )
+
+        cc_calendar_month.change(
+            refresh_content_calendar,
+            inputs=[workspace_name, cc_calendar_month, cc_calendar_year, cc_calendar_status_filter, cc_calendar_type_filter],
+            outputs=[cc_calendar_output, cc_upcoming_output]
+        )
+
+        cc_calendar_year.change(
+            refresh_content_calendar,
+            inputs=[workspace_name, cc_calendar_month, cc_calendar_year, cc_calendar_status_filter, cc_calendar_type_filter],
+            outputs=[cc_calendar_output, cc_upcoming_output]
+        )
+
+        cc_calendar_status_filter.change(
+            refresh_content_calendar,
+            inputs=[workspace_name, cc_calendar_month, cc_calendar_year, cc_calendar_status_filter, cc_calendar_type_filter],
+            outputs=[cc_calendar_output, cc_upcoming_output]
+        )
+
+        cc_calendar_type_filter.change(
+            refresh_content_calendar,
+            inputs=[workspace_name, cc_calendar_month, cc_calendar_year, cc_calendar_status_filter, cc_calendar_type_filter],
+            outputs=[cc_calendar_output, cc_upcoming_output]
+        )
+
+        cc_calendar_load_button.click(
+            load_selected_content_item,
+            inputs=[cc_calendar_item_picker, workspace_name],
+            outputs=[
+                cc_calendar_title,
+                cc_calendar_content_type,
+                cc_calendar_game_topic,
+                cc_calendar_status,
+                cc_calendar_publish_date,
+                cc_calendar_notes,
+                cc_calendar_message
+            ]
+        )
+
+        cc_calendar_update_button.click(
+            update_content_item,
+            inputs=[
+                cc_calendar_item_picker,
+                cc_calendar_title,
+                cc_calendar_content_type,
+                cc_calendar_game_topic,
+                cc_calendar_status,
+                cc_calendar_publish_date,
+                cc_calendar_notes,
+                workspace_name,
+                cc_calendar_month,
+                cc_calendar_year,
+                cc_calendar_status_filter,
+                cc_calendar_type_filter
+            ],
+            outputs=[cc_calendar_output, cc_upcoming_output, cc_calendar_item_picker, cc_calendar_message]
+        )
+
+        cc_calendar_delete_button.click(
+            delete_content_item,
+            inputs=[
+                cc_calendar_item_picker,
+                workspace_name,
+                cc_calendar_month,
+                cc_calendar_year,
+                cc_calendar_status_filter,
+                cc_calendar_type_filter
+            ],
+            outputs=[cc_calendar_output, cc_upcoming_output, cc_calendar_item_picker, cc_calendar_message]
+        )
+
+        cc_plan_week_button.click(
+            plan_my_week,
+            inputs=[workspace_name],
+            outputs=cc_plan_week_output,
+            show_progress="full"
+        )
+
 
 
     with gr.Tab("📁 Projects"):
@@ -95,7 +329,7 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
                     calendar_add_button = gr.Button("➕ Add to Calendar")
                     calendar_message = gr.Textbox(label="Calendar Status", lines=2)
 
-                    upcoming_output = gr.HTML(value=render_upcoming_content())
+                    upcoming_output = gr.HTML(value=render_upcoming_content("main"))
 
                     plan_week_button = gr.Button("✨ Plan My Week")
                     plan_week_output = gr.Textbox(label="AI Weekly Plan", lines=12)
@@ -125,13 +359,13 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
                             label="Type Filter"
                         )
 
-                    calendar_output = gr.HTML(value=render_content_calendar())
+                    calendar_output = gr.HTML(value=render_content_calendar(user_id="main"))
                     calendar_refresh_button = gr.Button("🔄 Refresh Calendar")
 
             gr.Markdown("### Edit or Delete Calendar Item")
 
             calendar_item_picker = gr.Dropdown(
-                choices=get_calendar_choices(),
+                choices=get_calendar_choices("main"),
                 label="Choose Calendar Item"
             )
 
@@ -150,6 +384,7 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
                     calendar_status,
                     calendar_publish_date,
                     calendar_notes,
+                    workspace_name,
                     calendar_month,
                     calendar_year,
                     calendar_status_filter,
@@ -160,37 +395,37 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
 
             calendar_refresh_button.click(
                 refresh_content_calendar,
-                inputs=[calendar_month, calendar_year, calendar_status_filter, calendar_type_filter],
+                inputs=[workspace_name, calendar_month, calendar_year, calendar_status_filter, calendar_type_filter],
                 outputs=[calendar_output, upcoming_output]
             )
 
             calendar_month.change(
                 refresh_content_calendar,
-                inputs=[calendar_month, calendar_year, calendar_status_filter, calendar_type_filter],
+                inputs=[workspace_name, calendar_month, calendar_year, calendar_status_filter, calendar_type_filter],
                 outputs=[calendar_output, upcoming_output]
             )
 
             calendar_year.change(
                 refresh_content_calendar,
-                inputs=[calendar_month, calendar_year, calendar_status_filter, calendar_type_filter],
+                inputs=[workspace_name, calendar_month, calendar_year, calendar_status_filter, calendar_type_filter],
                 outputs=[calendar_output, upcoming_output]
             )
 
             calendar_status_filter.change(
                 refresh_content_calendar,
-                inputs=[calendar_month, calendar_year, calendar_status_filter, calendar_type_filter],
+                inputs=[workspace_name, calendar_month, calendar_year, calendar_status_filter, calendar_type_filter],
                 outputs=[calendar_output, upcoming_output]
             )
 
             calendar_type_filter.change(
                 refresh_content_calendar,
-                inputs=[calendar_month, calendar_year, calendar_status_filter, calendar_type_filter],
+                inputs=[workspace_name, calendar_month, calendar_year, calendar_status_filter, calendar_type_filter],
                 outputs=[calendar_output, upcoming_output]
             )
 
             calendar_load_button.click(
                 load_selected_content_item,
-                inputs=calendar_item_picker,
+                inputs=[calendar_item_picker, workspace_name],
                 outputs=[
                     calendar_title,
                     calendar_content_type,
@@ -212,6 +447,7 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
                     calendar_status,
                     calendar_publish_date,
                     calendar_notes,
+                    workspace_name,
                     calendar_month,
                     calendar_year,
                     calendar_status_filter,
@@ -224,6 +460,7 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
                 delete_content_item,
                 inputs=[
                     calendar_item_picker,
+                    workspace_name,
                     calendar_month,
                     calendar_year,
                     calendar_status_filter,
@@ -234,7 +471,7 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
 
             plan_week_button.click(
                 plan_my_week,
-                inputs=[],
+                inputs=[workspace_name],
                 outputs=plan_week_output,
                 show_progress="full"
             )
@@ -250,11 +487,11 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
             )
 
             workspace_project_picker = gr.Dropdown(
-                choices=get_calendar_choices(),
+                choices=get_calendar_choices("main"),
                 label="Choose Project"
             )
             workspace_load_button = gr.Button("📂 Load Project")
-            workspace_overview = gr.HTML(value=render_project_workspace_overview(None))
+            workspace_overview = gr.HTML(value=render_project_workspace_overview(None, "main"))
 
             with gr.Row():
                 with gr.Column(scale=1):
@@ -297,7 +534,7 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
 
             workspace_load_button.click(
                 load_project_workspace,
-                inputs=workspace_project_picker,
+                inputs=[workspace_project_picker, workspace_name],
                 outputs=[
                     workspace_overview,
                     workspace_title,
@@ -341,42 +578,43 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
                     workspace_shared_social,
                     workspace_description_draft,
                     workspace_thumbnail_notes,
-                    workspace_shorts_ideas_draft
+                    workspace_shorts_ideas_draft,
+                    workspace_name
                 ],
                 outputs=[workspace_overview, workspace_project_picker, workspace_message]
             )
 
             workspace_titles_button.click(
                 project_generate_titles,
-                inputs=[workspace_project_picker, workspace_project_notes, workspace_description_draft, workspace_thumbnail_notes, workspace_shorts_ideas_draft],
+                inputs=[workspace_project_picker, workspace_project_notes, workspace_description_draft, workspace_thumbnail_notes, workspace_shorts_ideas_draft, workspace_name],
                 outputs=workspace_ai_output,
                 show_progress="full"
             )
 
             workspace_description_button.click(
                 project_generate_description,
-                inputs=[workspace_project_picker, workspace_project_notes, workspace_description_draft, workspace_thumbnail_notes, workspace_shorts_ideas_draft],
+                inputs=[workspace_project_picker, workspace_project_notes, workspace_description_draft, workspace_thumbnail_notes, workspace_shorts_ideas_draft, workspace_name],
                 outputs=workspace_ai_output,
                 show_progress="full"
             )
 
             workspace_thumbnail_button.click(
                 project_generate_thumbnail,
-                inputs=[workspace_project_picker, workspace_project_notes, workspace_description_draft, workspace_thumbnail_notes, workspace_shorts_ideas_draft],
+                inputs=[workspace_project_picker, workspace_project_notes, workspace_description_draft, workspace_thumbnail_notes, workspace_shorts_ideas_draft, workspace_name],
                 outputs=workspace_ai_output,
                 show_progress="full"
             )
 
             workspace_shorts_button.click(
                 project_generate_shorts,
-                inputs=[workspace_project_picker, workspace_project_notes, workspace_description_draft, workspace_thumbnail_notes, workspace_shorts_ideas_draft],
+                inputs=[workspace_project_picker, workspace_project_notes, workspace_description_draft, workspace_thumbnail_notes, workspace_shorts_ideas_draft, workspace_name],
                 outputs=workspace_ai_output,
                 show_progress="full"
             )
 
             workspace_review_button.click(
                 project_review,
-                inputs=[workspace_project_picker, workspace_project_notes, workspace_description_draft, workspace_thumbnail_notes, workspace_shorts_ideas_draft],
+                inputs=[workspace_project_picker, workspace_project_notes, workspace_description_draft, workspace_thumbnail_notes, workspace_shorts_ideas_draft, workspace_name],
                 outputs=workspace_ai_output,
                 show_progress="full"
             )
@@ -408,7 +646,7 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
 
             coach_button.click(
                 ask_creator_coach,
-                inputs=coach_question,
+                inputs=[coach_question, workspace_name],
                 outputs=coach_output,
                 show_progress="full"
             )
@@ -446,18 +684,18 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
 
 
         with gr.Accordion("📚 Review History", open=False):
-            review_history_output = gr.HTML(value=render_video_review_history())
+            review_history_output = gr.HTML(value=render_video_review_history("main"))
             review_history_refresh = gr.Button("🔄 Refresh Review History")
 
             review_history_refresh.click(
                 render_video_review_history,
-                inputs=[],
+                inputs=[workspace_name],
                 outputs=review_history_output
             )
 
         analyzer_button.click(
             video_analyzer_with_history,
-            inputs=[analyzer_upload, analyzer_notes, analyzer_type],
+            inputs=[analyzer_upload, analyzer_notes, analyzer_type, workspace_name],
             outputs=[analyzer_output, review_history_output],
             show_progress="full"
         )
@@ -469,13 +707,13 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
                 Generate pattern-based insights from your saved video reviews. Channel Coach will look for repeated strengths, weak spots, score trends, and your next best focus.
                 """
             )
-            creator_memory_snapshot = gr.HTML(value=render_creator_memory_snapshot())
+            creator_memory_snapshot = gr.HTML(value=render_creator_memory_snapshot("main"))
             creator_memory_button = gr.Button("✨ Generate Creator Insights")
             creator_memory_output = gr.Textbox(label="Creator Memory Insights", lines=16)
 
             creator_memory_button.click(
                 generate_creator_memory_insights,
-                inputs=[],
+                inputs=[workspace_name],
                 outputs=creator_memory_output,
                 show_progress="full"
             )
@@ -488,7 +726,7 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
 
             thumbnail_button.click(
                 analyze_thumbnail,
-                inputs=thumbnail_input,
+                inputs=[thumbnail_input, workspace_name],
                 outputs=thumbnail_output,
                 show_progress="full"
             )
@@ -512,7 +750,7 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
 
             title_button.click(
                 generate_titles,
-                inputs=[title_input, title_platform, title_tone],
+                inputs=[title_input, title_platform, title_tone, workspace_name],
                 outputs=title_output,
                 show_progress="full"
             )
@@ -531,7 +769,7 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
 
             seo_button.click(
                 seo_help,
-                inputs=[seo_input, seo_platform, seo_niche],
+                inputs=[seo_input, seo_platform, seo_niche, workspace_name],
                 outputs=seo_output,
                 show_progress="full"
             )
@@ -550,7 +788,7 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
 
             desc_button.click(
                 description_help,
-                inputs=[desc_input, desc_platform, desc_niche],
+                inputs=[desc_input, desc_platform, desc_niche, workspace_name],
                 outputs=desc_output,
                 show_progress="full"
             )
@@ -564,7 +802,7 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
 
             ideas_button.click(
                 shorts_ideas,
-                inputs=[niche_input, topic_input],
+                inputs=[niche_input, topic_input, workspace_name],
                 outputs=ideas_output,
                 show_progress="full"
             )
@@ -576,7 +814,7 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
         Manually save your YouTube stats so Channel Coach can track growth over time.
         """)
 
-        analytics_output = gr.HTML(value=render_analytics_tracker())
+        analytics_output = gr.HTML(value=render_analytics_tracker("main"))
 
         with gr.Accordion("➕ Add Analytics Snapshot", open=True):
             with gr.Row():
@@ -596,14 +834,14 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
 
             analytics_save_button.click(
                 save_analytics_snapshot,
-                inputs=[analytics_views, analytics_subscribers, analytics_watch_time, analytics_ctr, analytics_notes],
+                inputs=[analytics_views, analytics_subscribers, analytics_watch_time, analytics_ctr, analytics_notes, workspace_name],
                 outputs=[analytics_status, analytics_output]
             )
 
         analytics_refresh_button = gr.Button("🔄 Refresh Analytics")
         analytics_refresh_button.click(
             render_analytics_tracker,
-            inputs=[],
+            inputs=[workspace_name],
             outputs=analytics_output
         )
 
@@ -611,12 +849,12 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
         gr.Markdown("## ⚙️ Settings\n\nManage creator profile memory and future app preferences.")
 
         with gr.Accordion("🚀 Getting Started", open=True):
-            onboarding_output = gr.HTML(value=render_getting_started_checklist())
+            onboarding_output = gr.HTML(value=render_getting_started_checklist("main"))
             onboarding_refresh_button = gr.Button("🔄 Refresh Getting Started")
 
             onboarding_refresh_button.click(
                 render_getting_started_checklist,
-                inputs=[],
+                inputs=[workspace_name],
                 outputs=onboarding_output
             )
 
@@ -702,11 +940,39 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
                     profile_main_platforms,
                     profile_goals,
                     profile_preferred_tone,
-                    profile_things_to_avoid
+                    profile_things_to_avoid,
+                    workspace_name
                 ],
                 outputs=[profile_save_status, dashboard_output, onboarding_output]
             )
 
+
+
+    workspace_button.click(
+        load_workspace_ui,
+        inputs=[workspace_name],
+        outputs=[
+            workspace_status,
+            dashboard_output,
+            cc_calendar_output,
+            cc_upcoming_output,
+            cc_calendar_item_picker,
+            calendar_item_picker,
+            workspace_project_picker,
+            analytics_output,
+            onboarding_output,
+            profile_channel_name,
+            profile_creator_name,
+            profile_niche,
+            profile_target_audience,
+            profile_content_style,
+            profile_current_games,
+            profile_main_platforms,
+            profile_goals,
+            profile_preferred_tone,
+            profile_things_to_avoid
+        ]
+    )
 
 
 # =========================
