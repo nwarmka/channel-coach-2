@@ -32,7 +32,7 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
         placeholder="Example: Nikki, Tester1, RetroGamer92",
         info="Use a unique name for your own private Channel Coach workspace."
     )
-    workspace_status = gr.Markdown("Current workspace: **main**")
+    workspace_indicator = gr.Markdown("Current workspace: **main**")
 
     workspace_button = gr.Button("🔄 Load Workspace")
 
@@ -952,7 +952,7 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
         load_workspace_ui,
         inputs=[workspace_name],
         outputs=[
-            workspace_status,
+            workspace_indicator,
             dashboard_output,
             cc_calendar_output,
             cc_upcoming_output,
