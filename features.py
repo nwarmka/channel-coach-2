@@ -597,6 +597,19 @@ def get_calendar_choices(user_id="main"):
 
 
 def add_content_item(title, content_type, game_topic, status, publish_date, notes, month, year, status_filter, type_filter, user_id="main"):
+    # Gradio app may pass workspace_name before month/year.
+    if isinstance(month, str) and not str(month).isdigit() and isinstance(year, (int, float)):
+        actual_user_id = month
+        actual_month = year
+        actual_year = status_filter
+        actual_status_filter = type_filter
+        actual_type_filter = user_id
+        user_id = actual_user_id
+        month = actual_month
+        year = actual_year
+        status_filter = actual_status_filter
+        type_filter = actual_type_filter
+
     if not title or not title.strip():
         return (
             render_content_calendar(month, year, status_filter, type_filter, user_id),
@@ -934,6 +947,16 @@ def render_content_calendar(month=None, year=None, status_filter="All", type_fil
     return html_output
 
 def render_upcoming_content(limit=6, user_id="main"):
+    # Backward/Gradio-safe:
+    # render_upcoming_content("nikki") means user_id="nikki", not limit="nikki".
+    if isinstance(limit, str) and user_id == "main":
+        user_id = limit
+        limit = 6
+    try:
+        limit = int(limit)
+    except Exception:
+        limit = 6
+
     today = date.today()
     items = []
 
@@ -1003,8 +1026,20 @@ Keep it motivating and practical.
     return ask_channel_coach(prompt, use_profile=False, user_id=user_id)
 
 def refresh_content_calendar(month, year, status_filter, type_filter, user_id="main"):
-    return render_content_calendar(month, year, status_filter, type_filter, user_id), render_upcoming_content(user_id=user_id)
+    # Gradio app may pass workspace_name first.
+    if isinstance(month, str) and not str(month).isdigit():
+        actual_user_id = month
+        actual_month = year
+        actual_year = status_filter
+        actual_status_filter = type_filter
+        actual_type_filter = user_id
+        user_id = actual_user_id
+        month = actual_month
+        year = actual_year
+        status_filter = actual_status_filter
+        type_filter = actual_type_filter
 
+    return render_content_calendar(month, year, status_filter, type_filter, user_id), render_upcoming_content(user_id=user_id)
 
 def load_selected_content_item(selected_item_id, user_id="main"):
     if not selected_item_id:
@@ -1027,6 +1062,19 @@ def load_selected_content_item(selected_item_id, user_id="main"):
 
 
 def update_content_item(selected_item_id, title, content_type, game_topic, status, publish_date, notes, month, year, status_filter, type_filter, user_id="main"):
+    # Gradio app may pass workspace_name before month/year.
+    if isinstance(month, str) and not str(month).isdigit() and isinstance(year, (int, float)):
+        actual_user_id = month
+        actual_month = year
+        actual_year = status_filter
+        actual_status_filter = type_filter
+        actual_type_filter = user_id
+        user_id = actual_user_id
+        month = actual_month
+        year = actual_year
+        status_filter = actual_status_filter
+        type_filter = actual_type_filter
+
     if not selected_item_id:
         return (
             render_content_calendar(month, year, status_filter, type_filter, user_id),
@@ -1066,6 +1114,19 @@ def update_content_item(selected_item_id, title, content_type, game_topic, statu
     )
 
 def delete_content_item(selected_item_id, month, year, status_filter, type_filter, user_id="main"):
+    # Gradio app may pass workspace_name before month/year.
+    if isinstance(month, str) and not str(month).isdigit():
+        actual_user_id = month
+        actual_month = year
+        actual_year = status_filter
+        actual_status_filter = type_filter
+        actual_type_filter = user_id
+        user_id = actual_user_id
+        month = actual_month
+        year = actual_year
+        status_filter = actual_status_filter
+        type_filter = actual_type_filter
+
     if not selected_item_id:
         return (
             render_content_calendar(month, year, status_filter, type_filter, user_id),
@@ -3213,7 +3274,7 @@ Give detailed creator feedback:
 # TEXT TOOLS
 # =========================
 
-def generate_titles(video_idea, platform, tone):
+def generate_titles(video_idea, platform, tone, user_id="main"):
     prompt = f"""
 You are Channel Coach.
 
@@ -3228,7 +3289,7 @@ Make them clickable but not fake clickbait.
     return ask_channel_coach(prompt)
 
 
-def seo_help(video_idea, platform, niche):
+def seo_help(video_idea, platform, niche, user_id="main"):
     prompt = f"""
 You are Channel Coach.
 
@@ -3248,7 +3309,7 @@ Give:
     return ask_channel_coach(prompt)
 
 
-def description_help(video_idea, platform, niche):
+def description_help(video_idea, platform, niche, user_id="main"):
     prompt = f"""
 Write a strong video description.
 
@@ -3360,7 +3421,15 @@ def save_video_review_record(video_type, notes, feedback):
     return record
 
 
-def render_video_review_history(limit=10):
+def render_video_review_history(limit=10, user_id="main"):
+    if isinstance(limit, str) and user_id == "main":
+        user_id = limit
+        limit = 10
+    try:
+        limit = int(limit)
+    except Exception:
+        limit = 10
+
     history = load_video_review_history()
 
     if not history:
@@ -3407,8 +3476,7 @@ def render_video_review_history(limit=10):
     html_output += "</div>"
     return html_output
 
-
-def video_analyzer_with_history(video_file, notes, content_type):
+def video_analyzer_with_history(video_file, notes, content_type, user_id="main"):
     feedback = video_analyzer(video_file, notes, content_type)
 
     error_starts = (
@@ -3513,7 +3581,7 @@ Keep it encouraging, specific, and not too long.
     return ask_channel_coach(prompt)
 
 
-def render_creator_memory_snapshot():
+def render_creator_memory_snapshot(user_id="main"):
     history = load_video_review_history()
 
     if not history:
@@ -3544,7 +3612,7 @@ def render_creator_memory_snapshot():
     """
 
 
-def shorts_ideas(niche, topic):
+def shorts_ideas(niche, topic, user_id="main"):
     prompt = f"""
 Create 10 Shorts ideas.
 
@@ -3700,7 +3768,15 @@ def calculate_analytics_growth(entries):
     }
 
 
-def render_analytics_tracker(limit=8):
+def render_analytics_tracker(limit=8, user_id="main"):
+    if isinstance(limit, str) and user_id == "main":
+        user_id = limit
+        limit = 8
+    try:
+        limit = int(limit)
+    except Exception:
+        limit = 8
+
     entries = load_analytics_entries()
 
     if not entries:
@@ -3756,8 +3832,7 @@ def render_analytics_tracker(limit=8):
     </div>
     """
 
-
-def save_analytics_snapshot(views, subscribers, watch_time_hours, ctr, notes):
+def save_analytics_snapshot(views, subscribers, watch_time_hours, ctr, notes, user_id="main"):
     entries = load_analytics_entries()
 
     record = {
