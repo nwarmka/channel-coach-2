@@ -874,14 +874,11 @@ def render_content_calendar(month=None, year=None, status_filter="All", type_fil
 
         {quick_actions_html}
 
-        <div class="cc-balanced-main-grid">
-            <div>
-                {render_card_section("📅 This Week", "Projects due in the next 7 days.", today_items + week_items, "Nothing due this week. Pick one project to move forward.")}
-                {render_card_section("🚀 Upcoming Projects", "Scheduled projects after this week.", upcoming_items, "No later scheduled projects yet.", limit=6)}
-            </div>
-            <div>
+        <div class="cc-balanced-main-stack">
+            {render_card_section("📅 This Week", "Projects due in the next 7 days.", today_items + week_items, "Nothing due this week. Pick one project to move forward.", limit=8)}
+
+            <div class="cc-balanced-pair-grid">
                 {render_card_section("⚠️ Needs Attention", "Past-due projects that are not published yet.", overdue_items, "Nothing overdue. Nice!", limit=5)}
-                {idea_section}
                 <div class="cc-planner-section cc-card-panel">
                     <div class="cc-planner-section-head">
                         <h3>✅ Completed</h3>
@@ -890,6 +887,9 @@ def render_content_calendar(month=None, year=None, status_filter="All", type_fil
                     <p class="cc-empty">Completed projects stay out of the way so the dashboard focuses on what needs action.</p>
                 </div>
             </div>
+
+            {render_card_section("🚀 Upcoming Projects", "Scheduled projects after this week.", upcoming_items, "No later scheduled projects yet.", limit=8)}
+            {idea_section}
         </div>
 
         {render_monthly_schedule_view(month, year, status_filter, type_filter)}
@@ -1471,28 +1471,14 @@ def render_creator_dashboard():
     creator_name = profile.get("creator_name") or "Creator"
     channel_name = profile.get("channel_name") or "Your Brand"
 
-    next_item = stats["next_item"]
-    next_date = stats["next_item_date"]
-
-    if next_item and next_date:
-        next_project_html = _planner_project_card(next_item, item_date=next_date)
-    else:
-        next_project_html = """
-        <div class=\"cc-empty-card\">
-            <div class=\"cc-empty-icon\">✨</div>
-            <div>
-                <strong>Nothing scheduled yet</strong>
-                <p>Add a content project to start building your creator workspace.</p>
-            </div>
-        </div>
-        """
-
     warning = ""
-    if stats["overdue"] > 0:
+    if stats.get("overdue", 0) > 0:
         warning = f'<div class="cc-dashboard-warning">⚠️ You have {stats["overdue"]} overdue project(s). Move them, finish them, or update the status.</div>'
 
+    # Use one full-width dashboard instead of the old two-column dashboard + planner layout.
+    # This removes the large empty left column and lets the planner cards use the full page width.
     return f"""
-    <div class=\"cc-dashboard-wrap cc-card-dashboard\">
+    <div class=\"cc-dashboard-wrap cc-card-dashboard cc-dashboard-full-stack\">
         <div class=\"cc-dashboard-hero cc-card-hero\">
             <div>
                 <div class=\"cc-small-label\">Welcome back</div>
@@ -1503,48 +1489,9 @@ def render_creator_dashboard():
 
         {warning}
 
-        {render_needs_attention()}
-
-        <div class=\"cc-focus-grid\">
-            <div class=\"cc-focus-card cc-card-panel\">
-                <div class=\"cc-planner-section-head\">
-                    <h3>🎯 Next Project</h3>
-                    <p>The first thing to focus on today.</p>
-                </div>
-                {next_project_html}
-            </div>
-
-            <div class=\"cc-stats-card-grid\">
-                <div class=\"cc-stat-card cc-stat-soft\">
-                    <div class=\"cc-stat-icon\">📅</div>
-                    <div class=\"cc-stat-number\">{stats['planned_this_week']}</div>
-                    <div class=\"cc-stat-label\">Planned</div>
-                </div>
-                <div class=\"cc-stat-card cc-stat-soft\">
-                    <div class=\"cc-stat-icon\">🎬</div>
-                    <div class=\"cc-stat-number\">{stats['long_videos_this_week']}</div>
-                    <div class=\"cc-stat-label\">Long Form</div>
-                </div>
-                <div class=\"cc-stat-card cc-stat-soft\">
-                    <div class=\"cc-stat-icon\">📱</div>
-                    <div class=\"cc-stat-number\">{stats['shorts_this_week']}</div>
-                    <div class=\"cc-stat-label\">Short Form</div>
-                </div>
-                <div class=\"cc-stat-card cc-stat-soft\">
-                    <div class=\"cc-stat-icon\">✅</div>
-                    <div class=\"cc-stat-number\">{stats['published_this_month']}</div>
-                    <div class=\"cc-stat-label\">Published</div>
-                </div>
-            </div>
-        </div>
-
-        <div class=\"cc-dashboard-two-col cc-card-layout\">
-            {render_upcoming_content(limit=4)}
-            {render_content_calendar()}
-        </div>
+        {render_content_calendar()}
     </div>
     """
-
 
 def dashboard_ai_tip():
     stats = get_dashboard_stats()
@@ -2236,6 +2183,46 @@ label, .block-label {
     .cc-balanced-stats-row,
     .cc-action-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+
+/* No-sidebar dashboard layout cleanup */
+.cc-dashboard-full-stack,
+.cc-balanced-dashboard {
+    width: 100%;
+    max-width: 1180px;
+    margin: 0 auto;
+}
+.cc-dashboard-full-stack .cc-planner-wrap {
+    width: 100%;
+}
+.cc-balanced-main-stack {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 14px;
+    width: 100%;
+}
+.cc-balanced-pair-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    align-items: stretch;
+}
+.cc-balanced-main-stack .cc-planner-section,
+.cc-balanced-pair-grid .cc-planner-section {
+    margin-bottom: 0;
+}
+.cc-next-project-wide .cc-planner-project-card,
+.cc-balanced-main-stack .cc-planner-project-card {
+    width: 100%;
+}
+.cc-balanced-main-stack > .cc-planner-section .cc-planner-project-card:not(.cc-planner-card-compact) {
+    min-height: 86px;
+}
+@media (max-width: 900px) {
+    .cc-balanced-pair-grid {
+        grid-template-columns: 1fr;
     }
 }
 
@@ -3820,5 +3807,6 @@ def render_getting_started_checklist():
         {items_html}
     </div>
     '''
+
 
 
