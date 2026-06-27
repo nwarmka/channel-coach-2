@@ -18,11 +18,30 @@ from database import (
     get_calendar_items as db_get_calendar_items,
     update_calendar_item as db_update_calendar_item,
     delete_calendar_item as db_delete_calendar_item,
+    clean_user_id,
 )
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
 load_dotenv()
+
+# =========================
+# WORKSPACE / USER HELPERS
+# =========================
+DEFAULT_WORKSPACE_ID = os.getenv("CHANNEL_COACH_DEFAULT_WORKSPACE", "main")
+
+
+def workspace_id(user_id=None):
+    """
+    Returns a safe workspace ID. The app will pass this in from a Gradio State.
+    Until app.py is updated, everything still falls back to "main".
+    """
+    return clean_user_id(user_id or DEFAULT_WORKSPACE_ID)
+
+
+def workspace_status_message(user_id=None):
+    return f"Active workspace: {workspace_id(user_id)}"
+
 
 # =========================
 # API KEYS
@@ -77,8 +96,8 @@ DEFAULT_PROFILE = {
 }
 
 
-def load_creator_profile():
-    return load_creator_profile_record(DEFAULT_PROFILE, PROFILE_FILE)
+def load_creator_profile(user_id="main"):
+    return load_creator_profile_record(DEFAULT_PROFILE, PROFILE_FILE, user_id=workspace_id(user_id))
 
 def save_creator_profile(
     channel_name,
@@ -90,7 +109,8 @@ def save_creator_profile(
     main_platforms,
     goals,
     preferred_tone,
-    things_to_avoid
+    things_to_avoid,
+    user_id="main"
 ):
     profile = {
         "channel_name": channel_name,
@@ -105,7 +125,7 @@ def save_creator_profile(
         "things_to_avoid": things_to_avoid
     }
 
-    return save_creator_profile_record(profile, PROFILE_FILE)
+    return save_creator_profile_record(profile, PROFILE_FILE, user_id=workspace_id(user_id))
 
 
 def save_creator_profile_and_refresh_dashboard(
@@ -118,7 +138,8 @@ def save_creator_profile_and_refresh_dashboard(
     main_platforms,
     goals,
     preferred_tone,
-    things_to_avoid
+    things_to_avoid,
+    user_id="main"
 ):
     """
     Save the creator profile, then immediately re-render the dashboard
@@ -134,14 +155,15 @@ def save_creator_profile_and_refresh_dashboard(
         main_platforms,
         goals,
         preferred_tone,
-        things_to_avoid
+        things_to_avoid,
+        user_id
     )
 
-    return message, render_creator_dashboard(), render_getting_started_checklist()
+    return message, render_creator_dashboard(user_id), render_getting_started_checklist(user_id)
 
 
-def creator_profile_context():
-    profile = load_creator_profile()
+def creator_profile_context(user_id="main"):
+    profile = load_creator_profile(user_id)
 
     return f"""
 Creator Profile Memory:
@@ -242,16 +264,16 @@ def calculate_item_progress(item):
     return STATUS_PROGRESS.get(item.get("status", "Idea"), 10)
 
 
-def find_calendar_item(selected_item_id):
-    items = load_content_calendar()
+def find_calendar_item(selected_item_id, user_id="main"):
+    items = load_content_calendar(user_id)
     for item in items:
         if item.get("id") == selected_item_id:
             return item, items
     return None, items
 
 
-def render_project_workspace_overview(selected_item_id):
-    item, items = find_calendar_item(selected_item_id)
+def render_project_workspace_overview(selected_item_id, user_id="main"):
+    item, items = find_calendar_item(selected_item_id, user_id)
 
     if not item:
         return """
@@ -308,8 +330,8 @@ def render_project_workspace_overview(selected_item_id):
     """
 
 
-def load_project_workspace(selected_item_id):
-    item, items = find_calendar_item(selected_item_id)
+def load_project_workspace(selected_item_id, user_id="main"):
+    item, items = find_calendar_item(selected_item_id, user_id)
 
     if not item:
         return (
@@ -364,16 +386,17 @@ def save_project_workspace(
     shared_social,
     description_draft,
     thumbnail_notes,
-    shorts_ideas_draft
+    shorts_ideas_draft,
+    user_id="main"
 ):
     if not selected_item_id:
-        return render_project_workspace_overview(None), gr.update(choices=get_calendar_choices()), "❌ Choose a project first."
+        return render_project_workspace_overview(None), gr.update(choices=get_calendar_choices(user_id)), "❌ Choose a project first."
 
     parsed_date = validate_calendar_date(publish_date or "")
     if parsed_date is None:
-        return render_project_workspace_overview(selected_item_id), gr.update(choices=get_calendar_choices()), "❌ Please enter the date like this: YYYY-MM-DD"
+        return render_project_workspace_overview(selected_item_id), gr.update(choices=get_calendar_choices(user_id)), "❌ Please enter the date like this: YYYY-MM-DD"
 
-    items = load_content_calendar()
+    items = load_content_calendar(user_id)
     updated = False
 
     for item in items:
@@ -410,20 +433,20 @@ def save_project_workspace(
     save_content_calendar(items)
 
     if not updated:
-        return render_project_workspace_overview(None), gr.update(choices=get_calendar_choices()), "❌ Could not find that project."
+        return render_project_workspace_overview(None), gr.update(choices=get_calendar_choices(user_id)), "❌ Could not find that project."
 
     return (
         render_project_workspace_overview(selected_item_id),
-        gr.update(choices=get_calendar_choices(), value=selected_item_id),
+        gr.update(choices=get_calendar_choices(user_id), value=selected_item_id),
         "✅ Project workspace saved. Calendar and dashboard will use this updated project data."
     )
 
 
-def project_ai_helper(selected_item_id, project_notes, description_draft, thumbnail_notes, shorts_ideas_draft, request_type):
+def project_ai_helper(selected_item_id, project_notes, description_draft, thumbnail_notes, shorts_ideas_draft, request_type, user_id="main"):
     if not selected_item_id:
         return "Choose a project first."
 
-    item, items = find_calendar_item(selected_item_id)
+    item, items = find_calendar_item(selected_item_id, user_id)
     if not item:
         return "I could not find that project."
 
@@ -457,7 +480,7 @@ Project:
     prompt = f"""
 You are Channel Coach.
 
-{creator_profile_context()}
+{creator_profile_context(user_id)}
 
 {project_context}
 
@@ -467,34 +490,34 @@ Task:
 Be specific to this creator and this project.
 """
 
-    return ask_channel_coach(prompt, use_profile=False)
+    return ask_channel_coach(prompt, use_profile=False, user_id=user_id)
 
 
-def project_generate_titles(selected_item_id, project_notes, description_draft, thumbnail_notes, shorts_ideas_draft):
-    return project_ai_helper(selected_item_id, project_notes, description_draft, thumbnail_notes, shorts_ideas_draft, "titles")
+def project_generate_titles(selected_item_id, project_notes, description_draft, thumbnail_notes, shorts_ideas_draft, user_id="main"):
+    return project_ai_helper(selected_item_id, project_notes, description_draft, thumbnail_notes, shorts_ideas_draft, "titles", user_id=user_id)
 
 
-def project_generate_description(selected_item_id, project_notes, description_draft, thumbnail_notes, shorts_ideas_draft):
-    return project_ai_helper(selected_item_id, project_notes, description_draft, thumbnail_notes, shorts_ideas_draft, "description")
+def project_generate_description(selected_item_id, project_notes, description_draft, thumbnail_notes, shorts_ideas_draft, user_id="main"):
+    return project_ai_helper(selected_item_id, project_notes, description_draft, thumbnail_notes, shorts_ideas_draft, "description", user_id=user_id)
 
 
-def project_generate_thumbnail(selected_item_id, project_notes, description_draft, thumbnail_notes, shorts_ideas_draft):
-    return project_ai_helper(selected_item_id, project_notes, description_draft, thumbnail_notes, shorts_ideas_draft, "thumbnail")
+def project_generate_thumbnail(selected_item_id, project_notes, description_draft, thumbnail_notes, shorts_ideas_draft, user_id="main"):
+    return project_ai_helper(selected_item_id, project_notes, description_draft, thumbnail_notes, shorts_ideas_draft, "thumbnail", user_id=user_id)
 
 
-def project_generate_shorts(selected_item_id, project_notes, description_draft, thumbnail_notes, shorts_ideas_draft):
-    return project_ai_helper(selected_item_id, project_notes, description_draft, thumbnail_notes, shorts_ideas_draft, "shorts")
+def project_generate_shorts(selected_item_id, project_notes, description_draft, thumbnail_notes, shorts_ideas_draft, user_id="main"):
+    return project_ai_helper(selected_item_id, project_notes, description_draft, thumbnail_notes, shorts_ideas_draft, "shorts", user_id=user_id)
 
 
-def project_review(selected_item_id, project_notes, description_draft, thumbnail_notes, shorts_ideas_draft):
-    return project_ai_helper(selected_item_id, project_notes, description_draft, thumbnail_notes, shorts_ideas_draft, "review")
+def project_review(selected_item_id, project_notes, description_draft, thumbnail_notes, shorts_ideas_draft, user_id="main"):
+    return project_ai_helper(selected_item_id, project_notes, description_draft, thumbnail_notes, shorts_ideas_draft, "review", user_id=user_id)
 
 
-def load_content_calendar():
+def load_content_calendar(user_id="main"):
     """Load calendar items from Supabase first, then local JSON as fallback."""
     if supabase_is_ready():
         try:
-            records = db_get_calendar_items()
+            records = db_get_calendar_items(user_id=workspace_id(user_id))
             items = []
             for record in records:
                 item = dict(record)
@@ -522,8 +545,16 @@ def load_content_calendar():
             pass
 
     try:
-        if os.path.exists(CONTENT_CALENDAR_FILE):
-            with open(CONTENT_CALENDAR_FILE, "r", encoding="utf-8") as f:
+        safe_user_id = workspace_id(user_id)
+        root, ext = os.path.splitext(CONTENT_CALENDAR_FILE)
+        workspace_calendar_file = f"{root}_{safe_user_id}{ext or '.json'}"
+
+        fallback_file = workspace_calendar_file
+        if safe_user_id == "main" and not os.path.exists(workspace_calendar_file):
+            fallback_file = CONTENT_CALENDAR_FILE
+
+        if os.path.exists(fallback_file):
+            with open(fallback_file, "r", encoding="utf-8") as f:
                 items = json.load(f)
 
             if isinstance(items, list):
@@ -533,16 +564,20 @@ def load_content_calendar():
 
     return []
 
-def save_content_calendar(items):
+def save_content_calendar(items, user_id="main"):
     """
     Local fallback save only.
     Calendar add/edit/delete now uses Supabase directly through database.py.
     """
-    calendar_dir = os.path.dirname(CONTENT_CALENDAR_FILE)
+    safe_user_id = workspace_id(user_id)
+    root, ext = os.path.splitext(CONTENT_CALENDAR_FILE)
+    workspace_calendar_file = f"{root}_{safe_user_id}{ext or '.json'}"
+
+    calendar_dir = os.path.dirname(workspace_calendar_file)
     if calendar_dir:
         os.makedirs(calendar_dir, exist_ok=True)
 
-    with open(CONTENT_CALENDAR_FILE, "w", encoding="utf-8") as f:
+    with open(workspace_calendar_file, "w", encoding="utf-8") as f:
         json.dump(items, f, indent=4)
 
 def validate_calendar_date(date_text):
@@ -556,26 +591,26 @@ def item_label(item):
     return f'{item.get("publish_date", "No date")} | {item.get("status", "")} | {item.get("title", "Untitled")}'
 
 
-def get_calendar_choices():
-    items = sorted(load_content_calendar(), key=lambda x: x.get("publish_date", "9999-12-31"))
+def get_calendar_choices(user_id="main"):
+    items = sorted(load_content_calendar(user_id), key=lambda x: x.get("publish_date", "9999-12-31"))
     return [(item_label(item), item.get("id")) for item in items]
 
 
-def add_content_item(title, content_type, game_topic, status, publish_date, notes, month, year, status_filter, type_filter):
+def add_content_item(title, content_type, game_topic, status, publish_date, notes, month, year, status_filter, type_filter, user_id="main"):
     if not title or not title.strip():
         return (
-            render_content_calendar(month, year, status_filter, type_filter),
-            render_upcoming_content(),
-            gr.update(choices=get_calendar_choices()),
+            render_content_calendar(month, year, status_filter, type_filter, user_id),
+            render_upcoming_content(user_id=user_id),
+            gr.update(choices=get_calendar_choices(user_id)),
             "❌ Please enter a title."
         )
 
     parsed_date = validate_calendar_date(publish_date or "")
     if parsed_date is None:
         return (
-            render_content_calendar(month, year, status_filter, type_filter),
-            render_upcoming_content(),
-            gr.update(choices=get_calendar_choices()),
+            render_content_calendar(month, year, status_filter, type_filter, user_id),
+            render_upcoming_content(user_id=user_id),
+            gr.update(choices=get_calendar_choices(user_id)),
             "❌ Please enter the date like this: YYYY-MM-DD"
         )
 
@@ -590,13 +625,13 @@ def add_content_item(title, content_type, game_topic, status, publish_date, note
         priority="Medium",
         notes=(notes or "").strip(),
         tags=(game_topic or "").strip(),
-        user_id="main"
+        user_id=workspace_id(user_id)
     )
 
     return (
-        render_content_calendar(month, year, status_filter, type_filter),
-        render_upcoming_content(),
-        gr.update(choices=get_calendar_choices()),
+        render_content_calendar(month, year, status_filter, type_filter, user_id),
+        render_upcoming_content(user_id=user_id),
+        gr.update(choices=get_calendar_choices(user_id)),
         message
     )
 
@@ -666,7 +701,7 @@ def _planner_project_card(item, item_date=None, compact=False):
     """
 
 
-def render_monthly_schedule_view(month=None, year=None, status_filter="All", type_filter="All"):
+def render_monthly_schedule_view(month=None, year=None, status_filter="All", type_filter="All", user_id="main"):
     today = date.today()
 
     try:
@@ -676,7 +711,7 @@ def render_monthly_schedule_view(month=None, year=None, status_filter="All", typ
         month = today.month
         year = today.year
 
-    items = load_content_calendar()
+    items = load_content_calendar(user_id)
 
     if status_filter != "All":
         items = [item for item in items if item.get("status") == status_filter]
@@ -735,9 +770,9 @@ def render_monthly_schedule_view(month=None, year=None, status_filter="All", typ
     return html_output
 
 
-def render_content_calendar(month=None, year=None, status_filter="All", type_filter="All"):
+def render_content_calendar(month=None, year=None, status_filter="All", type_filter="All", user_id="main"):
     today = date.today()
-    items = load_content_calendar()
+    items = load_content_calendar(user_id)
 
     if status_filter != "All":
         items = [item for item in items if item.get("status") == status_filter]
@@ -892,13 +927,13 @@ def render_content_calendar(month=None, year=None, status_filter="All", type_fil
             {idea_section}
         </div>
 
-        {render_monthly_schedule_view(month, year, status_filter, type_filter)}
+        {render_monthly_schedule_view(month, year, status_filter, type_filter, user_id)}
     </div>
     """
 
     return html_output
 
-def render_upcoming_content(limit=6):
+def render_upcoming_content(limit=6, user_id="main"):
     today = date.today()
     items = []
 
@@ -929,8 +964,8 @@ def render_upcoming_content(limit=6):
     html_output += "</div>"
     return html_output
 
-def plan_my_week():
-    items = load_content_calendar()
+def plan_my_week(user_id="main"):
+    items = load_content_calendar(user_id)
     today = date.today()
     end_date = today + timedelta(days=7)
 
@@ -949,7 +984,7 @@ def plan_my_week():
 You are Channel Coach acting like a friendly creator production manager.
 
 Use this creator profile:
-{creator_profile_context()}
+{creator_profile_context(user_id)}
 
 Here is the creator's content calendar for the next 7 days:
 {calendar_summary}
@@ -965,17 +1000,17 @@ Give:
 
 Keep it motivating and practical.
 """
-    return ask_channel_coach(prompt, use_profile=False)
+    return ask_channel_coach(prompt, use_profile=False, user_id=user_id)
 
-def refresh_content_calendar(month, year, status_filter, type_filter):
-    return render_content_calendar(month, year, status_filter, type_filter), render_upcoming_content()
+def refresh_content_calendar(month, year, status_filter, type_filter, user_id="main"):
+    return render_content_calendar(month, year, status_filter, type_filter, user_id), render_upcoming_content(user_id=user_id)
 
 
-def load_selected_content_item(selected_item_id):
+def load_selected_content_item(selected_item_id, user_id="main"):
     if not selected_item_id:
         return "", "Long Video", "", "Idea", date.today().isoformat(), "", "Choose an item to edit."
 
-    items = load_content_calendar()
+    items = load_content_calendar(user_id)
     for item in items:
         if item.get("id") == selected_item_id:
             return (
@@ -991,21 +1026,21 @@ def load_selected_content_item(selected_item_id):
     return "", "Long Video", "", "Idea", date.today().isoformat(), "", "Could not find that calendar item."
 
 
-def update_content_item(selected_item_id, title, content_type, game_topic, status, publish_date, notes, month, year, status_filter, type_filter):
+def update_content_item(selected_item_id, title, content_type, game_topic, status, publish_date, notes, month, year, status_filter, type_filter, user_id="main"):
     if not selected_item_id:
         return (
-            render_content_calendar(month, year, status_filter, type_filter),
-            render_upcoming_content(),
-            gr.update(choices=get_calendar_choices()),
+            render_content_calendar(month, year, status_filter, type_filter, user_id),
+            render_upcoming_content(user_id=user_id),
+            gr.update(choices=get_calendar_choices(user_id)),
             "❌ Choose an item to edit first."
         )
 
     parsed_date = validate_calendar_date(publish_date or "")
     if parsed_date is None:
         return (
-            render_content_calendar(month, year, status_filter, type_filter),
-            render_upcoming_content(),
-            gr.update(choices=get_calendar_choices()),
+            render_content_calendar(month, year, status_filter, type_filter, user_id),
+            render_upcoming_content(user_id=user_id),
+            gr.update(choices=get_calendar_choices(user_id)),
             "❌ Please enter the date like this: YYYY-MM-DD"
         )
 
@@ -1019,36 +1054,37 @@ def update_content_item(selected_item_id, title, content_type, game_topic, statu
         publish_time="",
         priority="Medium",
         notes=(notes or "").strip(),
-        tags=(game_topic or "").strip()
+        tags=(game_topic or "").strip(),
+        user_id=workspace_id(user_id)
     )
 
     return (
-        render_content_calendar(month, year, status_filter, type_filter),
-        render_upcoming_content(),
-        gr.update(choices=get_calendar_choices(), value=selected_item_id),
+        render_content_calendar(month, year, status_filter, type_filter, user_id),
+        render_upcoming_content(user_id=user_id),
+        gr.update(choices=get_calendar_choices(user_id), value=selected_item_id),
         message
     )
 
-def delete_content_item(selected_item_id, month, year, status_filter, type_filter):
+def delete_content_item(selected_item_id, month, year, status_filter, type_filter, user_id="main"):
     if not selected_item_id:
         return (
-            render_content_calendar(month, year, status_filter, type_filter),
-            render_upcoming_content(),
-            gr.update(choices=get_calendar_choices()),
+            render_content_calendar(month, year, status_filter, type_filter, user_id),
+            render_upcoming_content(user_id=user_id),
+            gr.update(choices=get_calendar_choices(user_id)),
             "❌ Choose an item to delete first."
         )
 
-    message = db_delete_calendar_item(selected_item_id)
+    message = db_delete_calendar_item(selected_item_id, user_id=workspace_id(user_id))
 
     return (
-        render_content_calendar(month, year, status_filter, type_filter),
-        render_upcoming_content(),
-        gr.update(choices=get_calendar_choices(), value=None),
+        render_content_calendar(month, year, status_filter, type_filter, user_id),
+        render_upcoming_content(user_id=user_id),
+        gr.update(choices=get_calendar_choices(user_id), value=None),
         message
     )
 
-def get_dashboard_stats():
-    items = load_content_calendar()
+def get_dashboard_stats(user_id="main"):
+    items = load_content_calendar(user_id)
     today = date.today()
     month_start = today.replace(day=1)
 
@@ -1099,16 +1135,16 @@ def get_dashboard_stats():
 
 
 
-def render_needs_attention():
+def render_needs_attention(user_id="main"):
     """
     Creator Health is a smarter dashboard summary.
     It scores the workspace, hides unnecessary warnings, and recommends
     the single best next action based on profile, calendar, projects,
     video review history, and analytics snapshots.
     """
-    profile = load_creator_profile()
-    stats = get_dashboard_stats()
-    items = load_content_calendar()
+    profile = load_creator_profile(user_id)
+    stats = get_dashboard_stats(user_id)
+    items = load_content_calendar(user_id)
     history = load_video_review_history()
 
     try:
@@ -1465,9 +1501,9 @@ def render_needs_attention():
     </div>
     """
 
-def render_creator_dashboard():
-    profile = load_creator_profile()
-    stats = get_dashboard_stats()
+def render_creator_dashboard(user_id="main"):
+    profile = load_creator_profile(user_id)
+    stats = get_dashboard_stats(user_id)
     creator_name = profile.get("creator_name") or "Creator"
     channel_name = profile.get("channel_name") or "Your Brand"
 
@@ -1493,9 +1529,9 @@ def render_creator_dashboard():
     </div>
     """
 
-def dashboard_ai_tip():
-    stats = get_dashboard_stats()
-    items = load_content_calendar()
+def dashboard_ai_tip(user_id="main"):
+    stats = get_dashboard_stats(user_id)
+    items = load_content_calendar(user_id)
 
     if not items:
         return "Add your first few content projects to the Content Calendar, then I can give you a smarter dashboard tip."
@@ -1503,7 +1539,7 @@ def dashboard_ai_tip():
     prompt = f"""
 You are Channel Coach.
 
-{creator_profile_context()}
+{creator_profile_context(user_id)}
 
 Here are this creator's dashboard stats:
 {json.dumps(stats, default=str, indent=2)}
@@ -1514,11 +1550,11 @@ Here are their calendar items:
 Give one short, useful creator tip for what they should focus on next.
 Keep it under 120 words.
 """
-    return ask_channel_coach(prompt, use_profile=False)
+    return ask_channel_coach(prompt, use_profile=False, user_id=user_id)
 
 
-def refresh_creator_dashboard():
-    return render_creator_dashboard()
+def refresh_creator_dashboard(user_id="main"):
+    return render_creator_dashboard(user_id)
 
 
 # =========================
@@ -2880,12 +2916,12 @@ textarea[aria-label*="Description"] {
 # OPENAI TEXT HELPER
 # =========================
 
-def ask_channel_coach(prompt, use_profile=True):
+def ask_channel_coach(prompt, use_profile=True, user_id="main"):
     if not os.getenv("OPENAI_API_KEY"):
         return "Missing OPENAI_API_KEY. Add your OpenAI API key to your environment variables."
 
     if use_profile:
-        prompt = creator_profile_context() + "\n\nUser request:\n" + prompt
+        prompt = creator_profile_context(user_id) + "\n\nUser request:\n" + prompt
 
     response = client.responses.create(
         model="gpt-4.1-mini",
@@ -2975,18 +3011,18 @@ def _summarize_analytics_for_coach(entries, limit=5):
     return cleaned
 
 
-def build_creator_coach_context():
+def build_creator_coach_context(user_id="main"):
     """
     Builds a compact workspace snapshot so Coach Chat can answer using
     the creator's real Channel Coach data instead of giving generic advice.
     """
     try:
-        profile = load_creator_profile()
+        profile = load_creator_profile(user_id)
     except Exception:
         profile = {}
 
     try:
-        calendar_items = load_content_calendar()
+        calendar_items = load_content_calendar(user_id)
     except Exception:
         calendar_items = []
 
@@ -3001,7 +3037,7 @@ def build_creator_coach_context():
         analytics_entries = []
 
     try:
-        dashboard_stats = get_dashboard_stats()
+        dashboard_stats = get_dashboard_stats(user_id)
     except Exception:
         dashboard_stats = {}
 
@@ -3030,14 +3066,14 @@ def build_creator_coach_context():
     return json.dumps(context, indent=2, ensure_ascii=False)
 
 
-def ask_creator_coach(user_question):
+def ask_creator_coach(user_question, user_id="main"):
     if not user_question or not str(user_question).strip():
         return "Ask me something like: **What should I work on today?**"
 
     if not os.getenv("OPENAI_API_KEY"):
         return "Missing OPENAI_API_KEY. Add your OpenAI API key to your Render environment variables."
 
-    creator_context = build_creator_coach_context()
+    creator_context = build_creator_coach_context(user_id)
 
     prompt = f"""
 You are Coach Chat inside Channel Coach, a supportive creator mentor for small content creators.
@@ -3111,7 +3147,7 @@ def extract_video_frames(video_path, max_frames=8):
     return frames
 
 
-def analyze_video_with_frames(video_file, notes, video_type):
+def analyze_video_with_frames(video_file, notes, video_type, user_id="main"):
     if video_file is None and not notes.strip():
         return "Please upload a video or paste notes first."
 
@@ -3121,7 +3157,7 @@ def analyze_video_with_frames(video_file, notes, video_type):
             "text": f"""
 You are Channel Coach, an expert creator coach.
 
-{creator_profile_context()}
+{creator_profile_context(user_id)}
 
 Analyze this {video_type}.
 
@@ -3394,7 +3430,7 @@ def video_analyzer_with_history(video_file, notes, content_type):
 # CREATOR MEMORY INSIGHTS
 # =========================
 
-def generate_creator_memory_insights():
+def generate_creator_memory_insights(user_id="main"):
     history = load_video_review_history()
 
     if not history:
@@ -3440,7 +3476,7 @@ You are Channel Coach, a creator coach.
 
 Use the creator profile and saved video review history to generate Creator Memory Insights.
 
-{creator_profile_context()}
+{creator_profile_context(user_id)}
 
 Review history summary:
 {json.dumps(review_summary, indent=2)}
@@ -3529,7 +3565,7 @@ For each idea include:
 # THUMBNAIL ANALYZER
 # =========================
 
-def analyze_thumbnail(image):
+def analyze_thumbnail(image, user_id="main"):
     if image is None:
         return "Please upload a thumbnail."
 
@@ -3546,7 +3582,7 @@ def analyze_thumbnail(image):
                         "text": f"""
 You are Channel Coach, a creator thumbnail expert.
 
-{creator_profile_context()}
+{creator_profile_context(user_id)}
 
 Analyze this thumbnail.
 
@@ -3747,9 +3783,9 @@ def save_analytics_snapshot(views, subscribers, watch_time_hours, ctr, notes):
 # This checklist gives new testers a clear path through the app so they know
 # what to try first instead of clicking around without direction.
 
-def render_getting_started_checklist():
-    profile = load_creator_profile()
-    calendar_items = load_content_calendar()
+def render_getting_started_checklist(user_id="main"):
+    profile = load_creator_profile(user_id)
+    calendar_items = load_content_calendar(user_id)
     review_history = load_video_review_history()
     analytics_entries = load_analytics_entries()
 
@@ -3807,6 +3843,5 @@ def render_getting_started_checklist():
         {items_html}
     </div>
     '''
-
 
 
