@@ -934,16 +934,10 @@ def render_content_calendar(month=None, year=None, status_filter="All", type_fil
     return html_output
 
 def render_upcoming_content(limit=6, user_id="main"):
-    if isinstance(user_id, int):
-        limit = user_id
-        user_id = None
-    if isinstance(limit, str):
-        user_id = limit
-        limit = 5
     today = date.today()
     items = []
 
-    for item in load_content_calendar():
+    for item in load_content_calendar(user_id):
         parsed_date = validate_calendar_date(item.get("publish_date", ""))
         if parsed_date and parsed_date >= today and item.get("status") != "Published":
             items.append((parsed_date, item))
@@ -1531,7 +1525,7 @@ def render_creator_dashboard(user_id="main"):
 
         {warning}
 
-        {render_content_calendar()}
+        {render_content_calendar(user_id=user_id)}
     </div>
     """
 
