@@ -134,3 +134,106 @@ def save_creator_profile_record(profile, profile_file):
 
     except Exception as e:
         return f"❌ Could not save creator profile: {e}"
+# =========================
+# CONTENT CALENDAR STORAGE
+# =========================
+def add_calendar_item(
+    title,
+    platform,
+    content_type,
+    status,
+    publish_date,
+    publish_time,
+    priority,
+    notes,
+    tags,
+    user_id="main"
+):
+    if not supabase_is_ready():
+        return "❌ Supabase is not configured. Calendar item was not saved."
+
+    try:
+        supabase.table("content_calendar").insert({
+            "user_id": user_id,
+            "title": title,
+            "platform": platform,
+            "content_type": content_type,
+            "status": status,
+            "publish_date": publish_date or None,
+            "publish_time": publish_time or None,
+            "priority": priority,
+            "notes": notes,
+            "tags": tags
+        }).execute()
+
+        return "✅ Calendar item saved to Supabase!"
+
+    except Exception as e:
+        return f"❌ Could not save calendar item: {e}"
+
+
+def get_calendar_items(user_id="main"):
+    if not supabase_is_ready():
+        return []
+
+    try:
+        result = (
+            supabase
+            .table("content_calendar")
+            .select("*")
+            .eq("user_id", user_id)
+            .order("publish_date", desc=False)
+            .execute()
+        )
+
+        return result.data or []
+
+    except Exception:
+        return []
+
+
+def update_calendar_item(
+    item_id,
+    title,
+    platform,
+    content_type,
+    status,
+    publish_date,
+    publish_time,
+    priority,
+    notes,
+    tags
+):
+    if not supabase_is_ready():
+        return "❌ Supabase is not configured. Calendar item was not updated."
+
+    try:
+        supabase.table("content_calendar").update({
+            "title": title,
+            "platform": platform,
+            "content_type": content_type,
+            "status": status,
+            "publish_date": publish_date or None,
+            "publish_time": publish_time or None,
+            "priority": priority,
+            "notes": notes,
+            "tags": tags
+        }).eq("id", item_id).execute()
+
+        return "✅ Calendar item updated!"
+
+    except Exception as e:
+        return f"❌ Could not update calendar item: {e}"
+
+
+def delete_calendar_item(item_id):
+    if not supabase_is_ready():
+        return "❌ Supabase is not configured. Calendar item was not deleted."
+
+    try:
+        supabase.table("content_calendar").delete().eq("id", item_id).execute()
+        return "✅ Calendar item deleted!"
+
+    except Exception as e:
+        return f"❌ Could not delete calendar item: {e}"
+
