@@ -2,7 +2,6 @@
 # UI lives here. Feature functions, styles, constants, and helpers are imported from features.py.
 
 from features import *
-from auth import signup_user, login_user
 
 with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
 
@@ -36,42 +35,6 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
     workspace_indicator = gr.Markdown("Current workspace: **main**")
 
     workspace_button = gr.Button("🔄 Load Workspace")
-
-    # =========================
-    # LOGIN / SIGN UP
-    # =========================
-    # After logging in, Channel Coach will use the Supabase user ID as the workspace name.
-    # For now, click "Load Workspace" after logging in to refresh the app with that account.
-    def handle_login(email, password):
-        message, user_id = login_user(email, password)
-        if user_id:
-            return message, user_id, f"Current workspace: **{user_id}**"
-        return message, gr.update(), gr.update()
-
-    def handle_signup(email, password):
-        return signup_user(email, password)
-
-    with gr.Accordion("🔐 Login / Sign Up", open=True):
-        auth_email = gr.Textbox(label="Email", placeholder="you@example.com")
-        auth_password = gr.Textbox(label="Password", type="password")
-
-        with gr.Row():
-            signup_button = gr.Button("Create Account")
-            login_button = gr.Button("Log In")
-
-        auth_status = gr.Textbox(label="Login Status", lines=2)
-
-        signup_button.click(
-            handle_signup,
-            inputs=[auth_email, auth_password],
-            outputs=auth_status
-        )
-
-        login_button.click(
-            handle_login,
-            inputs=[auth_email, auth_password],
-            outputs=[auth_status, workspace_name, workspace_indicator]
-        )
 
     saved_profile = load_creator_profile("main")
 
