@@ -20,6 +20,13 @@ from database import (
     delete_calendar_item as db_delete_calendar_item,
     clean_user_id,
 )
+from auth import (
+    signup_user,
+    login_user,
+    restore_saved_session,
+    logout_user,
+    empty_saved_session,
+)
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
@@ -3843,5 +3850,8 @@ def render_getting_started_checklist(user_id="main"):
         {items_html}
     </div>
     '''
+
+
+
 
 
