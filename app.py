@@ -2,7 +2,6 @@
 # UI lives here. Feature functions, styles, constants, and helpers are imported from features.py.
 
 from features import *
-from auth import signup_user, login_user
 
 with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
 
@@ -37,53 +36,17 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
 
     workspace_button = gr.Button("🔄 Load Workspace")
 
-    # =========================
-    # LOGIN / SIGN UP
-    # =========================
-    # After logging in, Channel Coach will use the Supabase user ID as the workspace name.
-    # For now, click "Load Workspace" after logging in to refresh the app with that account.
-    def handle_login(email, password):
-        message, user_id = login_user(email, password)
-        if user_id:
-            return message, user_id, f"Current workspace: **{user_id}**"
-        return message, gr.update(), gr.update()
-
-    def handle_signup(email, password):
-        return signup_user(email, password)
-
-    with gr.Accordion("🔐 Login / Sign Up", open=True):
-        auth_email = gr.Textbox(label="Email", placeholder="you@example.com")
-        auth_password = gr.Textbox(label="Password", type="password")
-
-        with gr.Row():
-            signup_button = gr.Button("Create Account")
-            login_button = gr.Button("Log In")
-
-        auth_status = gr.Textbox(label="Login Status", lines=2)
-
-        signup_button.click(
-            handle_signup,
-            inputs=[auth_email, auth_password],
-            outputs=auth_status
-        )
-
-        login_button.click(
-            handle_login,
-            inputs=[auth_email, auth_password],
-            outputs=[auth_status, workspace_name, workspace_indicator]
-        )
-
     saved_profile = load_creator_profile("main")
 
     with gr.Tab("🏠 Dashboard"):
-        gr.Markdown("## 🕹️ Creator Dashboard\n\nYour home base for upcoming content, overdue projects, and quick AI guidance.")
+        gr.Markdown("## 🕹️ Creator Dashboard\n\nYour home base for upcoming content, overdue projects, and quick creator guidance.")
         dashboard_output = gr.HTML(value=render_creator_dashboard("main"))
 
         with gr.Row():
             dashboard_refresh_button = gr.Button("🔄 Refresh Dashboard")
-            dashboard_tip_button = gr.Button("✨ Give Me One AI Tip")
+            dashboard_tip_button = gr.Button("✨ Give Me One Tip")
 
-        dashboard_tip_output = gr.Textbox(label="AI Dashboard Tip", lines=5)
+        dashboard_tip_output = gr.Textbox(label="Creator Tip", lines=5)
 
         dashboard_refresh_button.click(
             refresh_creator_dashboard,
@@ -173,7 +136,7 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
                 cc_upcoming_output = gr.HTML(value=render_upcoming_content(user_id="main"))
 
                 cc_plan_week_button = gr.Button("✨ Plan My Week")
-                cc_plan_week_output = gr.Textbox(label="AI Weekly Plan", lines=12)
+                cc_plan_week_output = gr.Textbox(label="Weekly Content Plan", lines=12)
 
             with gr.Column(scale=2):
                 with gr.Row():
@@ -369,7 +332,7 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
                     upcoming_output = gr.HTML(value=render_upcoming_content(user_id="main"))
 
                     plan_week_button = gr.Button("✨ Plan My Week")
-                    plan_week_output = gr.Textbox(label="AI Weekly Plan", lines=12)
+                    plan_week_output = gr.Textbox(label="Weekly Content Plan", lines=12)
 
                 with gr.Column(scale=2):
                     with gr.Row():
@@ -519,7 +482,7 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
             gr.Markdown(
                 """
                 ## 🎬 Project Workspace
-                Open any calendar item as a full creator project. Track real checklist progress, save notes, and generate project-specific AI help.
+                Open any calendar item as a full creator project. Track real checklist progress, save notes, and generate project-specific guidance.
                 """
             )
 
@@ -557,7 +520,7 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
                     workspace_thumbnail_notes = gr.Textbox(label="Thumbnail Notes", lines=5)
                     workspace_shorts_ideas_draft = gr.Textbox(label="Shorts Ideas / Clip Notes", lines=5)
 
-                    gr.Markdown("### AI Project Assistant")
+                    gr.Markdown("### Project Assistant")
                     with gr.Row():
                         workspace_titles_button = gr.Button("✨ Generate Titles")
                         workspace_description_button = gr.Button("📝 Generate Description")
@@ -567,7 +530,7 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
                         workspace_shorts_button = gr.Button("📱 Shorts Ideas")
                         workspace_review_button = gr.Button("🎬 Project Review")
 
-                    workspace_ai_output = gr.Textbox(label="AI Project Output", lines=14)
+                    workspace_ai_output = gr.Textbox(label="Project Results", lines=14)
 
             workspace_load_button.click(
                 load_project_workspace,
@@ -658,15 +621,15 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
 
 
 
-    with gr.Tab("🤖 AI Tools"):
-        gr.Markdown("## 🤖 AI Tools\n\nAnalyze videos, improve thumbnails, generate titles, optimize SEO, write descriptions, and brainstorm content ideas.")
+    with gr.Tab("🎬 Creator Toolkit"):
+        gr.Markdown("## 🎬 Creator Toolkit\n\nAnalyze videos, improve thumbnails, generate titles, optimize SEO, write descriptions, and brainstorm content ideas.")
 
 
-        with gr.Accordion("🤖 Coach Chat", open=True):
+        with gr.Accordion("💬 Coach Chat", open=True):
             gr.Markdown(
                 """
-                ## 🤖 Coach Chat
-                Ask your AI Creator Coach what to work on next, what to improve, or how to grow your channel.
+                ## 💬 Coach Chat
+                Ask Channel Coach what to work on next, what to improve, or how to grow your channel.
 
                 Coach Chat uses your saved profile, calendar, projects, reviews, analytics, and Creator Health data.
                 """
@@ -883,7 +846,7 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
         )
 
     with gr.Tab("⚙️ Settings"):
-        gr.Markdown("## ⚙️ Settings\n\nManage creator profile memory and future app preferences.")
+        gr.Markdown("## ⚙️ Settings\n\nManage your creator profile and app preferences.")
 
         with gr.Accordion("🚀 Getting Started", open=True):
             onboarding_output = gr.HTML(value=render_getting_started_checklist("main"))
@@ -898,7 +861,7 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
         with gr.Accordion("👤 Creator Profile", open=True):
             gr.Markdown(
                 """
-                ## 🧠 Creator Profile Memory
+                ## 👤 Creator Profile & Preferences
                 Save your channel niche, goals, style, and current content here.
                 Channel Coach will use this information in every tool.
                 """
