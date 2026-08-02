@@ -4,6 +4,35 @@
 from features import *
 
 with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
+    # =========================
+    # ACCOUNT LOGIN
+    # =========================
+    saved_login = gr.State(empty_saved_session())
+
+    with gr.Accordion("🔐 Account Login", open=True):
+        gr.Markdown(
+            """
+            ## Welcome to Channel Coach
+            Log in to open your private creator workspace.
+            """
+        )
+
+        login_email = gr.Textbox(
+            label="Email",
+            placeholder="Enter your email address"
+        )
+
+        login_password = gr.Textbox(
+            label="Password",
+            type="password",
+            placeholder="Enter your password"
+        )
+
+        with gr.Row():
+            login_button = gr.Button("🔐 Log In", variant="primary")
+            signup_button = gr.Button("Create Account")
+
+        login_status = gr.Markdown()
 
     gr.HTML(
         f"""
@@ -974,7 +1003,43 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
         ]
     )
 
+    login_button.click(
+        login_user,
+        inputs=[login_email, login_password],
+        outputs=[login_status, workspace_name, saved_login],
+        show_progress="full"
+    ).then(
+        load_workspace_ui,
+        inputs=[workspace_name],
+        outputs=[
+            workspace_indicator,
+            dashboard_output,
+            cc_calendar_output,
+            cc_upcoming_output,
+            cc_calendar_item_picker,
+            calendar_item_picker,
+            workspace_project_picker,
+            analytics_output,
+            onboarding_output,
+            profile_channel_name,
+            profile_creator_name,
+            profile_niche,
+            profile_target_audience,
+            profile_content_style,
+            profile_current_games,
+            profile_main_platforms,
+            profile_goals,
+            profile_preferred_tone,
+            profile_things_to_avoid
+        ]
+    )
 
+    signup_button.click(
+        signup_user,
+        inputs=[login_email, login_password],
+        outputs=login_status,
+        show_progress="full"
+    )
 # =========================
 # SERVE PWA FILES
 # =========================
@@ -1000,6 +1065,9 @@ app.launch(
     server_port=port,
     share=False
 )
+    
+ 
+      
     
  
       
