@@ -1597,53 +1597,51 @@ if ('serviceWorker' in navigator) {
 # Big 80s synthwave/arcade style update.
 
 custom_css = """
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 :root {
-    --bg: #0f1117;
-    --bg2: #171923;
-    --panel: #1e2230;
-    --panel2: #252b3b;
-    --border: #31384d;
-    --accent: #8b5cf6;
-    --accent2: #22d3ee;
-    --text: #f5f7ff;
-    --muted: #b8c0d9;
+    --bg: #ffffff;
+    --bg2: #f7f7f8;
+    --panel: #ffffff;
+    --panel2: #f7f7f8;
+    --border: #e5e5e5;
+    --accent: #6d5dfc;
+    --accent2: #7c6dfd;
+    --text: #202123;
+    --muted: #6b6b6b;
 }
 
 html, body, .gradio-container {
     min-height: 100vh !important;
-    background:
-        radial-gradient(circle at top left, rgba(139,92,246,.12), transparent 25%),
-        radial-gradient(circle at top right, rgba(34,211,238,.10), transparent 22%),
-        linear-gradient(180deg, var(--bg) 0%, #0b0d12 100%) !important;
+    background: var(--bg) !important;
     color: var(--text) !important;
     font-family: 'Inter', sans-serif !important;
 }
 
 .gradio-container {
     width: 100% !important;
-    max-width: 1200px !important;
+    max-width: 1100px !important;
     margin: 0 auto !important;
-    padding: 20px !important;
+    padding: 22px !important;
     box-sizing: border-box !important;
 }
 
+/* Clean Channel Coach header */
 #channel-coach-header {
     width: 100% !important;
     max-width: 100% !important;
     box-sizing: border-box !important;
-    background: linear-gradient(135deg, #1f2433, #171b27) !important;
-    border: 1px solid var(--border) !important;
-    border-radius: 20px !important;
-    padding: 28px !important;
-    margin-bottom: 20px !important;
-    box-shadow: 0 10px 30px rgba(0,0,0,.35) !important;
+    background: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
+    padding: 8px 0 18px !important;
+    margin-bottom: 10px !important;
+    box-shadow: none !important;
 }
 
 #channel-coach-header h1 {
-    font-size: 3rem !important;
-    margin-bottom: 10px !important;
+    font-size: 2.25rem !important;
+    margin-bottom: 8px !important;
     color: var(--text) !important;
     letter-spacing: -.03em !important;
 }
@@ -1653,7 +1651,103 @@ html, body, .gradio-container {
     font-size: 1rem !important;
 }
 
-/* Mobile layout fixes */
+/* Typography */
+h1, h2, h3, h4 {
+    color: var(--text) !important;
+    letter-spacing: -0.02em !important;
+}
+
+p { color: var(--muted); }
+
+label, .block-label {
+    color: var(--text) !important;
+    font-weight: 500 !important;
+}
+
+/* Main panels */
+.block, .gr-box, .form, .panel, .gr-panel, .tabitem, [role='tabpanel'] {
+    background: transparent !important;
+    border: none !important;
+    border-radius: 16px !important;
+    box-shadow: none !important;
+}
+
+/* Inputs */
+textarea, input, select {
+    background: #ffffff !important;
+    color: var(--text) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 14px !important;
+    box-shadow: none !important;
+}
+
+textarea:focus, input:focus, select:focus {
+    border-color: #b9b9b9 !important;
+    box-shadow: 0 0 0 1px #b9b9b9 !important;
+}
+
+/* Buttons */
+button, .gr-button, button.primary {
+    background: var(--panel-soft, #f7f7f8) !important;
+    color: var(--text) !important;
+    border: 1px solid transparent !important;
+    border-radius: 999px !important;
+    font-weight: 500 !important;
+    box-shadow: none !important;
+    transition: background .15s ease !important;
+}
+
+button:hover, .gr-button:hover {
+    background: #eeeeef !important;
+    filter: none !important;
+    transform: none !important;
+}
+
+button.primary, .gr-button.primary {
+    background: var(--accent) !important;
+    color: white !important;
+}
+
+button.primary:hover, .gr-button.primary:hover {
+    background: #5d4ee8 !important;
+}
+
+/* Tabs */
+.tabs, .tab-nav {
+    background: transparent !important;
+    border: none !important;
+}
+
+button[role='tab'] {
+    background: transparent !important;
+    color: var(--muted) !important;
+    border: none !important;
+    border-radius: 10px !important;
+    font-weight: 500 !important;
+    padding: 10px 14px !important;
+}
+
+button[role='tab']:hover {
+    background: #f7f7f8 !important;
+}
+
+button[role='tab'][aria-selected='true'] {
+    background: #f7f7f8 !important;
+    color: var(--text) !important;
+    border: none !important;
+    font-weight: 600 !important;
+}
+
+/* Accordions */
+.gradio-accordion, .accordion {
+    border: 1px solid var(--border) !important;
+    border-radius: 16px !important;
+    background: #ffffff !important;
+    overflow: hidden !important;
+    box-shadow: none !important;
+}
+
+/* Mobile layout */
 @media (max-width: 768px) {
     html, body {
         width: 100% !important;
@@ -1663,29 +1757,27 @@ html, body, .gradio-container {
     .gradio-container {
         width: 100% !important;
         max-width: 100% !important;
-        padding: 10px !important;
+        padding: 12px !important;
         margin: 0 !important;
         box-sizing: border-box !important;
     }
 
     #channel-coach-header {
         width: 100% !important;
-        max-width: calc(100vw - 20px) !important;
-        padding: 14px !important;
-        margin: 0 0 12px 0 !important;
-        border-radius: 14px !important;
+        max-width: 100% !important;
+        padding: 6px 0 12px !important;
+        margin: 0 0 8px 0 !important;
         box-sizing: border-box !important;
     }
 
     #channel-coach-header h1 {
         font-size: 1.75rem !important;
-        line-height: 1.05 !important;
+        line-height: 1.1 !important;
         margin-bottom: 6px !important;
-        word-break: normal !important;
     }
 
     #channel-coach-header p {
-        font-size: 0.8rem !important;
+        font-size: 0.85rem !important;
         line-height: 1.35 !important;
         margin-bottom: 0 !important;
     }
@@ -1699,62 +1791,15 @@ html, body, .gradio-container {
         max-width: 100% !important;
         box-sizing: border-box !important;
     }
-}
 
-.tabs, .tab-nav {
-    background: transparent !important;
-    border: none !important;
-}
+    button { min-height: 46px !important; }
 
-button[role='tab'] {
-    background: var(--panel) !important;
-    border: 1px solid var(--border) !important;
-    border-radius: 12px !important;
-    color: var(--muted) !important;
-    font-weight: 600 !important;
-}
+    .tab-nav {
+        overflow-x: auto !important;
+        scrollbar-width: none !important;
+    }
 
-button[role='tab'][aria-selected='true'] {
-    background: linear-gradient(90deg, var(--accent), var(--accent2)) !important;
-    color: white !important;
-    border: none !important;
-}
-
-.block, .gr-box, .form, .panel, .gr-panel, .tabitem, [role='tabpanel'] {
-    background: linear-gradient(180deg, var(--panel2), var(--panel)) !important;
-    border: 1px solid var(--border) !important;
-    border-radius: 18px !important;
-    box-shadow: 0 8px 24px rgba(0,0,0,.25) !important;
-}
-
-textarea, input, select {
-    background: #121521 !important;
-    color: var(--text) !important;
-    border: 1px solid var(--border) !important;
-    border-radius: 12px !important;
-}
-
-textarea:focus, input:focus {
-    border-color: var(--accent2) !important;
-    box-shadow: 0 0 0 3px rgba(34,211,238,.15) !important;
-}
-
-button, .gr-button, button.primary {
-    background: linear-gradient(90deg, var(--accent), var(--accent2)) !important;
-    color: white !important;
-    border: none !important;
-    border-radius: 12px !important;
-    font-weight: 700 !important;
-}
-
-button:hover, .gr-button:hover {
-    filter: brightness(1.08) !important;
-    transform: translateY(-1px);
-}
-
-label, .block-label {
-    color: var(--text) !important;
-    font-weight: 600 !important;
+    .tab-nav::-webkit-scrollbar { display: none !important; }
 }
 
 .footer, footer {
@@ -3850,6 +3895,9 @@ def render_getting_started_checklist(user_id="main"):
         {items_html}
     </div>
     '''
+
+
+
 
 
 
