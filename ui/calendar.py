@@ -294,3 +294,4 @@ def build_calendar_tab(workspace_name):
             calendar_delete_button = gr.Button(
                 "🗑️ Delete Selected Item"
             )
+            def build_calendar_tab(workspace_name):
