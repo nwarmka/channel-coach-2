@@ -288,10 +288,10 @@ def build_calendar_tab(workspace_name):
         outputs=plan_week_output,
         show_progress="full",
     )
+        return {
+        "calendar_output": calendar_output,
+        "upcoming_output": upcoming_output,
+        "calendar_item_picker": calendar_item_picker,
+    }
 
-        with gr.Row():
-            calendar_update_button = gr.Button("💾 Save Edit")
-            calendar_delete_button = gr.Button(
-                "🗑️ Delete Selected Item"
-            )
-            def build_calendar_tab(workspace_name):
+      
