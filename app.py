@@ -2,6 +2,8 @@
 # UI lives here. Feature functions, styles, constants, and helpers are imported from features.py.
 
 from features import *
+from ui.calendar import build_calendar_tab
+
 
 with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
     # =========================
