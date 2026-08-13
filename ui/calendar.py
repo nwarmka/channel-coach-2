@@ -125,7 +125,7 @@ def build_calendar_tab(workspace_name):
         )
 
         calendar_load_button = gr.Button("📂 Load Selected Item")
-            calendar_add_button.click(
+        calendar_add_button.click(
         add_content_item,
         inputs=[
             calendar_title,
