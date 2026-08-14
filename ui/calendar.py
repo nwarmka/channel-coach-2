@@ -288,7 +288,7 @@ def build_calendar_tab(workspace_name):
         outputs=plan_week_output,
         show_progress="full",
     )
-        return {
+    return {
         "calendar_output": calendar_output,
         "upcoming_output": upcoming_output,
         "calendar_item_picker": calendar_item_picker,
