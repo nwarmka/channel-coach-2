@@ -14,7 +14,7 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
     storage_key="channel_coach_login"
 )
 
-    with gr.Accordion("🔐 Account Login", open=True):
+with gr.Accordion("🔐 Account Login", open=True):
         gr.Markdown(
             """
             ## Welcome to Channel Coach
