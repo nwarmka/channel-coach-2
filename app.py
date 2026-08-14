@@ -39,7 +39,7 @@ with gr.Accordion("🔐 Account Login", open=True):
 
         login_status = gr.Markdown()
 
-    gr.HTML(
+        gr.HTML(
         f"""
         <div class="cc-logo-float">
             <img
