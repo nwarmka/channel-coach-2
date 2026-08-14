@@ -9,7 +9,10 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
     # =========================
     # ACCOUNT LOGIN
     # =========================
-    saved_login = gr.State(empty_saved_session())
+  saved_login = gr.BrowserState(
+    empty_saved_session(),
+    storage_key="channel_coach_login"
+)
 
     with gr.Accordion("🔐 Account Login", open=True):
         gr.Markdown(
