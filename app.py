@@ -146,7 +146,90 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
     }
 
     #login-screen input{
-      background:#070a11!important;color:#fff!important;border:1px solid #2a3143!important;border-radius:12px!important;
+      background:#070a11!important;
+      color:#fff!important;
+      border:1px solid #343d55!important;
+      border-radius:12px!important;
+      min-height:48px!important;
+    }
+
+    #login-screen input:focus{
+      border-color:var(--cyan)!important;
+      box-shadow:0 0 0 2px rgba(22,217,255,.10),0 0 20px rgba(22,217,255,.12)!important;
+    }
+
+    #login-screen label,
+    #login-screen .label-wrap span{
+      color:#eef1f8!important;
+      font-weight:700!important;
+    }
+
+    #login-screen .cc-login-brand{
+      text-align:center;
+      padding:4px 8px 18px;
+    }
+
+    #login-screen .cc-login-logo{
+      width:150px;
+      max-width:45%;
+      height:auto;
+      filter:drop-shadow(0 0 20px rgba(255,62,165,.18));
+    }
+
+    #login-screen .cc-login-kicker{
+      margin-top:12px;
+      color:var(--cyan);
+      font-size:.78rem;
+      letter-spacing:.18em;
+      font-weight:800;
+    }
+
+    #login-screen .cc-login-brand h1{
+      margin:.25rem 0 .4rem!important;
+      font-size:2rem!important;
+      letter-spacing:.08em;
+      background:linear-gradient(90deg,var(--pink),var(--purple),var(--cyan));
+      -webkit-background-clip:text;
+      background-clip:text;
+      color:transparent!important;
+    }
+
+    #login-screen .cc-login-brand p{
+      margin:0!important;
+      color:var(--muted)!important;
+    }
+
+    #login-button{
+      background:linear-gradient(90deg,var(--purple),var(--pink))!important;
+      color:#fff!important;
+      border:0!important;
+      min-height:48px!important;
+      font-weight:900!important;
+      letter-spacing:.08em!important;
+      box-shadow:0 0 26px rgba(255,62,165,.20)!important;
+    }
+
+    #signup-button{
+      background:#090d16!important;
+      color:var(--cyan)!important;
+      border:1px solid rgba(22,217,255,.55)!important;
+      min-height:46px!important;
+      font-weight:800!important;
+      letter-spacing:.05em!important;
+    }
+
+    #remember-me{
+      background:transparent!important;
+      border:0!important;
+      box-shadow:none!important;
+    }
+
+    #login-status{
+      padding:8px 2px 0!important;
+    }
+
+    #login-status p{
+      color:#dbe2f2!important;
     }
 
     #workspace-internal{display:none!important}
@@ -175,52 +258,52 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
     )
 
     with gr.Column(visible=True, elem_id="login-screen") as login_screen:
-        with gr.Accordion("🔐 Account Login", open=True):
-            gr.Markdown(
-                """
-                ## Welcome to Channel Coach
-                Log in to open your private creator workspace.
-                """
-            )
+        gr.HTML(
+            f"""
+            <div class="cc-login-brand">
+                <img
+                    src="data:image/png;base64,{CHANNEL_COACH_LOGO_BASE64}"
+                    alt="Channel Coach Logo"
+                    class="cc-login-logo"
+                >
+                <div class="cc-login-kicker">CREATOR COMMAND CENTER</div>
+                <h1>CHANNEL COACH</h1>
+                <p>Sign in to enter your creator workspace.</p>
+            </div>
+            """
+        )
 
-            login_email = gr.Textbox(
-                label="Email",
-                placeholder="Enter your email address"
-            )
+        login_email = gr.Textbox(
+            label="Email",
+            placeholder="you@example.com",
+            elem_id="login-email"
+        )
 
-            login_password = gr.Textbox(
-                label="Password",
-                type="password",
-                placeholder="Enter your password"
-            )
+        login_password = gr.Textbox(
+            label="Password",
+            type="password",
+            placeholder="Enter your password",
+            elem_id="login-password"
+        )
 
-            remember_me = gr.Checkbox(
-                label="Remember me",
-                value=True
-            )
+        remember_me = gr.Checkbox(
+            label="Remember me",
+            value=True,
+            elem_id="remember-me"
+        )
 
-            with gr.Row():
-                login_button = gr.Button("🔐 Log In", variant="primary")
-                signup_button = gr.Button("Create Account")
+        login_button = gr.Button(
+            "LOG IN",
+            variant="primary",
+            elem_id="login-button"
+        )
 
-            login_status = gr.Markdown()
+        signup_button = gr.Button(
+            "CREATE ACCOUNT",
+            elem_id="signup-button"
+        )
 
-            gr.HTML(
-                f"""
-                <div class="cc-logo-float">
-                    <img
-                        src="data:image/png;base64,{CHANNEL_COACH_LOGO_BASE64}"
-                        alt="Channel Coach Logo"
-                        class="cc-header-logo"
-                        style="width:250px !important; max-width:250px !important; min-width:250px !important; height:auto !important;"
-                    >
-                </div>
-                """,
-                elem_id="cc-logo-header-block",
-                container=False,
-                padding=False,
-                min_height=0
-            )
+        login_status = gr.Markdown(elem_id="login-status")
 
     with gr.Column(visible=False, elem_id="channel-coach-app") as app_shell:
         # =========================
@@ -1316,12 +1399,25 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
     )
 
     def login_and_open_app(email, password, remember):
+        email = (email or "").strip()
+        password = password or ""
+
+        if not email or not password:
+            return (
+                "Enter both your email and password.",
+                "",
+                empty_saved_session(),
+                gr.update(visible=True),
+                gr.update(visible=False),
+            )
+
         message, user_id, session = login_user(email, password)
         logged_in = bool(user_id)
         saved_session = session if (logged_in and remember) else empty_saved_session()
+
         return (
             message,
-            user_id,
+            user_id or "",
             saved_session,
             gr.update(visible=not logged_in),
             gr.update(visible=logged_in),
@@ -1456,6 +1552,7 @@ app.launch(
     server_port=port,
     share=False
 )
+
 
 
 
