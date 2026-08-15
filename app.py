@@ -79,6 +79,8 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
             analytics_nav = gr.Button("📊 Analytics")
             settings_nav = gr.Button("⚙️ Settings")
 
+        menu_open = gr.State(False)
+
         # The logged-in home screen is Coach Chat.
         with gr.Column(visible=True, elem_id="chat-page") as chat_page:
             gr.Markdown("## 💬 Channel Coach Chat")
@@ -159,17 +161,39 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
 
 
         with gr.Column(visible=False, elem_id="calendar-page") as calendar_page:
-            gr.Markdown(
-                """
-                ## 📅 Content Calendar
-                Plan your long videos, Shorts, Reels, TikToks, livestreams, and community posts.
+            gr.HTML("""
+            <style>
+              #calendar-page {max-width: 1200px; margin: 0 auto;}
+              #calendar-page .cc-calendar-title {margin-bottom: 2px;}
+              #calendar-page .cc-calendar-subtitle {opacity: .72; margin-bottom: 18px;}
+              #calendar-page .cc-card {
+                  border: 1px solid rgba(120,120,140,.18);
+                  border-radius: 18px;
+                  padding: 18px;
+                  background: rgba(255,255,255,.72);
+                  box-shadow: 0 8px 28px rgba(20,20,40,.06);
+              }
+              #calendar-page .cc-toolbar {
+                  border: 1px solid rgba(120,120,140,.16);
+                  border-radius: 16px;
+                  padding: 12px;
+                  margin-bottom: 14px;
+                  background: rgba(255,255,255,.66);
+              }
+              #calendar-page .cc-calendar-main {min-height: 520px;}
+              #calendar-page input, #calendar-page textarea, #calendar-page select {
+                  border-radius: 12px !important;
+              }
+            </style>
+            <div class="cc-calendar-title"><h2>📅 Content Calendar</h2></div>
+            <div class="cc-calendar-subtitle">
+              Plan long videos, Shorts, Reels, TikToks, livestreams, and community posts.
+            </div>
+            """)
 
-                Date format: **YYYY-MM-DD**. Example: **2026-06-28**
-                """
-            )
-
-            with gr.Row():
-                with gr.Column(scale=1):
+            with gr.Row(equal_height=False):
+                with gr.Column(scale=1, min_width=300, elem_classes=["cc-card"]):
+                    gr.Markdown("### ➕ Add Content")
                     cc_calendar_title = gr.Textbox(
                         label="Title",
                         placeholder="Example: Getting the Ice Rod"
@@ -207,8 +231,9 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
                     cc_plan_week_button = gr.Button("✨ Plan My Week")
                     cc_plan_week_output = gr.Textbox(label="Weekly Content Plan", lines=12)
 
-                with gr.Column(scale=2):
-                    with gr.Row():
+                with gr.Column(scale=2, min_width=520):
+                    gr.Markdown("### 🗓️ Schedule")
+                    with gr.Row(elem_classes=["cc-toolbar"]):
                         cc_calendar_month = gr.Dropdown(
                             choices=list(range(1, 13)),
                             value=date.today().month,
@@ -219,8 +244,6 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
                             label="Year",
                             precision=0
                         )
-
-                    with gr.Row():
                         cc_calendar_status_filter = gr.Dropdown(
                             ["All"] + CONTENT_STATUSES,
                             value="All",
@@ -232,122 +255,124 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
                             label="Type Filter"
                         )
 
-                    cc_calendar_output = gr.HTML(value=render_content_calendar(user_id="main"))
+                    with gr.Column(elem_classes=["cc-card", "cc-calendar-main"]):
+                        cc_calendar_output = gr.HTML(value=render_content_calendar(user_id="main"))
                     cc_calendar_refresh_button = gr.Button("🔄 Refresh Calendar")
 
-            gr.Markdown("### Edit or Delete Calendar Item")
+            gr.Markdown("### ✏️ Edit or Delete Content")
 
-            cc_calendar_item_picker = gr.Dropdown(
-                choices=get_calendar_choices("main"),
-                label="Choose Calendar Item"
-            )
+            with gr.Column(elem_classes=["cc-card"]):
+                cc_calendar_item_picker = gr.Dropdown(
+                    choices=get_calendar_choices("main"),
+                    label="Choose Calendar Item"
+                )
 
-            cc_calendar_load_button = gr.Button("📂 Load Selected Item")
+                cc_calendar_load_button = gr.Button("📂 Load Selected Item")
 
-            with gr.Row():
-                cc_calendar_update_button = gr.Button("💾 Save Edit")
-                cc_calendar_delete_button = gr.Button("🗑️ Delete Selected Item")
+                with gr.Row():
+                    cc_calendar_update_button = gr.Button("💾 Save Edit")
+                    cc_calendar_delete_button = gr.Button("🗑️ Delete Selected Item")
 
-            cc_calendar_add_button.click(
-                add_content_item,
-                inputs=[
-                    cc_calendar_title,
-                    cc_calendar_content_type,
-                    cc_calendar_game_topic,
-                    cc_calendar_status,
-                    cc_calendar_publish_date,
-                    cc_calendar_notes,
-                    workspace_name,
-                    cc_calendar_month,
-                    cc_calendar_year,
-                    cc_calendar_status_filter,
-                    cc_calendar_type_filter
-                ],
-                outputs=[cc_calendar_output, cc_upcoming_output, cc_calendar_item_picker, cc_calendar_message]
-            )
+                cc_calendar_add_button.click(
+                    add_content_item,
+                    inputs=[
+                        cc_calendar_title,
+                        cc_calendar_content_type,
+                        cc_calendar_game_topic,
+                        cc_calendar_status,
+                        cc_calendar_publish_date,
+                        cc_calendar_notes,
+                        workspace_name,
+                        cc_calendar_month,
+                        cc_calendar_year,
+                        cc_calendar_status_filter,
+                        cc_calendar_type_filter
+                    ],
+                    outputs=[cc_calendar_output, cc_upcoming_output, cc_calendar_item_picker, cc_calendar_message]
+                )
 
-            cc_calendar_refresh_button.click(
-                refresh_content_calendar,
-                inputs=[workspace_name, cc_calendar_month, cc_calendar_year, cc_calendar_status_filter, cc_calendar_type_filter],
-                outputs=[cc_calendar_output, cc_upcoming_output]
-            )
+                cc_calendar_refresh_button.click(
+                    refresh_content_calendar,
+                    inputs=[workspace_name, cc_calendar_month, cc_calendar_year, cc_calendar_status_filter, cc_calendar_type_filter],
+                    outputs=[cc_calendar_output, cc_upcoming_output]
+                )
 
-            cc_calendar_month.change(
-                refresh_content_calendar,
-                inputs=[workspace_name, cc_calendar_month, cc_calendar_year, cc_calendar_status_filter, cc_calendar_type_filter],
-                outputs=[cc_calendar_output, cc_upcoming_output]
-            )
+                cc_calendar_month.change(
+                    refresh_content_calendar,
+                    inputs=[workspace_name, cc_calendar_month, cc_calendar_year, cc_calendar_status_filter, cc_calendar_type_filter],
+                    outputs=[cc_calendar_output, cc_upcoming_output]
+                )
 
-            cc_calendar_year.change(
-                refresh_content_calendar,
-                inputs=[workspace_name, cc_calendar_month, cc_calendar_year, cc_calendar_status_filter, cc_calendar_type_filter],
-                outputs=[cc_calendar_output, cc_upcoming_output]
-            )
+                cc_calendar_year.change(
+                    refresh_content_calendar,
+                    inputs=[workspace_name, cc_calendar_month, cc_calendar_year, cc_calendar_status_filter, cc_calendar_type_filter],
+                    outputs=[cc_calendar_output, cc_upcoming_output]
+                )
 
-            cc_calendar_status_filter.change(
-                refresh_content_calendar,
-                inputs=[workspace_name, cc_calendar_month, cc_calendar_year, cc_calendar_status_filter, cc_calendar_type_filter],
-                outputs=[cc_calendar_output, cc_upcoming_output]
-            )
+                cc_calendar_status_filter.change(
+                    refresh_content_calendar,
+                    inputs=[workspace_name, cc_calendar_month, cc_calendar_year, cc_calendar_status_filter, cc_calendar_type_filter],
+                    outputs=[cc_calendar_output, cc_upcoming_output]
+                )
 
-            cc_calendar_type_filter.change(
-                refresh_content_calendar,
-                inputs=[workspace_name, cc_calendar_month, cc_calendar_year, cc_calendar_status_filter, cc_calendar_type_filter],
-                outputs=[cc_calendar_output, cc_upcoming_output]
-            )
+                cc_calendar_type_filter.change(
+                    refresh_content_calendar,
+                    inputs=[workspace_name, cc_calendar_month, cc_calendar_year, cc_calendar_status_filter, cc_calendar_type_filter],
+                    outputs=[cc_calendar_output, cc_upcoming_output]
+                )
 
-            cc_calendar_load_button.click(
-                load_selected_content_item,
-                inputs=[cc_calendar_item_picker, workspace_name],
-                outputs=[
-                    cc_calendar_title,
-                    cc_calendar_content_type,
-                    cc_calendar_game_topic,
-                    cc_calendar_status,
-                    cc_calendar_publish_date,
-                    cc_calendar_notes,
-                    cc_calendar_message
-                ]
-            )
+                cc_calendar_load_button.click(
+                    load_selected_content_item,
+                    inputs=[cc_calendar_item_picker, workspace_name],
+                    outputs=[
+                        cc_calendar_title,
+                        cc_calendar_content_type,
+                        cc_calendar_game_topic,
+                        cc_calendar_status,
+                        cc_calendar_publish_date,
+                        cc_calendar_notes,
+                        cc_calendar_message
+                    ]
+                )
 
-            cc_calendar_update_button.click(
-                update_content_item,
-                inputs=[
-                    cc_calendar_item_picker,
-                    cc_calendar_title,
-                    cc_calendar_content_type,
-                    cc_calendar_game_topic,
-                    cc_calendar_status,
-                    cc_calendar_publish_date,
-                    cc_calendar_notes,
-                    workspace_name,
-                    cc_calendar_month,
-                    cc_calendar_year,
-                    cc_calendar_status_filter,
-                    cc_calendar_type_filter
-                ],
-                outputs=[cc_calendar_output, cc_upcoming_output, cc_calendar_item_picker, cc_calendar_message]
-            )
+                cc_calendar_update_button.click(
+                    update_content_item,
+                    inputs=[
+                        cc_calendar_item_picker,
+                        cc_calendar_title,
+                        cc_calendar_content_type,
+                        cc_calendar_game_topic,
+                        cc_calendar_status,
+                        cc_calendar_publish_date,
+                        cc_calendar_notes,
+                        workspace_name,
+                        cc_calendar_month,
+                        cc_calendar_year,
+                        cc_calendar_status_filter,
+                        cc_calendar_type_filter
+                    ],
+                    outputs=[cc_calendar_output, cc_upcoming_output, cc_calendar_item_picker, cc_calendar_message]
+                )
 
-            cc_calendar_delete_button.click(
-                delete_content_item,
-                inputs=[
-                    cc_calendar_item_picker,
-                    workspace_name,
-                    cc_calendar_month,
-                    cc_calendar_year,
-                    cc_calendar_status_filter,
-                    cc_calendar_type_filter
-                ],
-                outputs=[cc_calendar_output, cc_upcoming_output, cc_calendar_item_picker, cc_calendar_message]
-            )
+                cc_calendar_delete_button.click(
+                    delete_content_item,
+                    inputs=[
+                        cc_calendar_item_picker,
+                        workspace_name,
+                        cc_calendar_month,
+                        cc_calendar_year,
+                        cc_calendar_status_filter,
+                        cc_calendar_type_filter
+                    ],
+                    outputs=[cc_calendar_output, cc_upcoming_output, cc_calendar_item_picker, cc_calendar_message]
+                )
 
-            cc_plan_week_button.click(
-                plan_my_week,
-                inputs=[workspace_name],
-                outputs=cc_plan_week_output,
-                show_progress="full"
-            )
+                cc_plan_week_button.click(
+                    plan_my_week,
+                    inputs=[workspace_name],
+                    outputs=cc_plan_week_output,
+                    show_progress="full"
+                )
 
 
 
@@ -1020,12 +1045,16 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
     # =========================
     # PAGE NAVIGATION
     # =========================
-    def toggle_menu():
-        return gr.update(visible=True)
+    def toggle_menu(is_open):
+        new_state = not is_open
+        return new_state, gr.update(visible=new_state)
 
     def show_page(page_name):
         names = ["chat", "dashboard", "calendar", "projects", "toolkit", "analytics", "settings"]
-        return [gr.update(visible=(name == page_name)) for name in names] + [gr.update(visible=False)]
+        return (
+            [gr.update(visible=(name == page_name)) for name in names]
+            + [gr.update(visible=False), False]
+        )
 
     page_outputs = [
         chat_page,
@@ -1036,9 +1065,14 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
         analytics_page,
         settings_page,
         menu_panel,
+        menu_open,
     ]
 
-    menu_button.click(toggle_menu, outputs=menu_panel)
+    menu_button.click(
+        toggle_menu,
+        inputs=[menu_open],
+        outputs=[menu_open, menu_panel]
+    )
     chat_nav.click(lambda: show_page("chat"), outputs=page_outputs)
     dashboard_nav.click(lambda: show_page("dashboard"), outputs=page_outputs)
     calendar_nav.click(lambda: show_page("calendar"), outputs=page_outputs)
@@ -1195,7 +1229,6 @@ app.launch(
     server_port=port,
     share=False
 )
-
 
 
 
