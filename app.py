@@ -184,6 +184,44 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
               #calendar-page input, #calendar-page textarea, #calendar-page select {
                   border-radius: 12px !important;
               }
+
+              /* Clean light dropdowns — remove Gradio's dark outer boxes / tiny white pills */
+              #calendar-page .wrap,
+              #calendar-page .secondary-wrap,
+              #calendar-page .dropdown,
+              #calendar-page [role="listbox"],
+              #calendar-page [data-testid="dropdown"] {
+                  background: #ffffff !important;
+                  border: 1px solid rgba(120,120,140,.24) !important;
+                  border-radius: 12px !important;
+                  box-shadow: none !important;
+                  color: #1f2430 !important;
+              }
+
+              #calendar-page .wrap-inner,
+              #calendar-page .input-container,
+              #calendar-page .container,
+              #calendar-page .dropdown input,
+              #calendar-page [role="combobox"] {
+                  background: #ffffff !important;
+                  color: #1f2430 !important;
+                  border-radius: 12px !important;
+                  box-shadow: none !important;
+              }
+
+              #calendar-page [role="combobox"] {
+                  min-height: 42px !important;
+                  width: 100% !important;
+                  padding: 9px 12px !important;
+                  border: 1px solid rgba(120,120,140,.24) !important;
+              }
+
+              #calendar-page .wrap:has([role="combobox"]),
+              #calendar-page .secondary-wrap:has([role="combobox"]) {
+                  padding: 0 !important;
+                  background: transparent !important;
+                  border: 0 !important;
+              }
             </style>
             <div class="cc-calendar-title"><h2>📅 Content Calendar</h2></div>
             <div class="cc-calendar-subtitle">
