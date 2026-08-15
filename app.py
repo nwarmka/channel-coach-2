@@ -9,12 +9,12 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
     # =========================
     # ACCOUNT LOGIN
     # =========================
-  saved_login = gr.BrowserState(
-    empty_saved_session(),
-    storage_key="channel_coach_login"
-)
+    saved_login = gr.BrowserState(
+        empty_saved_session(),
+        storage_key="channel_coach_login"
+    )
 
-with gr.Accordion("🔐 Account Login", open=True):
+    with gr.Accordion("🔐 Account Login", open=True):
         gr.Markdown(
             """
             ## Welcome to Channel Coach
@@ -40,21 +40,21 @@ with gr.Accordion("🔐 Account Login", open=True):
         login_status = gr.Markdown()
 
         gr.HTML(
-        f"""
-        <div class="cc-logo-float">
-            <img
-                src="data:image/png;base64,{CHANNEL_COACH_LOGO_BASE64}"
-                alt="Channel Coach Logo"
-                class="cc-header-logo"
-                style="width:250px !important; max-width:250px !important; min-width:250px !important; height:auto !important;"
-            >
-        </div>
-        """,
-        elem_id="cc-logo-header-block",
-        container=False,
-        padding=False,
-        min_height=0
-    )
+            f"""
+            <div class="cc-logo-float">
+                <img
+                    src="data:image/png;base64,{CHANNEL_COACH_LOGO_BASE64}"
+                    alt="Channel Coach Logo"
+                    class="cc-header-logo"
+                    style="width:250px !important; max-width:250px !important; min-width:250px !important; height:auto !important;"
+                >
+            </div>
+            """,
+            elem_id="cc-logo-header-block",
+            container=False,
+            padding=False,
+            min_height=0
+        )
 
     with gr.Column(visible=False, elem_id="channel-coach-app") as app_shell:
         # =========================
