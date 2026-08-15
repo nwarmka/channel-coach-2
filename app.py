@@ -73,7 +73,7 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
 
         saved_profile = load_creator_profile("main")
 
-               with gr.Column(visible=True, elem_id="dashboard-page") as dashboard_page:
+        with gr.Column(visible=True, elem_id="dashboard-page") as dashboard_page:
             gr.Markdown("## 🕹️ Creator Dashboard\n\nYour home base for upcoming content, overdue projects, and quick creator guidance.")
             dashboard_output = gr.HTML(value=render_creator_dashboard("main"))
 
