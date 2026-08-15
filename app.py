@@ -14,49 +14,83 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
         storage_key="channel_coach_login"
     )
 
-    with gr.Accordion("🔐 Account Login", open=True):
-        gr.Markdown(
-            """
-            ## Welcome to Channel Coach
-            Log in to open your private creator workspace.
-            """
-        )
+    with gr.Column(visible=True, elem_id="login-screen") as login_screen:
+        with gr.Accordion("🔐 Account Login", open=True):
+            gr.Markdown(
+                """
+                ## Welcome to Channel Coach
+                Log in to open your private creator workspace.
+                """
+            )
 
-        login_email = gr.Textbox(
-            label="Email",
-            placeholder="Enter your email address"
-        )
+            login_email = gr.Textbox(
+                label="Email",
+                placeholder="Enter your email address"
+            )
 
-        login_password = gr.Textbox(
-            label="Password",
-            type="password",
-            placeholder="Enter your password"
-        )
+            login_password = gr.Textbox(
+                label="Password",
+                type="password",
+                placeholder="Enter your password"
+            )
 
-        with gr.Row():
-            login_button = gr.Button("🔐 Log In", variant="primary")
-            signup_button = gr.Button("Create Account")
+            remember_me = gr.Checkbox(
+                label="Remember me",
+                value=True
+            )
 
-        login_status = gr.Markdown()
+            with gr.Row():
+                login_button = gr.Button("🔐 Log In", variant="primary")
+                signup_button = gr.Button("Create Account")
 
-        gr.HTML(
-            f"""
-            <div class="cc-logo-float">
-                <img
-                    src="data:image/png;base64,{CHANNEL_COACH_LOGO_BASE64}"
-                    alt="Channel Coach Logo"
-                    class="cc-header-logo"
-                    style="width:250px !important; max-width:250px !important; min-width:250px !important; height:auto !important;"
-                >
-            </div>
-            """,
-            elem_id="cc-logo-header-block",
-            container=False,
-            padding=False,
-            min_height=0
-        )
+            login_status = gr.Markdown()
+
+            gr.HTML(
+                f"""
+                <div class="cc-logo-float">
+                    <img
+                        src="data:image/png;base64,{CHANNEL_COACH_LOGO_BASE64}"
+                        alt="Channel Coach Logo"
+                        class="cc-header-logo"
+                        style="width:250px !important; max-width:250px !important; min-width:250px !important; height:auto !important;"
+                    >
+                </div>
+                """,
+                elem_id="cc-logo-header-block",
+                container=False,
+                padding=False,
+                min_height=0
+            )
 
     with gr.Column(visible=False, elem_id="channel-coach-app") as app_shell:
+        # =========================
+        # APP SHELL / NAVIGATION
+        # =========================
+        with gr.Row():
+            menu_button = gr.Button("☰", scale=0, min_width=52)
+            gr.Markdown("## Channel Coach")
+
+        with gr.Column(visible=False, elem_id="channel-coach-menu") as menu_panel:
+            chat_nav = gr.Button("💬 Coach Chat")
+            dashboard_nav = gr.Button("🏠 Dashboard")
+            calendar_nav = gr.Button("📅 Calendar")
+            projects_nav = gr.Button("📁 Projects")
+            toolkit_nav = gr.Button("🎬 Toolkit")
+            analytics_nav = gr.Button("📊 Analytics")
+            settings_nav = gr.Button("⚙️ Settings")
+
+        # The logged-in home screen is Coach Chat.
+        with gr.Column(visible=True, elem_id="chat-page") as chat_page:
+            gr.Markdown("## 💬 Channel Coach Chat")
+            gr.Markdown("Ask Channel Coach what to work on next, what to improve, or how to grow your channel.")
+            home_chat_question = gr.Textbox(
+                label="Ask Channel Coach",
+                placeholder="What should I work on today?",
+                lines=3
+            )
+            home_chat_button = gr.Button("Send", variant="primary")
+            home_chat_output = gr.Markdown()
+
         # =========================
         # WORKSPACE
         # =========================
@@ -73,18 +107,7 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
 
         saved_profile = load_creator_profile("main")
 
-        # =========================
-        # MAIN NAVIGATION
-        # =========================
-        with gr.Row(elem_id="main-navigation"):
-            dashboard_nav = gr.Button("🏠 Dashboard", variant="primary")
-            calendar_nav = gr.Button("📅 Calendar")
-            projects_nav = gr.Button("📁 Projects")
-            toolkit_nav = gr.Button("🎬 Toolkit")
-            analytics_nav = gr.Button("📊 Analytics")
-            settings_nav = gr.Button("⚙️ Settings")
-
-        with gr.Column(visible=True, elem_id="dashboard-page") as dashboard_page:
+        with gr.Column(visible=False, elem_id="dashboard-page") as dashboard_page:
             gr.Markdown("## 🕹️ Creator Dashboard\n\nYour home base for upcoming content, overdue projects, and quick creator guidance.")
             dashboard_output = gr.HTML(value=render_creator_dashboard("main"))
 
@@ -997,75 +1020,62 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
     # =========================
     # PAGE NAVIGATION
     # =========================
+    def toggle_menu():
+        return gr.update(visible=True)
+
     def show_page(page_name):
-        return (
-            gr.update(visible=page_name == "dashboard"),
-            gr.update(visible=page_name == "calendar"),
-            gr.update(visible=page_name == "projects"),
-            gr.update(visible=page_name == "toolkit"),
-            gr.update(visible=page_name == "analytics"),
-            gr.update(visible=page_name == "settings"),
-        )
+        names = ["chat", "dashboard", "calendar", "projects", "toolkit", "analytics", "settings"]
+        return [gr.update(visible=(name == page_name)) for name in names] + [gr.update(visible=False)]
 
     page_outputs = [
+        chat_page,
         dashboard_page,
         calendar_page,
         projects_page,
         toolkit_page,
         analytics_page,
         settings_page,
+        menu_panel,
     ]
 
-    dashboard_nav.click(
-        lambda: show_page("dashboard"),
-        inputs=[],
-        outputs=page_outputs,
-        show_progress="hidden"
+    menu_button.click(toggle_menu, outputs=menu_panel)
+    chat_nav.click(lambda: show_page("chat"), outputs=page_outputs)
+    dashboard_nav.click(lambda: show_page("dashboard"), outputs=page_outputs)
+    calendar_nav.click(lambda: show_page("calendar"), outputs=page_outputs)
+    projects_nav.click(lambda: show_page("projects"), outputs=page_outputs)
+    toolkit_nav.click(lambda: show_page("toolkit"), outputs=page_outputs)
+    analytics_nav.click(lambda: show_page("analytics"), outputs=page_outputs)
+    settings_nav.click(lambda: show_page("settings"), outputs=page_outputs)
+
+    home_chat_button.click(
+        ask_creator_coach,
+        inputs=[home_chat_question, workspace_name],
+        outputs=home_chat_output,
+        show_progress="full"
     )
 
-    calendar_nav.click(
-        lambda: show_page("calendar"),
-        inputs=[],
-        outputs=page_outputs,
-        show_progress="hidden"
-    )
-
-    projects_nav.click(
-        lambda: show_page("projects"),
-        inputs=[],
-        outputs=page_outputs,
-        show_progress="hidden"
-    )
-
-    toolkit_nav.click(
-        lambda: show_page("toolkit"),
-        inputs=[],
-        outputs=page_outputs,
-        show_progress="hidden"
-    )
-
-    analytics_nav.click(
-        lambda: show_page("analytics"),
-        inputs=[],
-        outputs=page_outputs,
-        show_progress="hidden"
-    )
-
-    settings_nav.click(
-        lambda: show_page("settings"),
-        inputs=[],
-        outputs=page_outputs,
-        show_progress="hidden"
-    )
-
-
-    def login_and_open_app(email, password):
+    def login_and_open_app(email, password, remember):
         message, user_id, session = login_user(email, password)
-        return message, user_id, session, gr.update(visible=bool(user_id))
+        logged_in = bool(user_id)
+        saved_session = session if (logged_in and remember) else empty_saved_session()
+        return (
+            message,
+            user_id,
+            saved_session,
+            gr.update(visible=not logged_in),
+            gr.update(visible=logged_in),
+        )
 
     def restore_and_open_app(saved_session):
         message, user_id, session = restore_saved_session(saved_session)
-        return message, user_id, session, gr.update(visible=bool(user_id))
+        logged_in = bool(user_id)
+        return (
+            message,
+            user_id,
+            session,
+            gr.update(visible=not logged_in),
+            gr.update(visible=logged_in),
+        )
 
     workspace_button.click(
         load_workspace_ui,
@@ -1095,8 +1105,8 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
 
     login_button.click(
         login_and_open_app,
-        inputs=[login_email, login_password],
-        outputs=[login_status, workspace_name, saved_login, app_shell],
+        inputs=[login_email, login_password, remember_me],
+        outputs=[login_status, workspace_name, saved_login, login_screen, app_shell],
         show_progress="full"
     ).then(
         load_workspace_ui,
@@ -1133,7 +1143,7 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
     app.load(
         restore_and_open_app,
         inputs=[saved_login],
-        outputs=[login_status, workspace_name, saved_login, app_shell],
+        outputs=[login_status, workspace_name, saved_login, login_screen, app_shell],
     ).then(
         load_workspace_ui,
         inputs=[workspace_name],
@@ -1185,6 +1195,7 @@ app.launch(
     server_port=port,
     share=False
 )
+
 
 
 
