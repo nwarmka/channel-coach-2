@@ -73,6 +73,17 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
 
         saved_profile = load_creator_profile("main")
 
+        # =========================
+        # MAIN NAVIGATION
+        # =========================
+        with gr.Row(elem_id="main-navigation"):
+            dashboard_nav = gr.Button("🏠 Dashboard", variant="primary")
+            calendar_nav = gr.Button("📅 Calendar")
+            projects_nav = gr.Button("📁 Projects")
+            toolkit_nav = gr.Button("🎬 Toolkit")
+            analytics_nav = gr.Button("📊 Analytics")
+            settings_nav = gr.Button("⚙️ Settings")
+
         with gr.Column(visible=True, elem_id="dashboard-page") as dashboard_page:
             gr.Markdown("## 🕹️ Creator Dashboard\n\nYour home base for upcoming content, overdue projects, and quick creator guidance.")
             dashboard_output = gr.HTML(value=render_creator_dashboard("main"))
@@ -124,7 +135,7 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
 
 
 
-        with gr.Tab("📅 Content Calendar"):
+        with gr.Column(visible=False, elem_id="calendar-page") as calendar_page:
             gr.Markdown(
                 """
                 ## 📅 Content Calendar
@@ -317,7 +328,7 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
 
 
 
-        with gr.Tab("📁 Projects"):
+        with gr.Column(visible=False, elem_id="projects-page") as projects_page:
             gr.Markdown("## 📁 Projects\n\nPlan your content, manage production, and open full workspaces for each video or Short.")
 
             with gr.Accordion("📅 Content Calendar", open=True):
@@ -656,7 +667,7 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
 
 
 
-        with gr.Tab("🎬 Creator Toolkit"):
+        with gr.Column(visible=False, elem_id="toolkit-page") as toolkit_page:
             gr.Markdown("## 🎬 Creator Toolkit\n\nAnalyze videos, improve thumbnails, generate titles, optimize SEO, write descriptions, and brainstorm content ideas.")
 
 
@@ -843,7 +854,7 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
                 )
 
 
-        with gr.Tab("📊 Analytics"):
+        with gr.Column(visible=False, elem_id="analytics-page") as analytics_page:
             gr.Markdown("""
             ## 📊 Analytics Tracker
             Manually save your YouTube stats so Channel Coach can track growth over time.
@@ -880,7 +891,7 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
                 outputs=analytics_output
             )
 
-        with gr.Tab("⚙️ Settings"):
+        with gr.Column(visible=False, elem_id="settings-page") as settings_page:
             gr.Markdown("## ⚙️ Settings\n\nManage your creator profile and app preferences.")
 
             with gr.Accordion("🚀 Getting Started", open=True):
@@ -981,6 +992,71 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
                     outputs=[profile_save_status, dashboard_output, onboarding_output]
                 )
 
+
+
+    # =========================
+    # PAGE NAVIGATION
+    # =========================
+    def show_page(page_name):
+        return (
+            gr.update(visible=page_name == "dashboard"),
+            gr.update(visible=page_name == "calendar"),
+            gr.update(visible=page_name == "projects"),
+            gr.update(visible=page_name == "toolkit"),
+            gr.update(visible=page_name == "analytics"),
+            gr.update(visible=page_name == "settings"),
+        )
+
+    page_outputs = [
+        dashboard_page,
+        calendar_page,
+        projects_page,
+        toolkit_page,
+        analytics_page,
+        settings_page,
+    ]
+
+    dashboard_nav.click(
+        lambda: show_page("dashboard"),
+        inputs=[],
+        outputs=page_outputs,
+        show_progress="hidden"
+    )
+
+    calendar_nav.click(
+        lambda: show_page("calendar"),
+        inputs=[],
+        outputs=page_outputs,
+        show_progress="hidden"
+    )
+
+    projects_nav.click(
+        lambda: show_page("projects"),
+        inputs=[],
+        outputs=page_outputs,
+        show_progress="hidden"
+    )
+
+    toolkit_nav.click(
+        lambda: show_page("toolkit"),
+        inputs=[],
+        outputs=page_outputs,
+        show_progress="hidden"
+    )
+
+    analytics_nav.click(
+        lambda: show_page("analytics"),
+        inputs=[],
+        outputs=page_outputs,
+        show_progress="hidden"
+    )
+
+    settings_nav.click(
+        lambda: show_page("settings"),
+        inputs=[],
+        outputs=page_outputs,
+        show_progress="hidden"
+    )
 
 
     def login_and_open_app(email, password):
@@ -1109,6 +1185,7 @@ app.launch(
     server_port=port,
     share=False
 )
+
 
 
     
