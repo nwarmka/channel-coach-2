@@ -222,6 +222,34 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
                   background: transparent !important;
                   border: 0 !important;
               }
+
+              /* Channel Coach dropdown theme: solid black with white text */
+              #calendar-page [role="combobox"],
+              #calendar-page .dropdown input,
+              #calendar-page .wrap-inner:has([role="combobox"]),
+              #calendar-page .input-container:has([role="combobox"]) {
+                  background: #17181c !important;
+                  color: #ffffff !important;
+                  border-color: #17181c !important;
+              }
+
+              #calendar-page [role="combobox"] *,
+              #calendar-page [role="combobox"] input,
+              #calendar-page [role="combobox"] span {
+                  color: #ffffff !important;
+              }
+
+              #calendar-page [role="combobox"] svg,
+              #calendar-page .dropdown svg {
+                  color: #ffffff !important;
+                  fill: #ffffff !important;
+                  stroke: #ffffff !important;
+              }
+
+              #calendar-page [role="combobox"]::placeholder,
+              #calendar-page .dropdown input::placeholder {
+                  color: rgba(255,255,255,.72) !important;
+              }
             </style>
             <div class="cc-calendar-title"><h2>📅 Content Calendar</h2></div>
             <div class="cc-calendar-subtitle">
