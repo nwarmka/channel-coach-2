@@ -351,6 +351,65 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
       caret-color: #ffffff !important;
     }
 
+
+    /* Definitive form styling using manual labels (no Gradio label caps) */
+    #channel-coach-app .cc-field-label {
+      color:#f5f7ff !important;
+      font-size:.86rem !important;
+      font-weight:700 !important;
+      margin:10px 0 7px 2px !important;
+      padding:0 !important;
+      background:transparent !important;
+      letter-spacing:.01em !important;
+    }
+
+    #channel-coach-app .cc-cyber-field {
+      background:transparent !important;
+      border:0 !important;
+      box-shadow:none !important;
+      padding:0 !important;
+    }
+
+    #channel-coach-app .cc-cyber-field > div,
+    #channel-coach-app .cc-cyber-field .wrap,
+    #channel-coach-app .cc-cyber-field .wrap-inner,
+    #channel-coach-app .cc-cyber-field .secondary-wrap,
+    #channel-coach-app .cc-cyber-field .input-container {
+      background:transparent !important;
+      border:0 !important;
+      box-shadow:none !important;
+    }
+
+    #channel-coach-app .cc-cyber-field input,
+    #channel-coach-app .cc-cyber-field textarea,
+    #channel-coach-app .cc-cyber-field [role="combobox"] {
+      background:#050810 !important;
+      color:#ffffff !important;
+      -webkit-text-fill-color:#ffffff !important;
+      border:1px solid rgba(139,92,246,.78) !important;
+      border-radius:11px !important;
+      min-height:46px !important;
+      box-shadow:0 0 14px rgba(139,92,246,.06) !important;
+    }
+
+    #channel-coach-app .cc-cyber-field input:focus,
+    #channel-coach-app .cc-cyber-field textarea:focus,
+    #channel-coach-app .cc-cyber-field [role="combobox"]:focus-within {
+      border-color:#16d9ff !important;
+      box-shadow:0 0 0 2px rgba(22,217,255,.09),0 0 18px rgba(22,217,255,.15) !important;
+    }
+
+    #channel-coach-app .cc-cyber-field [role="combobox"] *,
+    #channel-coach-app .cc-cyber-field [role="combobox"] span {
+      color:#ffffff !important;
+      -webkit-text-fill-color:#ffffff !important;
+    }
+
+    #channel-coach-app .cc-cyber-field [role="combobox"] svg {
+      color:#ffffff !important;
+      stroke:#ffffff !important;
+    }
+
     #workspace-internal{display:none!important}
 
     *{scrollbar-width:thin;scrollbar-color:#7c3cff #070a10}
@@ -373,7 +432,14 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
     # =========================
     saved_login = gr.BrowserState(
         empty_saved_session(),
-        storage_key="channel_coach_login"
+        storage_key="channel_coach_login",
+        # BrowserState uses encrypted localStorage. A stable secret is required
+        # for saved sessions to survive app restarts/deploys.
+        secret=(
+            os.environ.get("CHANNEL_COACH_BROWSER_SECRET")
+            or os.environ.get("SUPABASE_KEY")
+            or "channel-coach-browser-state-v1"
+        ),
     )
 
     with gr.Column(visible=True, elem_id="login-screen") as login_screen:
@@ -623,66 +689,106 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
             with gr.Row(equal_height=False):
                 with gr.Column(scale=1, min_width=300, elem_classes=["cc-card"]):
                     gr.Markdown("### ➕ Add Content")
+
+                    gr.HTML('<div class="cc-field-label">Title</div>')
                     cc_calendar_title = gr.Textbox(
-                        label="Title",
-                        placeholder="Example: Getting the Ice Rod"
+                        show_label=False,
+                        placeholder="Example: Getting the Ice Rod",
+                        elem_classes=["cc-cyber-field"]
                     )
+
+                    gr.HTML('<div class="cc-field-label">Content Type</div>')
                     cc_calendar_content_type = gr.Dropdown(
                         CONTENT_TYPES,
                         value="Long Video",
-                        label="Content Type"
+                        show_label=False,
+                        elem_classes=["cc-cyber-field"]
                     )
+
+                    gr.HTML('<div class="cc-field-label">Game / Topic</div>')
                     cc_calendar_game_topic = gr.Textbox(
-                        label="Game / Topic",
-                        placeholder="Example: Zelda ALTTP"
+                        show_label=False,
+                        placeholder="Example: Zelda ALTTP",
+                        elem_classes=["cc-cyber-field"]
                     )
+
+                    gr.HTML('<div class="cc-field-label">Status</div>')
                     cc_calendar_status = gr.Dropdown(
                         CONTENT_STATUSES,
                         value="Idea",
-                        label="Status"
+                        show_label=False,
+                        elem_classes=["cc-cyber-field"]
                     )
+
+                    gr.HTML('<div class="cc-field-label">Target Publish Date</div>')
                     cc_calendar_publish_date = gr.Textbox(
-                        label="Target Publish Date",
+                        show_label=False,
                         value=date.today().isoformat(),
-                        placeholder="YYYY-MM-DD"
+                        placeholder="YYYY-MM-DD",
+                        elem_classes=["cc-cyber-field"]
                     )
+
+                    gr.HTML('<div class="cc-field-label">Notes</div>')
                     cc_calendar_notes = gr.Textbox(
-                        label="Notes",
+                        show_label=False,
                         lines=4,
-                        placeholder="Example: Need thumbnail, voiceover, and final export."
+                        placeholder="Example: Need thumbnail, voiceover, and final export.",
+                        elem_classes=["cc-cyber-field"]
                     )
 
                     cc_calendar_add_button = gr.Button("➕ Add to Calendar")
-                    cc_calendar_message = gr.Textbox(label="Calendar Status", lines=2)
+                    cc_calendar_message = gr.Textbox(
+                        show_label=False,
+                        placeholder="Calendar status",
+                        lines=2,
+                        elem_classes=["cc-cyber-field"]
+                    )
 
                     cc_upcoming_output = gr.HTML(value=render_upcoming_content(user_id="main"))
 
                     cc_plan_week_button = gr.Button("✨ Plan My Week")
-                    cc_plan_week_output = gr.Textbox(label="Weekly Content Plan", lines=12)
+                    cc_plan_week_output = gr.Textbox(
+                        show_label=False,
+                        placeholder="Weekly content plan",
+                        lines=12,
+                        elem_classes=["cc-cyber-field"]
+                    )
 
                 with gr.Column(scale=2, min_width=520):
                     gr.Markdown("### 🗓️ Schedule")
                     with gr.Row(elem_classes=["cc-toolbar"]):
-                        cc_calendar_month = gr.Dropdown(
-                            choices=list(range(1, 13)),
-                            value=date.today().month,
-                            label="Month"
-                        )
-                        cc_calendar_year = gr.Number(
-                            value=date.today().year,
-                            label="Year",
-                            precision=0
-                        )
-                        cc_calendar_status_filter = gr.Dropdown(
-                            ["All"] + CONTENT_STATUSES,
-                            value="All",
-                            label="Status Filter"
-                        )
-                        cc_calendar_type_filter = gr.Dropdown(
-                            ["All"] + CONTENT_TYPES,
-                            value="All",
-                            label="Type Filter"
-                        )
+                        with gr.Column():
+                            gr.HTML('<div class="cc-field-label">Month</div>')
+                            cc_calendar_month = gr.Dropdown(
+                                choices=list(range(1, 13)),
+                                value=date.today().month,
+                                show_label=False,
+                                elem_classes=["cc-cyber-field"]
+                            )
+                        with gr.Column():
+                            gr.HTML('<div class="cc-field-label">Year</div>')
+                            cc_calendar_year = gr.Number(
+                                value=date.today().year,
+                                show_label=False,
+                                precision=0,
+                                elem_classes=["cc-cyber-field"]
+                            )
+                        with gr.Column():
+                            gr.HTML('<div class="cc-field-label">Status Filter</div>')
+                            cc_calendar_status_filter = gr.Dropdown(
+                                ["All"] + CONTENT_STATUSES,
+                                value="All",
+                                show_label=False,
+                                elem_classes=["cc-cyber-field"]
+                            )
+                        with gr.Column():
+                            gr.HTML('<div class="cc-field-label">Type Filter</div>')
+                            cc_calendar_type_filter = gr.Dropdown(
+                                ["All"] + CONTENT_TYPES,
+                                value="All",
+                                show_label=False,
+                                elem_classes=["cc-cyber-field"]
+                            )
 
                     with gr.Column(elem_classes=["cc-card", "cc-calendar-main"]):
                         cc_calendar_output = gr.HTML(value=render_content_calendar(user_id="main"))
@@ -691,9 +797,11 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
             gr.Markdown("### ✏️ Edit or Delete Content")
 
             with gr.Column(elem_classes=["cc-card"]):
+                gr.HTML('<div class="cc-field-label">Choose Calendar Item</div>')
                 cc_calendar_item_picker = gr.Dropdown(
                     choices=get_calendar_choices("main"),
-                    label="Choose Calendar Item"
+                    show_label=False,
+                    elem_classes=["cc-cyber-field"]
                 )
 
                 cc_calendar_load_button = gr.Button("📂 Load Selected Item")
