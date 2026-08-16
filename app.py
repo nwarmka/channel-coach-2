@@ -3,6 +3,7 @@
 
 from features import *
 from ui.calendar import build_calendar_tab
+from ui.dashboard import build_dashboard_page
 
 
 with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
@@ -537,28 +538,10 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
 
         saved_profile = load_creator_profile("main")
 
-        with gr.Column(visible=True, elem_id="dashboard-page") as dashboard_page:
-            gr.Markdown("## 🕹️ Creator Dashboard\n\nYour home base for upcoming content, overdue projects, and quick creator guidance.")
-            dashboard_output = gr.HTML(value=render_creator_dashboard("main"))
-
-            with gr.Row():
-                dashboard_refresh_button = gr.Button("🔄 Refresh Dashboard")
-                dashboard_tip_button = gr.Button("✨ Give Me One Tip")
-
-            dashboard_tip_output = gr.Textbox(label="Creator Tip", lines=5)
-
-            dashboard_refresh_button.click(
-                refresh_creator_dashboard,
-                inputs=[workspace_name],
-                outputs=dashboard_output
-            )
-
-            dashboard_tip_button.click(
-                dashboard_ai_tip,
-                inputs=[workspace_name],
-                outputs=dashboard_tip_output,
-                show_progress="full"
-            )
+        dashboard_page, dashboard_output = build_dashboard_page(
+            workspace_name,
+            visible=True,
+        )
 
         def load_workspace_ui(current_workspace):
             safe_workspace = current_workspace or "main"
@@ -1403,6 +1386,7 @@ app.launch(
     server_port=port,
     share=False
 )
+
 
 
 
