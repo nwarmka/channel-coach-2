@@ -569,8 +569,6 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
                 render_content_calendar(user_id=safe_workspace),
                 render_upcoming_content(user_id=safe_workspace),
                 gr.update(choices=get_calendar_choices(safe_workspace)),
-                gr.update(choices=get_calendar_choices(safe_workspace)),
-                gr.update(choices=get_calendar_choices(safe_workspace)),
                 render_analytics_tracker(safe_workspace),
                 render_getting_started_checklist(safe_workspace),
                 profile.get("channel_name", ""),
@@ -1405,6 +1403,7 @@ app.launch(
     server_port=port,
     share=False
 )
+
 
 
 
