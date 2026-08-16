@@ -145,12 +145,34 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
       -webkit-background-clip:text;color:transparent!important;
     }
 
+    #login-screen input,
+    #login-screen textarea,
+    #login-screen .wrap,
+    #login-screen .wrap-inner,
+    #login-screen .input-container,
+    #login-screen .secondary-wrap{
+      background:#05070d!important;
+      color:#ffffff!important;
+      border-color:#ffffff!important;
+      box-shadow:none!important;
+    }
+
     #login-screen input{
-      background:#070a11!important;
-      color:#fff!important;
-      border:1px solid #343d55!important;
+      background:#05070d!important;
+      color:#ffffff!important;
+      border:1px solid #ffffff!important;
       border-radius:12px!important;
       min-height:48px!important;
+      -webkit-text-fill-color:#ffffff!important;
+    }
+
+    #login-screen input:-webkit-autofill,
+    #login-screen input:-webkit-autofill:hover,
+    #login-screen input:-webkit-autofill:focus{
+      -webkit-box-shadow:0 0 0 1000px #05070d inset!important;
+      -webkit-text-fill-color:#ffffff!important;
+      caret-color:#ffffff!important;
+      border:1px solid #ffffff!important;
     }
 
     #login-screen input:focus{
