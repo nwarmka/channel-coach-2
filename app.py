@@ -254,6 +254,103 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
       color:#dbe2f2!important;
     }
 
+
+    /* Clean cyberpunk form system: no white label caps */
+    #channel-coach-app label,
+    #channel-coach-app .label-wrap,
+    #channel-coach-app .label-wrap > span,
+    #channel-coach-app .block-info,
+    #channel-coach-app .block-title,
+    #channel-coach-app span[data-testid="block-info"] {
+      background: transparent !important;
+      background-color: transparent !important;
+      color: #e8ebf5 !important;
+      border: 0 !important;
+      box-shadow: none !important;
+    }
+
+    #channel-coach-app .label-wrap {
+      padding: 0 2px 7px !important;
+      margin: 0 !important;
+    }
+
+    #channel-coach-app .wrap,
+    #channel-coach-app .secondary-wrap,
+    #channel-coach-app .input-container,
+    #channel-coach-app .wrap-inner {
+      background: transparent !important;
+      border: 0 !important;
+      box-shadow: none !important;
+    }
+
+    #channel-coach-app input,
+    #channel-coach-app textarea,
+    #channel-coach-app select,
+    #channel-coach-app [role="combobox"] {
+      width: 100% !important;
+      background: #050810 !important;
+      color: #ffffff !important;
+      -webkit-text-fill-color: #ffffff !important;
+      border: 1px solid rgba(139,92,246,.72) !important;
+      border-radius: 11px !important;
+      min-height: 46px !important;
+      box-shadow: 0 0 12px rgba(139,92,246,.05) !important;
+    }
+
+    #channel-coach-app input::placeholder,
+    #channel-coach-app textarea::placeholder {
+      color: #69738b !important;
+      -webkit-text-fill-color: #69738b !important;
+      opacity: 1 !important;
+    }
+
+    #channel-coach-app input:focus,
+    #channel-coach-app textarea:focus,
+    #channel-coach-app select:focus,
+    #channel-coach-app [role="combobox"]:focus-within {
+      outline: none !important;
+      border-color: var(--cyan) !important;
+      box-shadow: 0 0 0 2px rgba(22,217,255,.09), 0 0 18px rgba(22,217,255,.13) !important;
+    }
+
+    #channel-coach-app [role="combobox"] *,
+    #channel-coach-app .dropdown input,
+    #channel-coach-app .dropdown span {
+      color: #ffffff !important;
+      -webkit-text-fill-color: #ffffff !important;
+    }
+
+    #channel-coach-app [role="combobox"] svg,
+    #channel-coach-app .dropdown svg {
+      color: #dfe6ff !important;
+      fill: currentColor !important;
+      stroke: currentColor !important;
+    }
+
+    /* Calendar gets one clean neon panel per section, not a box around each control */
+    #calendar-page .cc-card,
+    #calendar-page .cc-toolbar {
+      padding: 18px !important;
+      background: rgba(7,10,17,.88) !important;
+      border: 1px solid rgba(255,62,165,.32) !important;
+      border-radius: 16px !important;
+    }
+
+    #calendar-page .cc-toolbar .block,
+    #calendar-page .cc-card .block {
+      background: transparent !important;
+      border: 0 !important;
+      box-shadow: none !important;
+    }
+
+    #channel-coach-app input:-webkit-autofill,
+    #channel-coach-app input:-webkit-autofill:hover,
+    #channel-coach-app input:-webkit-autofill:focus {
+      -webkit-box-shadow: 0 0 0 1000px #050810 inset !important;
+      -webkit-text-fill-color: #ffffff !important;
+      caret-color: #ffffff !important;
+    }
+
     #workspace-internal{display:none!important}
 
     *{scrollbar-width:thin;scrollbar-color:#7c3cff #070a10}
