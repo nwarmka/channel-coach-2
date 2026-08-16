@@ -6,6 +6,7 @@ from ui.calendar import build_calendar_page
 from ui.dashboard import build_dashboard_page
 from ui.toolkit import build_toolkit_page
 from ui.analytics import build_analytics_page
+from ui.settings import build_settings_page
 
 
 with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
@@ -538,8 +539,6 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
 
             workspace_button = gr.Button("🔄 Load Workspace")
 
-        saved_profile = load_creator_profile("main")
-
         dashboard_page, dashboard_output = build_dashboard_page(
             workspace_name,
             visible=True,
@@ -591,108 +590,24 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
             visible=False,
         )
 
-        with gr.Column(visible=False, elem_id="settings-page") as settings_page:
-            gr.Markdown("## ⚙️ Settings\n\nManage your creator profile and app preferences.")
+        settings_components = build_settings_page(
+            workspace_name,
+            dashboard_output,
+            visible=False,
+        )
 
-            with gr.Accordion("🚀 Getting Started", open=True):
-                onboarding_output = gr.HTML(value=render_getting_started_checklist("main"))
-                onboarding_refresh_button = gr.Button("🔄 Refresh Getting Started")
-
-                onboarding_refresh_button.click(
-                    render_getting_started_checklist,
-                    inputs=[workspace_name],
-                    outputs=onboarding_output
-                )
-
-            with gr.Accordion("👤 Creator Profile", open=True):
-                gr.Markdown(
-                    """
-                    ## 👤 Creator Profile & Preferences
-                    Save your channel niche, goals, style, and current content here.
-                    Channel Coach will use this information in every tool.
-                    """
-                )
-
-                profile_channel_name = gr.Textbox(
-                    label="Channel Name",
-                    value=saved_profile.get("channel_name", ""),
-                    placeholder="Example: My Awesome Gaming Channel"
-                )
-                profile_creator_name = gr.Textbox(
-                    label="Creator Name",
-                    value=saved_profile.get("creator_name", ""),
-                    placeholder="Example: Nicole, Alex, Gamer Mom, etc."
-                )
-                profile_niche = gr.Textbox(
-                    label="Niche",
-                    value=saved_profile.get("niche", ""),
-                    placeholder="Example: Retro gaming, cooking, travel, tech reviews...",
-                    lines=3
-                )
-                profile_target_audience = gr.Textbox(
-                    label="Target Audience",
-                    value=saved_profile.get("target_audience", ""),
-                    placeholder="Example: Beginners, cozy gamers, busy parents, tech newbies...",
-                    lines=3
-                )
-                profile_content_style = gr.Textbox(
-                    label="Content Style",
-                    value=saved_profile.get("content_style", ""),
-                    placeholder="Example: Funny, helpful, cozy, direct, chaotic-good, cinematic...",
-                    lines=3
-                )
-                profile_current_games = gr.Textbox(
-                    label="Current Games / Current Content",
-                    value=saved_profile.get("current_games", ""),
-                    placeholder="Example: Stardew Valley guides, Zelda walkthroughs, budget recipes...",
-                    lines=3
-                )
-                profile_main_platforms = gr.Textbox(
-                    label="Main Platforms",
-                    value=saved_profile.get("main_platforms", ""),
-                    placeholder="Example: YouTube, TikTok, Instagram Reels, Facebook Reels"
-                )
-                profile_goals = gr.Textbox(
-                    label="Goals",
-                    value=saved_profile.get("goals", ""),
-                    placeholder="Example: Grow subscribers, improve thumbnails, post 3 Shorts a week...",
-                    lines=3
-                )
-                profile_preferred_tone = gr.Textbox(
-                    label="Preferred Coaching Tone",
-                    value=saved_profile.get("preferred_tone", ""),
-                    placeholder="Example: Friendly, honest, motivating, not too corporate...",
-                    lines=3
-                )
-                profile_things_to_avoid = gr.Textbox(
-                    label="Things Channel Coach Should Avoid",
-                    value=saved_profile.get("things_to_avoid", ""),
-                    placeholder="Example: Fake clickbait, generic advice, too much jargon...",
-                    lines=3
-                )
-
-                profile_save_button = gr.Button("💾 Save Creator Profile")
-                profile_save_status = gr.Textbox(label="Save Status", lines=2)
-
-                profile_save_button.click(
-                    save_creator_profile_and_refresh_dashboard,
-                    inputs=[
-                        profile_channel_name,
-                        profile_creator_name,
-                        profile_niche,
-                        profile_target_audience,
-                        profile_content_style,
-                        profile_current_games,
-                        profile_main_platforms,
-                        profile_goals,
-                        profile_preferred_tone,
-                        profile_things_to_avoid,
-                        workspace_name
-                    ],
-                    outputs=[profile_save_status, dashboard_output, onboarding_output]
-                )
-
-
+        settings_page = settings_components["page"]
+        onboarding_output = settings_components["onboarding_output"]
+        profile_channel_name = settings_components["profile_channel_name"]
+        profile_creator_name = settings_components["profile_creator_name"]
+        profile_niche = settings_components["profile_niche"]
+        profile_target_audience = settings_components["profile_target_audience"]
+        profile_content_style = settings_components["profile_content_style"]
+        profile_current_games = settings_components["profile_current_games"]
+        profile_main_platforms = settings_components["profile_main_platforms"]
+        profile_goals = settings_components["profile_goals"]
+        profile_preferred_tone = settings_components["profile_preferred_tone"]
+        profile_things_to_avoid = settings_components["profile_things_to_avoid"]
 
     # =========================
     # PAGE NAVIGATION
@@ -886,6 +801,7 @@ app.launch(
     server_port=port,
     share=False
 )
+
 
 
 
