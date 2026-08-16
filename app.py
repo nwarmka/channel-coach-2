@@ -508,8 +508,8 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
 
         menu_open = gr.State(False)
 
-        # The logged-in home screen is Coach Chat.
-        with gr.Column(visible=True, elem_id="chat-page") as chat_page:
+        # Coach Chat is available from the menu; Dashboard is the logged-in home screen.
+        with gr.Column(visible=False, elem_id="chat-page") as chat_page:
             gr.Markdown("## 💬 Channel Coach Chat")
             gr.Markdown("Ask Channel Coach what to work on next, what to improve, or how to grow your channel.")
             home_chat_question = gr.Textbox(
@@ -537,7 +537,7 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
 
         saved_profile = load_creator_profile("main")
 
-        with gr.Column(visible=False, elem_id="dashboard-page") as dashboard_page:
+        with gr.Column(visible=True, elem_id="dashboard-page") as dashboard_page:
             gr.Markdown("## 🕹️ Creator Dashboard\n\nYour home base for upcoming content, overdue projects, and quick creator guidance.")
             dashboard_output = gr.HTML(value=render_creator_dashboard("main"))
 
@@ -1403,6 +1403,7 @@ app.launch(
     server_port=port,
     share=False
 )
+
 
 
 
