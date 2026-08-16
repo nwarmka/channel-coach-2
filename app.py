@@ -7,6 +7,7 @@ from ui.dashboard import build_dashboard_page
 from ui.toolkit import build_toolkit_page
 from ui.analytics import build_analytics_page
 from ui.settings import build_settings_page
+from ui.chat import build_chat_page
 
 
 with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
@@ -512,18 +513,6 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
 
         menu_open = gr.State(False)
 
-        # Coach Chat is available from the menu; Dashboard is the logged-in home screen.
-        with gr.Column(visible=False, elem_id="chat-page") as chat_page:
-            gr.Markdown("## 💬 Channel Coach Chat")
-            gr.Markdown("Ask Channel Coach what to work on next, what to improve, or how to grow your channel.")
-            home_chat_question = gr.Textbox(
-                label="Ask Channel Coach",
-                placeholder="What should I work on today?",
-                lines=3
-            )
-            home_chat_button = gr.Button("Send", variant="primary")
-            home_chat_output = gr.Markdown()
-
         # =========================
         # WORKSPACE
         # =========================
@@ -538,6 +527,13 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
             workspace_indicator = gr.Markdown("Current workspace: **main**")
 
             workspace_button = gr.Button("🔄 Load Workspace")
+
+        # Coach Chat is available from the menu.
+        # Creator Dashboard remains the logged-in home screen.
+        chat_page = build_chat_page(
+            workspace_name,
+            visible=False,
+        )
 
         dashboard_page, dashboard_output = build_dashboard_page(
             workspace_name,
@@ -645,13 +641,6 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
     toolkit_nav.click(lambda: show_page("toolkit"), outputs=page_outputs)
     analytics_nav.click(lambda: show_page("analytics"), outputs=page_outputs)
     settings_nav.click(lambda: show_page("settings"), outputs=page_outputs)
-
-    home_chat_button.click(
-        ask_creator_coach,
-        inputs=[home_chat_question, workspace_name],
-        outputs=home_chat_output,
-        show_progress="full"
-    )
 
     def login_and_open_app(email, password, remember):
         email = (email or "").strip()
