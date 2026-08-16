@@ -1302,8 +1302,6 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
             cc_calendar_output,
             cc_upcoming_output,
             cc_calendar_item_picker,
-            calendar_item_picker,
-            workspace_project_picker,
             analytics_output,
             onboarding_output,
             profile_channel_name,
@@ -1333,8 +1331,6 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
             cc_calendar_output,
             cc_upcoming_output,
             cc_calendar_item_picker,
-            calendar_item_picker,
-            workspace_project_picker,
             analytics_output,
             onboarding_output,
             profile_channel_name,
@@ -1369,8 +1365,6 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
             cc_calendar_output,
             cc_upcoming_output,
             cc_calendar_item_picker,
-            calendar_item_picker,
-            workspace_project_picker,
             analytics_output,
             onboarding_output,
             profile_channel_name,
@@ -1411,6 +1405,7 @@ app.launch(
     server_port=port,
     share=False
 )
+
 
 
 
