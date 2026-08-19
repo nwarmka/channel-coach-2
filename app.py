@@ -111,14 +111,162 @@ with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
       border-color:rgba(255,62,165,.42)!important;
     }
 
+    /* =========================
+       FULL PAGE COACH CHAT
+       ========================= */
+
     #chat-page{
-      max-width:980px!important; margin:20px auto 0!important; padding:28px!important;
-      border:1px solid rgba(22,217,255,.28)!important; border-radius:22px!important;
-      background:linear-gradient(180deg,rgba(12,16,27,.98),rgba(6,9,16,.99))!important;
-      box-shadow:0 22px 60px rgba(0,0,0,.38),0 0 34px rgba(22,217,255,.07)!important;
+      width:100%!important;
+      max-width:none!important;
+      height:calc(100vh - 105px)!important;
+      min-height:650px!important;
+      margin:0!important;
+      padding:0!important;
+      border:0!important;
+      border-radius:0!important;
+      background:transparent!important;
+      box-shadow:none!important;
     }
 
-    #chat-page h2{color:var(--cyan)!important;text-transform:uppercase;letter-spacing:.05em}
+    #coach-chat-header{
+      max-width:900px!important;
+      width:100%!important;
+      margin:0 auto!important;
+      padding:8px 18px 10px!important;
+    }
+
+    .cc-chat-title{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      color:#f7f7fb;
+      font-size:.9rem;
+      font-weight:900;
+      letter-spacing:.12em;
+    }
+
+    .cc-chat-orb{
+      color:var(--cyan);
+      text-shadow:
+        0 0 12px rgba(22,217,255,.65),
+        0 0 24px rgba(139,92,246,.35);
+    }
+
+    #coach-chatbot{
+      width:100%!important;
+      max-width:900px!important;
+      margin:0 auto!important;
+      flex:1 1 auto!important;
+      background:transparent!important;
+      border:0!important;
+      box-shadow:none!important;
+    }
+
+    #coach-chatbot > div{
+      background:transparent!important;
+      border:0!important;
+      box-shadow:none!important;
+    }
+
+    #coach-chatbot .message{
+      border-radius:18px!important;
+      line-height:1.55!important;
+    }
+
+    #coach-chatbot .message.user,
+    #coach-chatbot [data-testid="user"]{
+      background:linear-gradient(
+        135deg,
+        rgba(139,92,246,.30),
+        rgba(255,62,165,.22)
+      )!important;
+      border:1px solid rgba(255,62,165,.30)!important;
+      color:#fff!important;
+    }
+
+    #coach-chatbot .message.bot,
+    #coach-chatbot .message.assistant,
+    #coach-chatbot [data-testid="bot"]{
+      background:transparent!important;
+      border:0!important;
+      color:#f3f5fb!important;
+    }
+
+    #coach-chat-composer{
+      width:calc(100% - 28px)!important;
+      max-width:900px!important;
+      margin:10px auto 16px!important;
+      padding:9px 10px!important;
+      background:#10131c!important;
+      border:1px solid rgba(139,92,246,.48)!important;
+      border-radius:22px!important;
+      box-shadow:
+        0 12px 36px rgba(0,0,0,.38),
+        0 0 20px rgba(139,92,246,.08)!important;
+    }
+
+    #coach-chat-input{
+      background:transparent!important;
+      border:0!important;
+      box-shadow:none!important;
+    }
+
+    #coach-chat-input textarea{
+      background:transparent!important;
+      border:0!important;
+      box-shadow:none!important;
+      color:#fff!important;
+      min-height:46px!important;
+      padding:12px 8px!important;
+      resize:none!important;
+    }
+
+    #coach-chat-input textarea:focus{
+      border:0!important;
+      box-shadow:none!important;
+    }
+
+    #coach-chat-send{
+      width:48px!important;
+      min-width:48px!important;
+      height:48px!important;
+      padding:0!important;
+      border-radius:50%!important;
+      background:linear-gradient(
+        135deg,
+        var(--purple),
+        var(--pink)
+      )!important;
+      border:0!important;
+      box-shadow:0 0 22px rgba(255,62,165,.25)!important;
+      font-size:1.25rem!important;
+    }
+
+    #coach-chat-send:hover{
+      transform:scale(1.04)!important;
+      box-shadow:0 0 28px rgba(255,62,165,.38)!important;
+    }
+
+    @media(max-width:700px){
+      #chat-page{
+        height:calc(100vh - 85px)!important;
+        min-height:560px!important;
+      }
+
+      #coach-chat-header{
+        padding-left:8px!important;
+        padding-right:8px!important;
+      }
+
+      #coach-chatbot{
+        max-width:100%!important;
+      }
+
+      #coach-chat-composer{
+        width:calc(100% - 12px)!important;
+        margin-bottom:8px!important;
+      }
+    }
 
     #calendar-page,#dashboard-page,#projects-page,#toolkit-page,#analytics-page,#settings-page{
       max-width:1400px!important;margin:0 auto!important;
@@ -790,7 +938,6 @@ app.launch(
     server_port=port,
     share=False
 )
-
 
 
 
