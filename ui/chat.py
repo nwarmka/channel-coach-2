@@ -3,10 +3,8 @@ import gradio as gr
 
 def _respond(message, history):
     """
-    Temporary safe chat handler.
-
-    This keeps the UI working even before your real Channel Coach
-    response function is wired back in.
+    Safe placeholder response handler.
+    Replace the reply logic here with your real Channel Coach backend.
     """
     message = (message or "").strip()
     history = history or []
@@ -14,75 +12,64 @@ def _respond(message, history):
     if not message:
         return "", history
 
-    # Gradio-compatible tuple history format.
     reply = (
-        "Coach Chat is connected and the page is working. "
-        "Your full coaching response logic can be wired into _respond()."
+        "Coach Chat is online. "
+        "Your full Channel Coach response logic can be connected here."
     )
+
     history = history + [(message, reply)]
     return "", history
 
 
 def build_chat_page(workspace_name="Channel Coach", visible=False):
     """
-    Build the full-page Channel Coach chat interface.
+    Full-page Coach Chat interface.
 
-    Important compatibility fix:
-    - Does NOT pass type='messages' to gr.Chatbot().
-      That argument is what caused the Render crash:
-      TypeError: Chatbot.__init__() got an unexpected keyword argument 'type'
-    """
-
-    css = """
-    .channel-coach-chat {
-        min-height: 78vh;
-    }
-
-    .channel-coach-title {
-        text-align: center;
-        margin-bottom: 0.25rem;
-    }
-
-    .channel-coach-subtitle {
-        text-align: center;
-        opacity: 0.75;
-        margin-bottom: 1rem;
-    }
-
-    #channel-coach-chatbot {
-        min-height: 560px;
-    }
+    Fixes:
+    - Removes the unsupported `type=` argument from gr.Chatbot.
+    - Prevents Gradio Textbox objects from being rendered inside Markdown/text.
+    - Keeps the chat layout simple and ChatGPT-like.
     """
 
     with gr.Column(
         visible=visible,
-        elem_classes=["channel-coach-chat"],
+        elem_id="coach-chat-page",
     ) as chat_page:
+
         gr.Markdown(
-            f"# {workspace_name}",
-            elem_classes=["channel-coach-title"],
+            "## Coach Chat",
+            elem_id="coach-chat-heading",
         )
 
         chatbot = gr.Chatbot(
             value=[],
             height=560,
-            elem_id="channel-coach-chatbot",
+            elem_id="coach-chatbot",
+            label=None,
         )
 
-        with gr.Row():
+        with gr.Row(elem_id="coach-input-row"):
             message_box = gr.Textbox(
+                value="",
                 placeholder="Message Channel Coach...",
                 show_label=False,
                 lines=1,
-                scale=8,
+                max_lines=6,
+                scale=9,
+                elem_id="coach-message-box",
             )
+
             send_button = gr.Button(
                 "Send",
                 variant="primary",
                 scale=1,
+                elem_id="coach-send-button",
             )
 
-        clear_button = gr.Button("Clear chat")
+        clear_button = gr.Button(
+            "Clear chat",
+            elem_id="coach-clear-button",
+        )
 
         send_button.click(
             fn=_respond,
@@ -102,13 +89,13 @@ def build_chat_page(workspace_name="Channel Coach", visible=False):
             outputs=[message_box, chatbot],
         )
 
-    # Expose useful components in case app.py needs them later.
+    # Optional references for app.py if needed.
     chat_page.chatbot = chatbot
     chat_page.message_box = message_box
     chat_page.send_button = send_button
     chat_page.clear_button = clear_button
-    chat_page.custom_css = css
 
     return chat_page
+
 
     
