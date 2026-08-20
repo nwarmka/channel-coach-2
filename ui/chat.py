@@ -3,8 +3,11 @@ import gradio as gr
 
 def _respond(message, history):
     """
-    Temporary response handler.
-    Replace this with your real Channel Coach logic later.
+    Gradio messages-format response handler.
+
+    This version fixes:
+    "Data incompatible with messages format"
+    by returning dictionaries with role/content keys.
     """
     message = (message or "").strip()
     history = history or []
@@ -17,7 +20,11 @@ def _respond(message, history):
         "Your full Channel Coach response logic can be connected here."
     )
 
-    history = history + [(message, reply)]
+    history = history + [
+        {"role": "user", "content": message},
+        {"role": "assistant", "content": reply},
+    ]
+
     return "", history
 
 
@@ -25,11 +32,11 @@ def build_chat_page(workspace_name="Channel Coach", visible=False):
     """
     ChatGPT-style full-page Coach Chat.
 
-    Key UI changes:
-    - No giant bordered chatbot panel
-    - No fixed 560px box
-    - Chat area blends into the page background
-    - Input sits at the bottom in a rounded composer
+    Fixes:
+    - No unsupported type= argument
+    - Uses Gradio messages-format history
+    - No giant bordered chatbot box
+    - Input stays near the bottom
     """
 
     css = """
