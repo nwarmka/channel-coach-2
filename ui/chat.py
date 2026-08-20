@@ -1,142 +1,114 @@
-# Channel Coach - Full Page Coach Chat UI
-
 import gradio as gr
 
-from features import ask_creator_coach
 
-
-def _send_chat_message(message, history, workspace_name):
+def _respond(message, history):
     """
-    Send a user message to Channel Coach and append both sides
-    of the conversation to the visible chat history.
+    Temporary safe chat handler.
+
+    This keeps the UI working even before your real Channel Coach
+    response function is wired back in.
     """
     message = (message or "").strip()
-
-    if not message:
-        return history, ""
-
     history = history or []
 
-    # Show the user's message.
-    history.append(
-        {
-            "role": "user",
-            "content": message,
-        }
+    if not message:
+        return "", history
+
+    # Gradio-compatible tuple history format.
+    reply = (
+        "Coach Chat is connected and the page is working. "
+        "Your full coaching response logic can be wired into _respond()."
     )
-
-    try:
-        response = ask_creator_coach(
-            message,
-            workspace_name,
-        )
-
-        if not response:
-            response = (
-                "I couldn't generate a response. "
-                "Please try again."
-            )
-
-    except Exception as exc:
-        response = (
-            "Something went wrong while generating "
-            f"the response: {exc}"
-        )
-
-    # Show Channel Coach's response.
-    history.append(
-        {
-            "role": "assistant",
-            "content": response,
-        }
-    )
-
-    # Return updated conversation + clear input.
-    return history, ""
+    history = history + [(message, reply)]
+    return "", history
 
 
-def build_chat_page(workspace_name, visible=False):
+def build_chat_page(workspace_name="Channel Coach", visible=False):
     """
-    Build the full-page Channel Coach conversation interface.
+    Build the full-page Channel Coach chat interface.
+
+    Important compatibility fix:
+    - Does NOT pass type='messages' to gr.Chatbot().
+      That argument is what caused the Render crash:
+      TypeError: Chatbot.__init__() got an unexpected keyword argument 'type'
+    """
+
+    css = """
+    .channel-coach-chat {
+        min-height: 78vh;
+    }
+
+    .channel-coach-title {
+        text-align: center;
+        margin-bottom: 0.25rem;
+    }
+
+    .channel-coach-subtitle {
+        text-align: center;
+        opacity: 0.75;
+        margin-bottom: 1rem;
+    }
+
+    #channel-coach-chatbot {
+        min-height: 560px;
+    }
     """
 
     with gr.Column(
         visible=visible,
-        elem_id="chat-page",
+        elem_classes=["channel-coach-chat"],
     ) as chat_page:
-
-        # Minimal header — no starter cards/prompts.
-        with gr.Row(elem_id="coach-chat-header"):
-            gr.Markdown(
-                """
-                <div class="cc-chat-title">
-                    <span class="cc-chat-orb">✦</span>
-                    <span>COACH CHAT</span>
-                </div>
-                """
-            )
-
-        # Conversation fills the page.
-        chatbot = gr.Chatbot(
-            value=[],
-            type="messages",
-            show_label=False,
-            elem_id="coach-chatbot",
-            height=560,
+        gr.Markdown(
+            f"# {workspace_name}",
+            elem_classes=["channel-coach-title"],
         )
 
-        # Bottom composer, similar to ChatGPT.
-        with gr.Row(
-            elem_id="coach-chat-composer",
-            equal_height=True,
-        ):
-            chat_question = gr.Textbox(
+        chatbot = gr.Chatbot(
+            value=[],
+            height=560,
+            elem_id="channel-coach-chatbot",
+        )
+
+        with gr.Row():
+            message_box = gr.Textbox(
                 placeholder="Message Channel Coach...",
                 show_label=False,
                 lines=1,
-                max_lines=6,
-                container=False,
-                scale=12,
-                elem_id="coach-chat-input",
+                scale=8,
             )
-
-            chat_button = gr.Button(
-                "➤",
+            send_button = gr.Button(
+                "Send",
                 variant="primary",
                 scale=1,
-                min_width=54,
-                elem_id="coach-chat-send",
             )
 
-        # Send button.
-        chat_button.click(
-            _send_chat_message,
-            inputs=[
-                chat_question,
-                chatbot,
-                workspace_name,
-            ],
-            outputs=[
-                chatbot,
-                chat_question,
-            ],
-            show_progress="minimal",
+        clear_button = gr.Button("Clear chat")
+
+        send_button.click(
+            fn=_respond,
+            inputs=[message_box, chatbot],
+            outputs=[message_box, chatbot],
         )
 
-        # Enter key sends too.
-        chat_question.submit(
-            _send_chat_message,
-            inputs=[
-                chat_question,
-                chatbot,
-                workspace_name,
-            ],
-            outputs=[
-                chatbot,
-                chat_question,
-            ],
-            show_progress="minimal",
+        message_box.submit(
+            fn=_respond,
+            inputs=[message_box, chatbot],
+            outputs=[message_box, chatbot],
         )
+
+        clear_button.click(
+            fn=lambda: ("", []),
+            inputs=None,
+            outputs=[message_box, chatbot],
+        )
+
+    # Expose useful components in case app.py needs them later.
+    chat_page.chatbot = chatbot
+    chat_page.message_box = message_box
+    chat_page.send_button = send_button
+    chat_page.clear_button = clear_button
+    chat_page.custom_css = css
 
     return chat_page
+
     
