@@ -1,6 +1,7 @@
 # Channel Coach - Content Calendar UI
 
 import calendar as pycalendar
+import html
 from datetime import date
 
 import gradio as gr
@@ -11,6 +12,7 @@ from features import (
     add_content_item,
     delete_content_item,
     get_calendar_choices,
+    load_content_calendar,
     load_selected_content_item,
     plan_my_week,
     refresh_content_calendar,
@@ -62,6 +64,67 @@ def _today_month(workspace_name, status_filter, type_filter):
         upcoming_html,
     )
 
+
+
+def _render_day_details(selected_date, user_id="main"):
+    try:
+        chosen = date.fromisoformat(selected_date)
+    except Exception:
+        return "<div class='cc-day-detail-empty'>Click a day in the calendar to open it.</div>"
+
+    items = [
+        item for item in load_content_calendar(user_id)
+        if item.get("publish_date") == selected_date
+    ]
+
+    heading = chosen.strftime("%A, %B %d")
+    html_output = f"""
+    <div class="cc-day-detail-card">
+        <div class="cc-day-detail-top">
+            <div>
+                <div class="cc-day-detail-kicker">DAY VIEW</div>
+                <h3>{html.escape(heading)}</h3>
+            </div>
+            <div class="cc-day-detail-date">{chosen.day}</div>
+        </div>
+    """
+
+    if not items:
+        html_output += """
+        <div class="cc-day-detail-empty">
+            Nothing scheduled yet. The Add Content form below is already set to this date.
+        </div>
+        """
+    else:
+        html_output += '<div class="cc-day-detail-events">'
+        for item in items:
+            title = html.escape(item.get("title", "Untitled"))
+            content_type = html.escape(item.get("content_type", "Long Video"))
+            status = html.escape(item.get("status", "Idea"))
+            topic = html.escape(item.get("game_topic", ""))
+            meta = f"{content_type} · {status}" + (f" · {topic}" if topic else "")
+            html_output += f"""
+            <div class="cc-day-detail-event">
+                <div class="cc-day-detail-event-title">{title}</div>
+                <div class="cc-day-detail-event-meta">{meta}</div>
+            </div>
+            """
+        html_output += '</div>'
+
+    html_output += """
+        <div class="cc-day-detail-hint">+ Add another item using Content tools below</div>
+    </div>
+    """
+    return html_output
+
+
+def _open_calendar_day(workspace_name, evt: gr.EventData):
+    selected_date = getattr(evt, "date", None)
+    if not selected_date and hasattr(evt, "_data") and isinstance(evt._data, dict):
+        selected_date = evt._data.get("date")
+    if not selected_date:
+        return _render_day_details("", workspace_name), gr.update()
+    return _render_day_details(selected_date, workspace_name), selected_date
 
 def build_calendar_page(workspace_name, visible=False):
     """Build the Content Calendar page and wire all Calendar events."""
@@ -117,6 +180,60 @@ def build_calendar_page(workspace_name, visible=False):
                   margin-bottom: 12px;
               }
 
+              #calendar-page .cc-day-detail-card {
+                  margin-top: 14px;
+                  padding: 18px 20px;
+                  border: 1px solid rgba(96,165,250,.42);
+                  border-radius: 18px;
+                  background: rgba(10,15,26,.96);
+              }
+              #calendar-page .cc-day-detail-top {
+                  display: flex;
+                  align-items: center;
+                  justify-content: space-between;
+                  gap: 16px;
+                  margin-bottom: 12px;
+              }
+              #calendar-page .cc-day-detail-kicker {
+                  font-size: .72rem;
+                  letter-spacing: .12em;
+                  font-weight: 800;
+                  color: #93c5fd;
+              }
+              #calendar-page .cc-day-detail-top h3 {
+                  margin: 3px 0 0;
+                  font-size: 1.2rem;
+              }
+              #calendar-page .cc-day-detail-date {
+                  width: 44px;
+                  height: 44px;
+                  border-radius: 999px;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  background: #2563eb;
+                  color: white;
+                  font-weight: 900;
+              }
+              #calendar-page .cc-day-detail-events {
+                  display: grid;
+                  gap: 8px;
+              }
+              #calendar-page .cc-day-detail-event {
+                  padding: 10px 12px;
+                  border-radius: 10px;
+                  background: rgba(139,92,246,.18);
+                  border-left: 4px solid #8b5cf6;
+              }
+              #calendar-page .cc-day-detail-event-title { font-weight: 800; }
+              #calendar-page .cc-day-detail-event-meta,
+              #calendar-page .cc-day-detail-empty,
+              #calendar-page .cc-day-detail-hint {
+                  color: #aeb9d0;
+                  font-size: .88rem;
+              }
+              #calendar-page .cc-day-detail-hint { margin-top: 12px; }
+
               @media (max-width: 760px) {
                   #calendar-page .cc-calendar-main { min-height: 420px; }
               }
@@ -162,8 +279,27 @@ def build_calendar_page(workspace_name, visible=False):
             calendar_output = gr.HTML(
                 value=render_content_calendar(
                     today.month, today.year, "All", "All", user_id="main"
-                )
+                ),
+                js_on_load="""
+                const openDay = (day) => {
+                    if (!day) return;
+                    trigger('click', {date: day.dataset.date});
+                };
+                element.querySelectorAll('.cc-gcal-day').forEach(day => {
+                    day.addEventListener('click', () => openDay(day));
+                    day.addEventListener('keydown', (event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            openDay(day);
+                        }
+                    });
+                });
+                """,
             )
+
+        day_details_output = gr.HTML(
+            value="<div class='cc-day-detail-empty'>Click a day in the calendar to open it.</div>"
+        )
 
         gr.Markdown(
             "### Content tools\nAdd something new, update an existing item, or let Channel Coach plan your week."
@@ -256,6 +392,13 @@ def build_calendar_page(workspace_name, visible=False):
             upcoming_output,
         ]
 
+        calendar_output.click(
+            _open_calendar_day,
+            inputs=[workspace_name],
+            outputs=[day_details_output, calendar_publish_date],
+            show_progress="hidden",
+        )
+
         calendar_prev_button.click(
             _previous_month,
             inputs=refresh_inputs,
@@ -307,7 +450,8 @@ def build_calendar_page(workspace_name, visible=False):
         )
 
         calendar_load_button.click(
-            load_selected_content_item,
+            load_content_calendar,
+    load_selected_content_item,
             inputs=[calendar_item_picker, workspace_name],
             outputs=[
                 calendar_title,
@@ -374,6 +518,7 @@ def build_calendar_page(workspace_name, visible=False):
 
 # Temporary compatibility alias.
 build_calendar_tab = build_calendar_page
+
 
 
 
