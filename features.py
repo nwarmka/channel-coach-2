@@ -816,7 +816,7 @@ def render_content_calendar(month=None, year=None, status_filter="All", type_fil
             day_items = [item for item in items if item.get("publish_date") == day.isoformat()]
 
             html_output += f"""
-            <div class="cc-gcal-day{muted}{today_class}" data-date="{day.isoformat()}">
+            <div class="cc-gcal-day{muted}{today_class}" data-date="{day.isoformat()}" role="button" tabindex="0" aria-label="Open {day.strftime('%A, %B %d, %Y')}">
                 <div class="cc-gcal-date-row">
                     <span class="cc-gcal-date">{day.day}</span>
                 </div>
@@ -830,7 +830,7 @@ def render_content_calendar(month=None, year=None, status_filter="All", type_fil
                 emoji = _calendar_type_emoji(content_type)
 
                 html_output += f"""
-                <div class="cc-gcal-event {css_class}" title="{title}">
+                <div class="cc-gcal-event {css_class}" title="{title}" data-item-id="{html.escape(str(item.get('id', '')))}">
                     <span class="cc-gcal-event-text">{emoji} {title}</span>
                 </div>
                 """
@@ -2254,6 +2254,13 @@ button[role='tab'][aria-selected='true'] {
     border-right: 1px solid rgba(255,255,255,.12);
     border-bottom: 1px solid rgba(255,255,255,.12);
     overflow: hidden;
+    cursor: pointer;
+    transition: background .14s ease, box-shadow .14s ease;
+}
+.cc-gcal-day:hover { background: #111827; }
+.cc-gcal-day:focus-visible {
+    outline: 2px solid #60a5fa;
+    outline-offset: -2px;
 }
 .cc-gcal-day:nth-child(7n) { border-right: 0; }
 .cc-gcal-day:nth-last-child(-n+7) { border-bottom: 0; }
@@ -3899,6 +3906,8 @@ def render_getting_started_checklist(user_id="main"):
         {items_html}
     </div>
     '''
+
+
 
 
 
