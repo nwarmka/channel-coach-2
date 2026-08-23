@@ -52,16 +52,15 @@ def _filtered_items(workspace_name, status_filter, type_filter):
     return items
 
 
-def _day_button_updates(workspace_name, month, year, status_filter, type_filter):
-    """Return 42 Gradio updates containing each calendar cell's visible text."""
+def _calendar_matrix(workspace_name, month, year, status_filter, type_filter):
+    """Return a 6x7 list used by the clickable calendar grid."""
     month = int(month)
     year = int(year)
     today = date.today()
     dates = _six_week_dates(month, year)
     items = _filtered_items(workspace_name, status_filter, type_filter)
 
-    updates = []
-
+    cells = []
     for day in dates:
         day_items = [
             item for item in items
@@ -74,7 +73,6 @@ def _day_button_updates(workspace_name, month, year, status_filter, type_filter)
             date_text = f"{pycalendar.month_abbr[day.month]} {day.day}"
 
         lines = [date_text]
-
         for item in day_items[:3]:
             title = (item.get("title") or "Untitled").strip()
             if len(title) > 24:
@@ -84,13 +82,13 @@ def _day_button_updates(workspace_name, month, year, status_filter, type_filter)
         if len(day_items) > 3:
             lines.append(f"{len(day_items) - 3} more")
 
-        updates.append(gr.update(value="\n".join(lines)))
+        cells.append("\\n".join(lines))
 
-    return updates
+    return [cells[i:i + 7] for i in range(0, 42, 7)]
 
 
 def _month_refresh(workspace_name, month, year, status_filter, type_filter):
-    return _day_button_updates(
+    return _calendar_matrix(
         workspace_name, month, year, status_filter, type_filter
     )
 
@@ -119,7 +117,7 @@ def _move_month_native(
         year,
         _month_heading(month, year),
         render_upcoming_content(user_id=workspace_name),
-        *_day_button_updates(
+        _calendar_matrix(
             workspace_name, month, year, status_filter, type_filter
         ),
     )
@@ -129,12 +127,7 @@ def _previous_month_native(
     workspace_name, month, year, status_filter, type_filter
 ):
     return _move_month_native(
-        workspace_name,
-        month,
-        year,
-        status_filter,
-        type_filter,
-        -1,
+        workspace_name, month, year, status_filter, type_filter, -1
     )
 
 
@@ -142,12 +135,7 @@ def _next_month_native(
     workspace_name, month, year, status_filter, type_filter
 ):
     return _move_month_native(
-        workspace_name,
-        month,
-        year,
-        status_filter,
-        type_filter,
-        1,
+        workspace_name, month, year, status_filter, type_filter, 1
     )
 
 
@@ -158,7 +146,7 @@ def _today_month_native(workspace_name, status_filter, type_filter):
         today.year,
         _month_heading(today.month, today.year),
         render_upcoming_content(user_id=workspace_name),
-        *_day_button_updates(
+        _calendar_matrix(
             workspace_name,
             today.month,
             today.year,
@@ -168,17 +156,25 @@ def _today_month_native(workspace_name, status_filter, type_filter):
     )
 
 
-def _open_day(
-    index,
+def _select_calendar_day(
     workspace_name,
     month,
     year,
     status_filter,
     type_filter,
+    evt: gr.SelectData,
 ):
-    """Replace month view with a selected-day view."""
-    dates = _six_week_dates(month, year)
-    selected = dates[int(index)]
+    """Open the date represented by the selected calendar cell."""
+    try:
+        row_index, col_index = evt.index
+        cell_index = int(row_index) * 7 + int(col_index)
+        selected = _six_week_dates(month, year)[cell_index]
+    except Exception:
+        return (
+            "### Select a day",
+            '<div class="cc-day-empty">Click any date in the calendar.</div>',
+            "",
+        )
 
     items = _filtered_items(workspace_name, status_filter, type_filter)
     day_items = [
@@ -186,7 +182,10 @@ def _open_day(
         if item.get("publish_date") == selected.isoformat()
     ]
 
-    heading = f"## {selected.strftime('%A, %B')} {selected.day}, {selected.year}"
+    heading = (
+        f"### {selected.strftime('%A, %B')} "
+        f"{selected.day}, {selected.year}"
+    )
 
     html_parts = ['<div class="cc-day-view-list">']
 
@@ -216,37 +215,10 @@ def _open_day(
     html_parts.append("</div>")
 
     return (
-        gr.update(visible=False),
-        gr.update(visible=True),
         heading,
         "".join(html_parts),
         selected.isoformat(),
     )
-
-
-def _make_day_handler(index):
-    """Create a five-input callback for one calendar cell."""
-    def handler(
-        workspace_name,
-        month,
-        year,
-        status_filter,
-        type_filter,
-    ):
-        return _open_day(
-            index,
-            workspace_name,
-            month,
-            year,
-            status_filter,
-            type_filter,
-        )
-
-    return handler
-
-
-def _back_to_month():
-    return gr.update(visible=True), gr.update(visible=False)
 
 
 def build_calendar_page(workspace_name, visible=False):
@@ -343,6 +315,43 @@ def build_calendar_page(workspace_name, visible=False):
                   border-color: rgba(139,92,246,.68) !important;
               }
 
+
+              #calendar-page .cc-calendar-dataframe {
+                  overflow: hidden;
+                  padding: 0 !important;
+              }
+
+              #calendar-page .cc-calendar-dataframe table {
+                  width: 100% !important;
+                  table-layout: fixed !important;
+              }
+
+              #calendar-page .cc-calendar-dataframe th {
+                  text-align: center !important;
+                  font-size: 12px !important;
+                  font-weight: 700 !important;
+                  opacity: .78;
+              }
+
+              #calendar-page .cc-calendar-dataframe td {
+                  height: 105px !important;
+                  vertical-align: top !important;
+                  white-space: pre-line !important;
+                  cursor: pointer !important;
+                  background: rgba(8,12,22,.72) !important;
+                  border: 1px solid rgba(148,163,184,.22) !important;
+                  padding: 10px !important;
+              }
+
+              #calendar-page .cc-calendar-dataframe td:hover {
+                  background: rgba(139,92,246,.14) !important;
+                  border-color: rgba(139,92,246,.68) !important;
+              }
+
+              #calendar-page .cc-selected-day {
+                  margin-top: 14px;
+              }
+
               #calendar-page .cc-month-grid {
                   overflow: hidden;
                   padding: 0;
@@ -437,79 +446,46 @@ def build_calendar_page(workspace_name, visible=False):
                 scale=1,
             )
 
-        # Real Gradio buttons make each date genuinely clickable.
-        with gr.Column(
-            visible=True,
-            elem_classes=["cc-card", "cc-month-grid"],
-        ) as month_grid_view:
-
-            with gr.Row(elem_classes=["cc-weekday-row"]):
-                for day_name in [
-                    "SUN", "MON", "TUE", "WED",
-                    "THU", "FRI", "SAT"
-                ]:
-                    gr.Markdown(
-                        day_name,
-                        elem_classes=["cc-weekday-label"],
-                    )
-
-            initial_updates = _day_button_updates(
+        # One native Gradio calendar grid with one select callback.
+        calendar_grid = gr.Dataframe(
+            value=_calendar_matrix(
                 "main",
                 today.month,
                 today.year,
                 "All",
                 "All",
-            )
-
-            day_buttons = []
-
-            for row_index in range(6):
-                with gr.Row(elem_classes=["cc-day-row"]):
-                    for col_index in range(7):
-                        index = row_index * 7 + col_index
-                        value = initial_updates[index].get(
-                            "value",
-                            str(index + 1),
-                        )
-
-                        day_buttons.append(
-                            gr.Button(
-                                value,
-                                elem_classes=["cc-day-button"],
-                                scale=1,
-                                min_width=0,
-                            )
-                        )
-
-            # Kept for compatibility with existing app.py and
-            # add/edit/delete feature callbacks.
-            calendar_output = gr.HTML(
-                value=render_content_calendar(
-                    today.month,
-                    today.year,
-                    "All",
-                    "All",
-                    user_id="main",
-                ),
-                visible=False,
-            )
-
-        # This replaces the month grid after a date is clicked.
-        with gr.Column(
-            visible=False,
-            elem_classes=[
-                "cc-card",
-                "cc-open-day-view",
+            ),
+            headers=[
+                "SUN", "MON", "TUE", "WED",
+                "THU", "FRI", "SAT",
             ],
-        ) as day_view:
-            day_back_button = gr.Button(
-                "← Back to month",
-                elem_classes=["cc-day-back"],
-            )
-            day_view_heading = gr.Markdown("## Day")
+            datatype=["str"] * 7,
+            row_count=6,
+            column_count=7,
+            type="array",
+            interactive=False,
+            wrap=True,
+            show_label=False,
+            elem_classes=["cc-card", "cc-calendar-dataframe"],
+        )
+
+        # Hidden compatibility output used by the existing CRUD callbacks.
+        calendar_output = gr.HTML(
+            value=render_content_calendar(
+                today.month,
+                today.year,
+                "All",
+                "All",
+                user_id="main",
+            ),
+            visible=False,
+        )
+
+        with gr.Column(elem_classes=["cc-card", "cc-selected-day"]):
+            day_view_heading = gr.Markdown("### Select a day")
             day_details_output = gr.HTML(
                 '<div class="cc-day-empty">'
-                'Nothing scheduled for this day yet.'
+                'Click any date in the calendar to open it.'
                 '</div>'
             )
 
@@ -639,7 +615,7 @@ def build_calendar_page(workspace_name, visible=False):
             calendar_year,
             month_heading,
             upcoming_output,
-            *day_buttons,
+            calendar_grid,
         ]
 
         calendar_prev_button.click(
@@ -667,35 +643,22 @@ def build_calendar_page(workspace_name, visible=False):
         calendar_status_filter.change(
             _month_refresh,
             inputs=refresh_inputs,
-            outputs=day_buttons,
+            outputs=calendar_grid,
         )
 
         calendar_type_filter.change(
             _month_refresh,
             inputs=refresh_inputs,
-            outputs=day_buttons,
+            outputs=calendar_grid,
         )
 
-        for index, day_button in enumerate(day_buttons):
-            day_button.click(
-                _make_day_handler(index),
-                inputs=refresh_inputs,
-                outputs=[
-                    month_grid_view,
-                    day_view,
-                    day_view_heading,
-                    day_details_output,
-                    calendar_publish_date,
-                ],
-                show_progress="hidden",
-            )
-
-        day_back_button.click(
-            _back_to_month,
-            inputs=None,
+        calendar_grid.select(
+            _select_calendar_day,
+            inputs=refresh_inputs,
             outputs=[
-                month_grid_view,
-                day_view,
+                day_view_heading,
+                day_details_output,
+                calendar_publish_date,
             ],
             show_progress="hidden",
         )
@@ -790,7 +753,7 @@ def build_calendar_page(workspace_name, visible=False):
             event.then(
                 _month_refresh,
                 inputs=refresh_inputs,
-                outputs=day_buttons,
+                outputs=calendar_grid,
                 show_progress="hidden",
             )
 
@@ -811,6 +774,7 @@ def build_calendar_page(workspace_name, visible=False):
 
 # Temporary compatibility alias.
 build_calendar_tab = build_calendar_page
+
 
 
 
