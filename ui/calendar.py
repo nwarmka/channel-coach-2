@@ -15,6 +15,7 @@ from features import (
     load_content_calendar,
     load_selected_content_item,
     plan_my_week,
+    refresh_content_calendar,
     render_content_calendar,
     render_upcoming_content,
     update_content_item,
@@ -26,68 +27,86 @@ def _month_heading(month, year):
 
 
 def _six_week_dates(month, year):
+    """Always return 42 visible dates, Sunday through Saturday."""
     month = int(month)
     year = int(year)
     cal = pycalendar.Calendar(firstweekday=6)
     weeks = cal.monthdatescalendar(year, month)
+
     while len(weeks) < 6:
         start = weeks[-1][-1] + timedelta(days=1)
         weeks.append([start + timedelta(days=i) for i in range(7)])
+
     return [day for week in weeks[:6] for day in week]
 
 
 def _filtered_items(workspace_name, status_filter, type_filter):
     items = load_content_calendar(workspace_name)
+
     if status_filter != "All":
         items = [item for item in items if item.get("status") == status_filter]
+
     if type_filter != "All":
         items = [item for item in items if item.get("content_type") == type_filter]
+
     return items
 
 
-def _cell_text(day, visible_month, items):
-    day_items = [
-        item for item in items
-        if item.get("publish_date") == day.isoformat()
-    ]
-
-    if day.month == int(visible_month):
-        first_line = str(day.day)
-    else:
-        first_line = f"{pycalendar.month_abbr[day.month]} {day.day}"
-
-    lines = [first_line]
-    for item in day_items[:3]:
-        title = (item.get("title") or "Untitled").strip()
-        if len(title) > 22:
-            title = title[:19] + "..."
-        lines.append(title)
-
-    if len(day_items) > 3:
-        lines.append(f"{len(day_items) - 3} more")
-
-    return "\n".join(lines)
-
-
 def _day_button_updates(workspace_name, month, year, status_filter, type_filter):
-    items = _filtered_items(workspace_name, status_filter, type_filter)
+    """Return 42 Gradio updates containing each calendar cell's visible text."""
+    month = int(month)
+    year = int(year)
+    today = date.today()
     dates = _six_week_dates(month, year)
-    return [
-        gr.update(value=_cell_text(day, month, items))
-        for day in dates
-    ]
+    items = _filtered_items(workspace_name, status_filter, type_filter)
+
+    updates = []
+
+    for day in dates:
+        day_items = [
+            item for item in items
+            if item.get("publish_date") == day.isoformat()
+        ]
+
+        if day.month == month:
+            date_text = f"● {day.day}" if day == today else str(day.day)
+        else:
+            date_text = f"{pycalendar.month_abbr[day.month]} {day.day}"
+
+        lines = [date_text]
+
+        for item in day_items[:3]:
+            title = (item.get("title") or "Untitled").strip()
+            if len(title) > 24:
+                title = title[:21] + "..."
+            lines.append(title)
+
+        if len(day_items) > 3:
+            lines.append(f"{len(day_items) - 3} more")
+
+        updates.append(gr.update(value="\n".join(lines)))
+
+    return updates
 
 
-def _refresh_cells(workspace_name, month, year, status_filter, type_filter):
+def _month_refresh(workspace_name, month, year, status_filter, type_filter):
     return _day_button_updates(
         workspace_name, month, year, status_filter, type_filter
     )
 
 
-def _move_month(workspace_name, month, year, status_filter, type_filter, delta):
+def _move_month_native(
+    workspace_name,
+    month,
+    year,
+    status_filter,
+    type_filter,
+    delta,
+):
     month = int(month)
     year = int(year)
     month += delta
+
     if month < 1:
         month = 12
         year -= 1
@@ -99,30 +118,46 @@ def _move_month(workspace_name, month, year, status_filter, type_filter, delta):
         month,
         year,
         _month_heading(month, year),
+        render_upcoming_content(user_id=workspace_name),
         *_day_button_updates(
             workspace_name, month, year, status_filter, type_filter
         ),
     )
 
 
-def _prev_month(workspace_name, month, year, status_filter, type_filter):
-    return _move_month(
-        workspace_name, month, year, status_filter, type_filter, -1
+def _previous_month_native(
+    workspace_name, month, year, status_filter, type_filter
+):
+    return _move_month_native(
+        workspace_name,
+        month,
+        year,
+        status_filter,
+        type_filter,
+        -1,
     )
 
 
-def _next_month(workspace_name, month, year, status_filter, type_filter):
-    return _move_month(
-        workspace_name, month, year, status_filter, type_filter, 1
+def _next_month_native(
+    workspace_name, month, year, status_filter, type_filter
+):
+    return _move_month_native(
+        workspace_name,
+        month,
+        year,
+        status_filter,
+        type_filter,
+        1,
     )
 
 
-def _today_month(workspace_name, status_filter, type_filter):
+def _today_month_native(workspace_name, status_filter, type_filter):
     today = date.today()
     return (
         today.month,
         today.year,
         _month_heading(today.month, today.year),
+        render_upcoming_content(user_id=workspace_name),
         *_day_button_updates(
             workspace_name,
             today.month,
@@ -133,8 +168,18 @@ def _today_month(workspace_name, status_filter, type_filter):
     )
 
 
-def _open_day(index, workspace_name, month, year, status_filter, type_filter):
-    selected = _six_week_dates(month, year)[int(index)]
+def _open_day(
+    index,
+    workspace_name,
+    month,
+    year,
+    status_filter,
+    type_filter,
+):
+    """Replace month view with a selected-day view."""
+    dates = _six_week_dates(month, year)
+    selected = dates[int(index)]
+
     items = _filtered_items(workspace_name, status_filter, type_filter)
     day_items = [
         item for item in items
@@ -143,37 +188,51 @@ def _open_day(index, workspace_name, month, year, status_filter, type_filter):
 
     heading = f"## {selected.strftime('%A, %B')} {selected.day}, {selected.year}"
 
-    chunks = ['<div class="cc-day-view-list">']
+    html_parts = ['<div class="cc-day-view-list">']
+
     if not day_items:
-        chunks.append(
-            '<div class="cc-day-empty">Nothing scheduled for this day yet.</div>'
+        html_parts.append(
+            '<div class="cc-day-empty">'
+            'Nothing scheduled for this day yet.'
+            '</div>'
         )
     else:
         for item in day_items:
             title = html.escape(item.get("title", "Untitled"))
             status = html.escape(item.get("status", "Idea"))
-            content_type = html.escape(item.get("content_type", "Long Video"))
+            content_type = html.escape(
+                item.get("content_type", "Long Video")
+            )
             topic = html.escape(item.get("game_topic", ""))
-            chunks.append(
+
+            html_parts.append(
                 '<div class="cc-open-day-event">'
                 f'<strong>{title}</strong>'
                 f'<span>{status} · {content_type}</span>'
-                + (f'<span>{topic}</span>' if topic else '')
+                + (f'<span>{topic}</span>' if topic else "")
                 + '</div>'
             )
-    chunks.append('</div>')
+
+    html_parts.append("</div>")
 
     return (
         gr.update(visible=False),
         gr.update(visible=True),
         heading,
-        "".join(chunks),
+        "".join(html_parts),
         selected.isoformat(),
     )
 
 
 def _make_day_handler(index):
-    def handler(workspace_name, month, year, status_filter, type_filter):
+    """Create a five-input callback for one calendar cell."""
+    def handler(
+        workspace_name,
+        month,
+        year,
+        status_filter,
+        type_filter,
+    ):
         return _open_day(
             index,
             workspace_name,
@@ -182,6 +241,7 @@ def _make_day_handler(index):
             status_filter,
             type_filter,
         )
+
     return handler
 
 
@@ -190,9 +250,14 @@ def _back_to_month():
 
 
 def build_calendar_page(workspace_name, visible=False):
+    """Build the Content Calendar page and wire all Calendar events."""
+
     today = date.today()
 
-    with gr.Column(visible=visible, elem_id="calendar-page") as calendar_page:
+    with gr.Column(
+        visible=visible,
+        elem_id="calendar-page",
+    ) as calendar_page:
 
         gr.HTML(
             """
@@ -204,22 +269,23 @@ def build_calendar_page(workspace_name, visible=False):
 
               #calendar-page .cc-calendar-subtitle {
                   opacity: .72;
-                  margin-bottom: 14px;
+                  margin-bottom: 18px;
               }
 
+              #calendar-page .cc-card,
               #calendar-page .cc-toolbar {
                   border: 1px solid rgba(255,62,165,.32);
                   border-radius: 16px;
                   background: rgba(7,10,17,.88);
-                  padding: 12px 14px;
-                  margin-bottom: 14px;
               }
 
               #calendar-page .cc-card {
-                  border: 1px solid rgba(255,62,165,.32);
-                  border-radius: 16px;
-                  background: rgba(7,10,17,.88);
                   padding: 18px;
+              }
+
+              #calendar-page .cc-toolbar {
+                  padding: 12px 14px;
+                  margin-bottom: 14px;
               }
 
               #calendar-page .cc-nav-row {
@@ -227,13 +293,17 @@ def build_calendar_page(workspace_name, visible=False):
                   gap: 8px;
               }
 
-              #calendar-page .cc-month-heading h2 {
-                  margin: 0;
+              #calendar-page .cc-nav-button {
+                  min-width: 46px;
               }
 
-              #calendar-page .cc-month-grid {
-                  padding: 0;
-                  overflow: hidden;
+              #calendar-page .cc-today-button {
+                  min-width: 90px;
+              }
+
+              #calendar-page .cc-month-heading h2 {
+                  margin: 0;
+                  line-height: 1.2;
               }
 
               #calendar-page .cc-weekday-row,
@@ -245,9 +315,8 @@ def build_calendar_page(workspace_name, visible=False):
                   text-align: center;
                   font-size: 12px;
                   font-weight: 700;
-                  opacity: .78;
-                  padding: 8px 0;
-                  margin: 0;
+                  opacity: .72;
+                  padding: 7px 0;
               }
 
               #calendar-page .cc-day-button {
@@ -256,7 +325,7 @@ def build_calendar_page(workspace_name, visible=False):
               }
 
               #calendar-page .cc-day-button button {
-                  min-height: 128px !important;
+                  min-height: 118px !important;
                   border-radius: 0 !important;
                   border: 1px solid rgba(148,163,184,.22) !important;
                   background: rgba(8,12,22,.72) !important;
@@ -266,17 +335,21 @@ def build_calendar_page(workspace_name, visible=False):
                   align-items: flex-start !important;
                   padding: 10px !important;
                   line-height: 1.45 !important;
-                  font-weight: 600 !important;
-                  cursor: pointer !important;
+                  font-weight: 500 !important;
               }
 
               #calendar-page .cc-day-button button:hover {
                   background: rgba(139,92,246,.14) !important;
-                  border-color: rgba(139,92,246,.70) !important;
+                  border-color: rgba(139,92,246,.68) !important;
+              }
+
+              #calendar-page .cc-month-grid {
+                  overflow: hidden;
+                  padding: 0;
               }
 
               #calendar-page .cc-open-day-view {
-                  min-height: 520px;
+                  min-height: 560px;
               }
 
               #calendar-page .cc-day-back {
@@ -291,6 +364,11 @@ def build_calendar_page(workspace_name, visible=False):
                   margin-top: 12px;
               }
 
+              #calendar-page .cc-day-empty {
+                  opacity: .72;
+                  padding: 18px 4px;
+              }
+
               #calendar-page .cc-open-day-event {
                   display: flex;
                   flex-direction: column;
@@ -301,14 +379,13 @@ def build_calendar_page(workspace_name, visible=False):
                   background: rgba(139,92,246,.10);
               }
 
-              #calendar-page .cc-open-day-event span,
-              #calendar-page .cc-day-empty {
-                  opacity: .74;
+              #calendar-page .cc-open-day-event span {
+                  opacity: .72;
               }
 
               @media (max-width: 760px) {
                   #calendar-page .cc-day-button button {
-                      min-height: 86px !important;
+                      min-height: 82px !important;
                       padding: 6px !important;
                       font-size: 12px !important;
                   }
@@ -326,9 +403,18 @@ def build_calendar_page(workspace_name, visible=False):
         calendar_year = gr.State(today.year)
 
         with gr.Row(elem_classes=["cc-toolbar", "cc-nav-row"]):
-            calendar_prev_button = gr.Button("←", min_width=44)
-            calendar_today_button = gr.Button("Today", min_width=90)
-            calendar_next_button = gr.Button("→", min_width=44)
+            calendar_prev_button = gr.Button(
+                "←",
+                elem_classes=["cc-nav-button"],
+            )
+            calendar_today_button = gr.Button(
+                "Today",
+                elem_classes=["cc-today-button"],
+            )
+            calendar_next_button = gr.Button(
+                "→",
+                elem_classes=["cc-nav-button"],
+            )
 
             month_heading = gr.Markdown(
                 _month_heading(today.month, today.year),
@@ -339,47 +425,82 @@ def build_calendar_page(workspace_name, visible=False):
                 ["All"] + CONTENT_STATUSES,
                 value="All",
                 label="Status",
+                elem_classes=["cc-cyber-field"],
+                scale=1,
             )
 
             calendar_type_filter = gr.Dropdown(
                 ["All"] + CONTENT_TYPES,
                 value="All",
                 label="Type",
+                elem_classes=["cc-cyber-field"],
+                scale=1,
             )
 
+        # Real Gradio buttons make each date genuinely clickable.
         with gr.Column(
             visible=True,
             elem_classes=["cc-card", "cc-month-grid"],
         ) as month_grid_view:
 
             with gr.Row(elem_classes=["cc-weekday-row"]):
-                for name in ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"]:
-                    gr.Markdown(name, elem_classes=["cc-weekday-label"])
+                for day_name in [
+                    "SUN", "MON", "TUE", "WED",
+                    "THU", "FRI", "SAT"
+                ]:
+                    gr.Markdown(
+                        day_name,
+                        elem_classes=["cc-weekday-label"],
+                    )
 
-            initial_items = _filtered_items("main", "All", "All")
-            initial_dates = _six_week_dates(today.month, today.year)
+            initial_updates = _day_button_updates(
+                "main",
+                today.month,
+                today.year,
+                "All",
+                "All",
+            )
 
             day_buttons = []
-            for row in range(6):
+
+            for row_index in range(6):
                 with gr.Row(elem_classes=["cc-day-row"]):
-                    for col in range(7):
-                        idx = row * 7 + col
+                    for col_index in range(7):
+                        index = row_index * 7 + col_index
+                        value = initial_updates[index].get(
+                            "value",
+                            str(index + 1),
+                        )
+
                         day_buttons.append(
                             gr.Button(
-                                _cell_text(
-                                    initial_dates[idx],
-                                    today.month,
-                                    initial_items,
-                                ),
+                                value,
                                 elem_classes=["cc-day-button"],
-                                min_width=0,
                                 scale=1,
+                                min_width=0,
                             )
                         )
 
+            # Kept for compatibility with existing app.py and
+            # add/edit/delete feature callbacks.
+            calendar_output = gr.HTML(
+                value=render_content_calendar(
+                    today.month,
+                    today.year,
+                    "All",
+                    "All",
+                    user_id="main",
+                ),
+                visible=False,
+            )
+
+        # This replaces the month grid after a date is clicked.
         with gr.Column(
             visible=False,
-            elem_classes=["cc-card", "cc-open-day-view"],
+            elem_classes=[
+                "cc-card",
+                "cc-open-day-view",
+            ],
         ) as day_view:
             day_back_button = gr.Button(
                 "← Back to month",
@@ -387,73 +508,101 @@ def build_calendar_page(workspace_name, visible=False):
             )
             day_view_heading = gr.Markdown("## Day")
             day_details_output = gr.HTML(
-                '<div class="cc-day-empty">Nothing scheduled for this day yet.</div>'
+                '<div class="cc-day-empty">'
+                'Nothing scheduled for this day yet.'
+                '</div>'
             )
 
-        # IMPORTANT: backend compatibility only.
-        # This old HTML calendar is hidden so it can no longer cover or replace
-        # the real clickable Gradio calendar above.
-        calendar_output = gr.HTML(
-            value=render_content_calendar(
-                today.month,
-                today.year,
-                "All",
-                "All",
-                user_id="main",
-            ),
-            visible=False,
+        gr.Markdown(
+            "### Content tools\n"
+            "Add something new, update an existing item, "
+            "or let Channel Coach plan your week."
         )
 
-        gr.Markdown("### Content tools")
-
         with gr.Row(equal_height=False):
-            with gr.Column(scale=1, min_width=300, elem_classes=["cc-card"]):
+            with gr.Column(
+                scale=1,
+                min_width=300,
+                elem_classes=["cc-card"],
+            ):
                 gr.Markdown("### ➕ Add Content")
 
                 calendar_title = gr.Textbox(
                     label="Title",
                     placeholder="Example: Getting the Ice Rod",
+                    elem_classes=["cc-cyber-field"],
                 )
+
                 calendar_content_type = gr.Dropdown(
                     CONTENT_TYPES,
                     value="Long Video",
                     label="Content Type",
+                    elem_classes=["cc-cyber-field"],
                 )
+
                 calendar_game_topic = gr.Textbox(
                     label="Game / Topic",
                     placeholder="Example: Zelda ALTTP",
+                    elem_classes=["cc-cyber-field"],
                 )
+
                 calendar_status = gr.Dropdown(
                     CONTENT_STATUSES,
                     value="Idea",
                     label="Status",
+                    elem_classes=["cc-cyber-field"],
                 )
+
                 calendar_publish_date = gr.Textbox(
                     label="Target Publish Date",
                     value=today.isoformat(),
                     placeholder="YYYY-MM-DD",
+                    elem_classes=["cc-cyber-field"],
                 )
+
                 calendar_notes = gr.Textbox(
                     label="Notes",
                     lines=4,
+                    placeholder=(
+                        "Example: Need thumbnail, voiceover, "
+                        "and final export."
+                    ),
+                    elem_classes=["cc-cyber-field"],
                 )
-                calendar_add_button = gr.Button("➕ Add to Calendar")
+
+                calendar_add_button = gr.Button(
+                    "➕ Add to Calendar"
+                )
+
                 calendar_message = gr.Textbox(
                     show_label=False,
                     placeholder="Calendar status",
                     lines=2,
+                    elem_classes=["cc-cyber-field"],
                 )
 
-            with gr.Column(scale=1, min_width=300, elem_classes=["cc-card"]):
+            with gr.Column(
+                scale=1,
+                min_width=300,
+                elem_classes=["cc-card"],
+            ):
                 gr.Markdown("### 🔥 Coming Up")
+
                 upcoming_output = gr.HTML(
-                    value=render_upcoming_content(user_id="main")
+                    value=render_upcoming_content(
+                        user_id="main"
+                    )
                 )
-                plan_week_button = gr.Button("✨ Plan My Week")
+
+                plan_week_button = gr.Button(
+                    "✨ Plan My Week"
+                )
+
                 plan_week_output = gr.Textbox(
                     show_label=False,
                     placeholder="Weekly content plan",
                     lines=12,
+                    elem_classes=["cc-cyber-field"],
                 )
 
         gr.Markdown("### ✏️ Edit or Delete Content")
@@ -462,11 +611,20 @@ def build_calendar_page(workspace_name, visible=False):
             calendar_item_picker = gr.Dropdown(
                 choices=get_calendar_choices("main"),
                 label="Choose Calendar Item",
+                elem_classes=["cc-cyber-field"],
             )
-            calendar_load_button = gr.Button("📂 Load Selected Item")
+
+            calendar_load_button = gr.Button(
+                "📂 Load Selected Item"
+            )
+
             with gr.Row():
-                calendar_update_button = gr.Button("💾 Save Edit")
-                calendar_delete_button = gr.Button("🗑️ Delete Selected Item")
+                calendar_update_button = gr.Button(
+                    "💾 Save Edit"
+                )
+                calendar_delete_button = gr.Button(
+                    "🗑️ Delete Selected Item"
+                )
 
         refresh_inputs = [
             workspace_name,
@@ -480,23 +638,24 @@ def build_calendar_page(workspace_name, visible=False):
             calendar_month,
             calendar_year,
             month_heading,
+            upcoming_output,
             *day_buttons,
         ]
 
         calendar_prev_button.click(
-            _prev_month,
+            _previous_month_native,
             inputs=refresh_inputs,
             outputs=nav_outputs,
         )
 
         calendar_next_button.click(
-            _next_month,
+            _next_month_native,
             inputs=refresh_inputs,
             outputs=nav_outputs,
         )
 
         calendar_today_button.click(
-            _today_month,
+            _today_month_native,
             inputs=[
                 workspace_name,
                 calendar_status_filter,
@@ -506,19 +665,19 @@ def build_calendar_page(workspace_name, visible=False):
         )
 
         calendar_status_filter.change(
-            _refresh_cells,
+            _month_refresh,
             inputs=refresh_inputs,
             outputs=day_buttons,
         )
 
         calendar_type_filter.change(
-            _refresh_cells,
+            _month_refresh,
             inputs=refresh_inputs,
             outputs=day_buttons,
         )
 
-        for index, button in enumerate(day_buttons):
-            button.click(
+        for index, day_button in enumerate(day_buttons):
+            day_button.click(
                 _make_day_handler(index),
                 inputs=refresh_inputs,
                 outputs=[
@@ -534,7 +693,10 @@ def build_calendar_page(workspace_name, visible=False):
         day_back_button.click(
             _back_to_month,
             inputs=None,
-            outputs=[month_grid_view, day_view],
+            outputs=[
+                month_grid_view,
+                day_view,
+            ],
             show_progress="hidden",
         )
 
@@ -563,7 +725,10 @@ def build_calendar_page(workspace_name, visible=False):
 
         calendar_load_button.click(
             load_selected_content_item,
-            inputs=[calendar_item_picker, workspace_name],
+            inputs=[
+                calendar_item_picker,
+                workspace_name,
+            ],
             outputs=[
                 calendar_title,
                 calendar_content_type,
@@ -617,9 +782,13 @@ def build_calendar_page(workspace_name, visible=False):
             ],
         )
 
-        for event in [add_event, update_event, delete_event]:
+        for event in [
+            add_event,
+            update_event,
+            delete_event,
+        ]:
             event.then(
-                _refresh_cells,
+                _month_refresh,
                 inputs=refresh_inputs,
                 outputs=day_buttons,
                 show_progress="hidden",
@@ -640,7 +809,9 @@ def build_calendar_page(workspace_name, visible=False):
     )
 
 
+# Temporary compatibility alias.
 build_calendar_tab = build_calendar_page
+
 
 
 
