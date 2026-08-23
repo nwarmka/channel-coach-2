@@ -10,7 +10,7 @@ from ui.settings import build_settings_page
 from ui.chat import build_chat_page
 
 
-with gr.Blocks(title="Channel Coach", head=custom_head, css=custom_css) as app:
+with gr.Blocks(title="Channel Coach") as app:
 
     gr.HTML("""
     <style>
@@ -936,7 +936,9 @@ port = int(os.environ.get("PORT", 7860))
 app.launch(
     server_name="0.0.0.0",
     server_port=port,
-    share=False
+    share=False,
+    head=custom_head,
+    css=custom_css,
 )
 
 
