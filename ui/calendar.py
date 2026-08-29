@@ -385,6 +385,36 @@ def build_calendar_page(workspace_name, visible=False):
             """
         )
 
+        # =========================
+        # TEMPORARY CLICK DIAGNOSTIC
+        # =========================
+        # This is intentionally separate from the calendar grid.
+        # If this button does not update the box, the problem is page-level
+        # click/event handling rather than the calendar-day callbacks.
+        with gr.Column(elem_classes=["cc-card"]):
+            gr.Markdown("### 🧪 Calendar Click Diagnostic")
+            gr.Markdown(
+                "Click the button below. The box should change to **CLICK WORKS**."
+            )
+            test_click_button = gr.Button(
+                "🧪 TEST CLICK",
+                variant="primary",
+                elem_id="calendar-test-click",
+            )
+            test_click_output = gr.Textbox(
+                value="Waiting for click...",
+                label="Click Test Result",
+                interactive=False,
+                elem_id="calendar-test-output",
+            )
+
+        test_click_button.click(
+            fn=lambda: "CLICK WORKS",
+            inputs=None,
+            outputs=test_click_output,
+            show_progress="hidden",
+        )
+
         calendar_month = gr.State(today.month)
         calendar_year = gr.State(today.year)
 
@@ -791,7 +821,6 @@ def build_calendar_page(workspace_name, visible=False):
 
 # Temporary compatibility alias.
 build_calendar_tab = build_calendar_page
-
 
 
 
