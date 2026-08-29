@@ -21,6 +21,8 @@ from features import (
     update_content_item,
 )
 
+print("CALENDAR MODULE LOADED:", __file__)
+
 
 def _month_heading(month, year):
     return f"## {pycalendar.month_name[int(month)]} {int(year)}"
@@ -232,6 +234,7 @@ def _select_calendar_day_by_index(
 
 def build_calendar_page(workspace_name, visible=False):
     """Build the Content Calendar page and wire all Calendar events."""
+    print("BUILD_CALENDAR_PAGE CALLED")
 
     today = date.today()
 
