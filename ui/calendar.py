@@ -400,7 +400,7 @@ def build_calendar_page(workspace_name, visible=False):
             """
         )
 
-                calendar_month = gr.State(today.month)
+        calendar_month = gr.State(today.month)
         calendar_year = gr.State(today.year)
 
         with gr.Row(elem_classes=["cc-toolbar", "cc-nav-row"]):
@@ -828,6 +828,14 @@ def build_calendar_page(workspace_name, visible=False):
 
 # Temporary compatibility alias.
 build_calendar_tab = build_calendar_page
+
+
+
+
+
+
+      
+
 
 
 
