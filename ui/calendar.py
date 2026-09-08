@@ -185,6 +185,8 @@ def _select_calendar_day_by_index(
             "### Select a day",
             '<div class="cc-day-empty">Click any date in the calendar.</div>',
             "",
+            gr.update(visible=True),
+            gr.update(visible=False),
         )
 
     items = _filtered_items(workspace_name, status_filter, type_filter)
@@ -229,6 +231,16 @@ def _select_calendar_day_by_index(
         heading,
         "".join(html_parts),
         selected.isoformat(),
+        gr.update(visible=False),
+        gr.update(visible=True),
+    )
+
+
+def _close_calendar_day():
+    """Return from the selected-day view to the month grid."""
+    return (
+        gr.update(visible=True),
+        gr.update(visible=False),
     )
 
 
@@ -388,37 +400,7 @@ def build_calendar_page(workspace_name, visible=False):
             """
         )
 
-        # =========================
-        # TEMPORARY CLICK DIAGNOSTIC
-        # =========================
-        # This is intentionally separate from the calendar grid.
-        # If this button does not update the box, the problem is page-level
-        # click/event handling rather than the calendar-day callbacks.
-        with gr.Column(elem_classes=["cc-card"]):
-            gr.Markdown("### 🧪 Calendar Click Diagnostic")
-            gr.Markdown(
-                "Click the button below. The box should change to **CLICK WORKS**."
-            )
-            test_click_button = gr.Button(
-                "🧪 TEST CLICK",
-                variant="primary",
-                elem_id="calendar-test-click",
-            )
-            test_click_output = gr.Textbox(
-                value="Waiting for click...",
-                label="Click Test Result",
-                interactive=False,
-                elem_id="calendar-test-output",
-            )
-
-        test_click_button.click(
-            fn=lambda: "CLICK WORKS",
-            inputs=None,
-            outputs=test_click_output,
-            show_progress="hidden",
-        )
-
-        calendar_month = gr.State(today.month)
+                calendar_month = gr.State(today.month)
         calendar_year = gr.State(today.year)
 
         with gr.Row(elem_classes=["cc-toolbar", "cc-nav-row"]):
@@ -465,7 +447,10 @@ def build_calendar_page(workspace_name, visible=False):
             "All",
         )
 
-        with gr.Column(elem_classes=["cc-card", "cc-month-grid"]):
+        with gr.Column(
+            elem_classes=["cc-card", "cc-month-grid"],
+            visible=True,
+        ) as month_grid_container:
             with gr.Row(elem_classes=["cc-weekday-row"]):
                 for weekday in ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"]:
                     gr.Markdown(
@@ -499,11 +484,18 @@ def build_calendar_page(workspace_name, visible=False):
             visible=False,
         )
 
-        with gr.Column(elem_classes=["cc-card", "cc-selected-day"]):
+        with gr.Column(
+            elem_classes=["cc-card", "cc-selected-day", "cc-open-day-view"],
+            visible=False,
+        ) as selected_day_container:
+            day_back_button = gr.Button(
+                "← Back to Month",
+                elem_classes=["cc-day-back"],
+            )
             day_view_heading = gr.Markdown("### Select a day")
             day_details_output = gr.HTML(
                 '<div class="cc-day-empty">'
-                'Click any date in the calendar to open it.'
+                'Nothing scheduled for this day yet.'
                 '</div>'
             )
 
@@ -709,9 +701,21 @@ def build_calendar_page(workspace_name, visible=False):
                     day_view_heading,
                     day_details_output,
                     calendar_publish_date,
+                    month_grid_container,
+                    selected_day_container,
                 ],
                 show_progress="hidden",
             )
+
+        day_back_button.click(
+            _close_calendar_day,
+            inputs=None,
+            outputs=[
+                month_grid_container,
+                selected_day_container,
+            ],
+            show_progress="hidden",
+        )
 
         add_event = calendar_add_button.click(
             add_content_item,
