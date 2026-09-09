@@ -778,16 +778,7 @@ def render_monthly_schedule_view(month=None, year=None, status_filter="All", typ
 
 
 def render_content_calendar(month=None, year=None, status_filter="All", type_filter="All", user_id="main"):
-    """Render a Google-Calendar-style month grid for Channel Coach."""
     today = date.today()
-
-    try:
-        month = int(month or today.month)
-        year = int(year or today.year)
-    except Exception:
-        month = today.month
-        year = today.year
-
     items = load_content_calendar(user_id)
 
     if status_filter != "All":
@@ -796,51 +787,157 @@ def render_content_calendar(month=None, year=None, status_filter="All", type_fil
     if type_filter != "All":
         items = [item for item in items if item.get("content_type") == type_filter]
 
-    cal = calendar.Calendar(firstweekday=6)
-    weeks = cal.monthdatescalendar(year, month)
+    dated_items = []
+    undated_items = []
 
-    html_output = """
-    <div class="cc-gcal-wrap">
-        <div class="cc-gcal-weekdays">
+    for item in items:
+        parsed_date = validate_calendar_date(item.get("publish_date", ""))
+        if parsed_date:
+            dated_items.append((parsed_date, item))
+        else:
+            undated_items.append(item)
+
+    active_dated = [(item_date, item) for item_date, item in dated_items if item.get("status") != "Published"]
+    active_dated.sort(key=lambda x: x[0])
+
+    today_items = [(item_date, item) for item_date, item in active_dated if item_date == today]
+    week_items = [(item_date, item) for item_date, item in active_dated if today < item_date <= today + timedelta(days=7)]
+    overdue_items = [(item_date, item) for item_date, item in active_dated if item_date < today]
+    upcoming_items = [(item_date, item) for item_date, item in active_dated if item_date > today + timedelta(days=7)]
+    idea_items = [item for item in undated_items if item.get("status") != "Published"]
+    published_count = sum(1 for _, item in dated_items if item.get("status") == "Published") + sum(1 for item in undated_items if item.get("status") == "Published")
+
+    active_projects = [item for _, item in active_dated] + idea_items
+
+    next_project = None
+    next_project_date = None
+    if overdue_items:
+        next_project_date, next_project = sorted(overdue_items, key=lambda x: x[0])[0]
+    elif today_items:
+        next_project_date, next_project = today_items[0]
+    elif week_items:
+        next_project_date, next_project = week_items[0]
+    elif upcoming_items:
+        next_project_date, next_project = upcoming_items[0]
+    elif idea_items:
+        next_project = idea_items[0]
+
+    if next_project:
+        next_project_html = _planner_project_card(next_project, item_date=next_project_date)
+    else:
+        next_project_html = """
+        <div class="cc-empty-card">
+            <div class="cc-empty-icon">✨</div>
+            <div>
+                <strong>No active projects yet</strong>
+                <p>Add your first content project so Channel Coach can help you stay organized.</p>
+            </div>
+        </div>
+        """
+
+    def render_card_section(title, subtitle, section_items, empty_text, limit=5):
+        cards = ""
+        for item_date, item in section_items[:limit]:
+            cards += _planner_project_card(item, item_date=item_date, compact=True)
+
+        if len(section_items) > limit:
+            cards += f'<p class="cc-empty">+{len(section_items) - limit} more. Open the monthly schedule below to see everything.</p>'
+
+        if not cards:
+            cards = f'<p class="cc-empty">{html.escape(empty_text)}</p>'
+
+        return f"""
+        <div class="cc-planner-section cc-card-panel">
+            <div class="cc-planner-section-head">
+                <h3>{title}</h3>
+                <p>{subtitle}</p>
+            </div>
+            {cards}
+        </div>
+        """
+
+    idea_cards = ""
+    for item in idea_items[:5]:
+        idea_cards += _planner_project_card(item, item_date=None, compact=True)
+
+    idea_section = ""
+    if idea_cards:
+        idea_section = f"""
+        <div class="cc-planner-section cc-card-panel">
+            <div class="cc-planner-section-head">
+                <h3>💡 Ideas</h3>
+                <p>Saved projects that do not have a date yet.</p>
+            </div>
+            {idea_cards}
+        </div>
+        """
+
+    quick_actions_html = """
+        <div class="cc-quick-actions cc-card-panel">
+            <div class="cc-planner-section-head">
+                <h3>⚡ Quick Actions</h3>
+                <p>Jump into the most common creator tasks.</p>
+            </div>
+            <div class="cc-action-grid">
+                <div class="cc-action-card">➕<span>New Project</span></div>
+                <div class="cc-action-card">💡<span>Save Idea</span></div>
+                <div class="cc-action-card">📅<span>Plan Week</span></div>
+                <div class="cc-action-card">📈<span>Check Progress</span></div>
+            </div>
+        </div>
     """
 
-    for day_name in ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"]:
-        html_output += f'<div class="cc-gcal-weekday">{day_name}</div>'
+    html_output = f"""
+    <div class="cc-planner-wrap cc-card-dashboard cc-balanced-dashboard">
+        <div class="cc-dashboard-hero cc-card-hero cc-balanced-hero">
+            <div>
+                <div class="cc-small-label">Creator Dashboard</div>
+                <h2>What would you like to work on today?</h2>
+                <p>A simple workspace for planning content across any platform.</p>
+            </div>
+        </div>
 
-    html_output += '</div><div class="cc-gcal-grid">'
-
-    for week in weeks:
-        for day in week:
-            muted = " cc-gcal-muted" if day.month != month else ""
-            today_class = " cc-gcal-today" if day == today else ""
-            day_items = [item for item in items if item.get("publish_date") == day.isoformat()]
-
-            html_output += f"""
-            <div class="cc-gcal-day{muted}{today_class}" data-date="{day.isoformat()}">
-                <div class="cc-gcal-date-row">
-                    <span class="cc-gcal-date">{day.day}</span>
+        <div class="cc-next-project-wide cc-card-panel">
+            <div class="cc-planner-section-head cc-wide-head">
+                <div>
+                    <h3>🎯 Next Project</h3>
+                    <p>The first thing to focus on right now.</p>
                 </div>
-            """
+            </div>
+            {next_project_html}
+        </div>
 
-            for item in day_items[:3]:
-                title = html.escape(item.get("title", "Untitled"))
-                content_type = item.get("content_type", "Long Video")
-                status = item.get("status", "Idea")
-                css_class = _calendar_status_class(status)
-                emoji = _calendar_type_emoji(content_type)
+        <div class="cc-balanced-stats-row">
+            <div class="cc-stat-card cc-stat-soft"><div class="cc-stat-icon">📌</div><div class="cc-stat-number">{len(active_projects)}</div><div class="cc-stat-label">Active</div></div>
+            <div class="cc-stat-card cc-stat-soft"><div class="cc-stat-icon">📅</div><div class="cc-stat-number">{len(today_items) + len(week_items)}</div><div class="cc-stat-label">Due Soon</div></div>
+            <div class="cc-stat-card cc-stat-soft"><div class="cc-stat-icon">⚠️</div><div class="cc-stat-number">{len(overdue_items)}</div><div class="cc-stat-label">Overdue</div></div>
+            <div class="cc-stat-card cc-stat-soft"><div class="cc-stat-icon">✅</div><div class="cc-stat-number">{published_count}</div><div class="cc-stat-label">Done</div></div>
+        </div>
 
-                html_output += f"""
-                <div class="cc-gcal-event {css_class}" title="{title}">
-                    <span class="cc-gcal-event-text">{emoji} {title}</span>
+        {quick_actions_html}
+
+        <div class="cc-balanced-main-stack">
+            {render_card_section("📅 This Week", "Projects due in the next 7 days.", today_items + week_items, "Nothing due this week. Pick one project to move forward.", limit=8)}
+
+            <div class="cc-balanced-pair-grid">
+                {render_card_section("⚠️ Needs Attention", "Past-due projects that are not published yet.", overdue_items, "Nothing overdue. Nice!", limit=5)}
+                <div class="cc-planner-section cc-card-panel">
+                    <div class="cc-planner-section-head">
+                        <h3>✅ Completed</h3>
+                        <p>{published_count} finished project(s) saved.</p>
+                    </div>
+                    <p class="cc-empty">Completed projects stay out of the way so the dashboard focuses on what needs action.</p>
                 </div>
-                """
+            </div>
 
-            if len(day_items) > 3:
-                html_output += f'<div class="cc-gcal-more">{len(day_items) - 3} more</div>'
+            {render_card_section("🚀 Upcoming Projects", "Scheduled projects after this week.", upcoming_items, "No later scheduled projects yet.", limit=8)}
+            {idea_section}
+        </div>
 
-            html_output += '</div>'
+        {render_monthly_schedule_view(month, year, status_filter, type_filter, user_id)}
+    </div>
+    """
 
-    html_output += '</div></div>'
     return html_output
 
 def render_upcoming_content(limit=6, user_id="main"):
@@ -1414,28 +1511,234 @@ def render_needs_attention(user_id="main"):
 def render_creator_dashboard(user_id="main"):
     profile = load_creator_profile(user_id)
     stats = get_dashboard_stats(user_id)
+
     creator_name = profile.get("creator_name") or "Creator"
     channel_name = profile.get("channel_name") or "Your Brand"
 
-    warning = ""
-    if stats.get("overdue", 0) > 0:
-        warning = f'<div class="cc-dashboard-warning">⚠️ You have {stats["overdue"]} overdue project(s). Move them, finish them, or update the status.</div>'
+    planned_this_week = int(stats.get("planned_this_week", 0) or 0)
+    shorts_this_week = int(stats.get("shorts_this_week", 0) or 0)
+    long_videos_this_week = int(stats.get("long_videos_this_week", 0) or 0)
+    overdue = int(stats.get("overdue", 0) or 0)
+    published_this_month = int(stats.get("published_this_month", 0) or 0)
 
-    # Use one full-width dashboard instead of the old two-column dashboard + planner layout.
-    # This removes the large empty left column and lets the planner cards use the full page width.
-    return f"""
-    <div class=\"cc-dashboard-wrap cc-card-dashboard cc-dashboard-full-stack\">
-        <div class=\"cc-dashboard-hero cc-card-hero\">
-            <div>
-                <div class=\"cc-small-label\">Welcome back</div>
-                <h2>{html.escape(creator_name)} 🎬</h2>
-                <p>{html.escape(channel_name)} · Your creator workspace</p>
+    next_item = stats.get("next_item")
+    next_item_date = stats.get("next_item_date")
+
+    warning = ""
+    if overdue > 0:
+        warning = (
+            '<div class="cc-dashboard-warning">'
+            f'⚠️ You have {overdue} overdue project(s). '
+            'Move them, finish them, or update the status.'
+            '</div>'
+        )
+
+    if next_item:
+        next_title = html.escape(next_item.get("title") or "Untitled")
+        next_type = html.escape(next_item.get("content_type") or "Content")
+        next_status = html.escape(next_item.get("status") or "Idea")
+        next_topic = html.escape(next_item.get("game_topic") or "")
+
+        if next_item_date:
+            next_date_text = next_item_date.strftime("%A, %b %d")
+        else:
+            next_date_text = "Date not set"
+
+        next_item_html = f"""
+        <div class="cc-dashboard-panel">
+            <div class="cc-small-label">Next scheduled item</div>
+            <h3>{next_title}</h3>
+            <div class="cc-dashboard-meta">
+                <span>📅 {html.escape(next_date_text)}</span>
+                <span>🎬 {next_type}</span>
+                <span>⚡ {next_status}</span>
             </div>
+            {f'<div class="cc-dashboard-topic">{next_topic}</div>' if next_topic else ''}
+        </div>
+        """
+    else:
+        next_item_html = """
+        <div class="cc-dashboard-panel">
+            <div class="cc-small-label">Next scheduled item</div>
+            <h3>Nothing scheduled yet</h3>
+            <p>Open the Content Calendar and add your next piece of content.</p>
+        </div>
+        """
+
+    stats_html = f"""
+    <div class="cc-dashboard-stats">
+        <div class="cc-dashboard-stat">
+            <div class="cc-stat-number">{planned_this_week}</div>
+            <div class="cc-stat-label">Planned This Week</div>
+        </div>
+
+        <div class="cc-dashboard-stat">
+            <div class="cc-stat-number">{long_videos_this_week}</div>
+            <div class="cc-stat-label">Long Videos</div>
+        </div>
+
+        <div class="cc-dashboard-stat">
+            <div class="cc-stat-number">{shorts_this_week}</div>
+            <div class="cc-stat-label">Shorts</div>
+        </div>
+
+        <div class="cc-dashboard-stat">
+            <div class="cc-stat-number">{published_this_month}</div>
+            <div class="cc-stat-label">Published This Month</div>
+        </div>
+    </div>
+    """
+
+    return f"""
+    <style>
+      .cc-dashboard-wrap {{
+          display:flex;
+          flex-direction:column;
+          gap:16px;
+          width:100%;
+      }}
+
+      .cc-dashboard-hero {{
+          padding:24px;
+          border:1px solid rgba(139,92,246,.34);
+          border-radius:20px;
+          background:
+              radial-gradient(circle at top left, rgba(139,92,246,.20), transparent 42%),
+              linear-gradient(180deg, rgba(16,21,33,.98), rgba(8,11,19,.98));
+      }}
+
+      .cc-dashboard-hero h2 {{
+          margin:.25rem 0 .2rem;
+          font-size:2rem;
+      }}
+
+      .cc-dashboard-hero p {{
+          margin:0;
+          opacity:.76;
+      }}
+
+      .cc-small-label {{
+          text-transform:uppercase;
+          letter-spacing:.12em;
+          font-size:.75rem;
+          font-weight:800;
+          color:#9db7ff;
+      }}
+
+      .cc-dashboard-warning {{
+          padding:13px 16px;
+          border:1px solid rgba(255,183,77,.42);
+          border-radius:14px;
+          background:rgba(255,183,77,.08);
+      }}
+
+      .cc-dashboard-stats {{
+          display:grid;
+          grid-template-columns:repeat(4, minmax(0, 1fr));
+          gap:12px;
+      }}
+
+      .cc-dashboard-stat,
+      .cc-dashboard-panel {{
+          padding:18px;
+          border:1px solid rgba(139,92,246,.28);
+          border-radius:16px;
+          background:linear-gradient(180deg, rgba(13,17,29,.96), rgba(7,10,18,.98));
+      }}
+
+      .cc-stat-number {{
+          font-size:2rem;
+          font-weight:900;
+          line-height:1;
+          margin-bottom:7px;
+          background:linear-gradient(90deg,#ff3ea5,#8b5cf6,#16d9ff);
+          -webkit-background-clip:text;
+          background-clip:text;
+          color:transparent;
+      }}
+
+      .cc-stat-label {{
+          opacity:.72;
+          font-size:.86rem;
+      }}
+
+      .cc-dashboard-grid {{
+          display:grid;
+          grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+          gap:14px;
+          align-items:start;
+      }}
+
+      .cc-dashboard-panel h3 {{
+          margin:7px 0 9px;
+      }}
+
+      .cc-dashboard-panel p {{
+          margin:.4rem 0 0;
+          opacity:.72;
+      }}
+
+      .cc-dashboard-meta {{
+          display:flex;
+          flex-wrap:wrap;
+          gap:8px;
+          margin-top:10px;
+      }}
+
+      .cc-dashboard-meta span {{
+          padding:6px 9px;
+          border-radius:999px;
+          background:rgba(47,124,255,.09);
+          border:1px solid rgba(47,124,255,.20);
+          font-size:.8rem;
+      }}
+
+      .cc-dashboard-topic {{
+          margin-top:10px;
+          opacity:.72;
+      }}
+
+      @media(max-width:900px) {{
+          .cc-dashboard-stats {{
+              grid-template-columns:repeat(2, minmax(0, 1fr));
+          }}
+
+          .cc-dashboard-grid {{
+              grid-template-columns:1fr;
+          }}
+      }}
+
+      @media(max-width:560px) {{
+          .cc-dashboard-stats {{
+              grid-template-columns:1fr;
+          }}
+      }}
+    </style>
+
+    <div class="cc-dashboard-wrap">
+        <div class="cc-dashboard-hero">
+            <div class="cc-small-label">Welcome back</div>
+            <h2>{html.escape(creator_name)} 🎬</h2>
+            <p>{html.escape(channel_name)} · Your creator workspace</p>
         </div>
 
         {warning}
 
-        {render_content_calendar(user_id=user_id)}
+        {stats_html}
+
+        <div class="cc-dashboard-grid">
+            {next_item_html}
+
+            <div class="cc-dashboard-panel">
+                <div class="cc-small-label">Creator Health</div>
+                {render_needs_attention(user_id)}
+            </div>
+        </div>
+
+        <div class="cc-dashboard-panel">
+            <div class="cc-small-label">Coming Up</div>
+            {render_upcoming_content(user_id=user_id)}
+        </div>
     </div>
     """
 
@@ -2217,107 +2520,6 @@ button[role='tab'][aria-selected='true'] {
     }
 }
 
-
-
-/* Google Calendar-inspired month view */
-.cc-gcal-wrap {
-    width: 100%;
-    overflow: hidden;
-    border: 1px solid rgba(255,255,255,.16);
-    border-radius: 22px;
-    background: #0b0f18;
-}
-.cc-gcal-weekdays {
-    display: grid;
-    grid-template-columns: repeat(7, minmax(0, 1fr));
-    background: #0f1420;
-    border-bottom: 1px solid rgba(255,255,255,.14);
-}
-.cc-gcal-weekday {
-    padding: 14px 8px 10px;
-    text-align: center;
-    color: #b9c2d6;
-    font-size: .78rem;
-    font-weight: 800;
-    letter-spacing: .04em;
-    border-right: 1px solid rgba(255,255,255,.10);
-}
-.cc-gcal-weekday:last-child { border-right: 0; }
-.cc-gcal-grid {
-    display: grid;
-    grid-template-columns: repeat(7, minmax(0, 1fr));
-}
-.cc-gcal-day {
-    min-height: 132px;
-    padding: 8px 0 7px;
-    background: #0b0f18;
-    border-right: 1px solid rgba(255,255,255,.12);
-    border-bottom: 1px solid rgba(255,255,255,.12);
-    overflow: hidden;
-}
-.cc-gcal-day:nth-child(7n) { border-right: 0; }
-.cc-gcal-day:nth-last-child(-n+7) { border-bottom: 0; }
-.cc-gcal-date-row {
-    height: 30px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 5px;
-}
-.cc-gcal-date {
-    width: 30px;
-    height: 30px;
-    border-radius: 999px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    color: #f5f7ff;
-    font-size: .93rem;
-    font-weight: 700;
-}
-.cc-gcal-muted .cc-gcal-date { color: #7f8799; }
-.cc-gcal-today .cc-gcal-date {
-    background: #2563eb;
-    color: #fff;
-    font-weight: 900;
-}
-.cc-gcal-event {
-    height: 26px;
-    margin: 3px 6px 0;
-    padding: 3px 8px;
-    border-radius: 8px;
-    border-left: 0 !important;
-    display: flex;
-    align-items: center;
-    overflow: hidden;
-    background: rgba(139,92,246,.78);
-    color: white;
-    font-size: .76rem;
-    font-weight: 800;
-}
-.cc-gcal-event-text {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-.cc-gcal-event.status-idea { background: rgba(139,92,246,.72); }
-.cc-gcal-event.status-script { background: rgba(236,72,153,.76); }
-.cc-gcal-event.status-recording { background: rgba(249,115,22,.78); }
-.cc-gcal-event.status-editing { background: rgba(6,182,212,.78); }
-.cc-gcal-event.status-thumbnail { background: rgba(202,138,4,.82); }
-.cc-gcal-event.status-scheduled { background: rgba(59,130,246,.82); }
-.cc-gcal-event.status-published { background: rgba(22,163,74,.82); }
-.cc-gcal-more {
-    margin: 4px 8px 0;
-    color: #c9d2e5;
-    font-size: .72rem;
-    font-weight: 700;
-}
-@media (max-width: 780px) {
-    .cc-gcal-wrap { overflow-x: auto; border-radius: 16px; }
-    .cc-gcal-weekdays, .cc-gcal-grid { min-width: 760px; }
-    .cc-gcal-day { min-height: 118px; }
-}
 
 /* Project Workspace */
 .cc-project-empty,
@@ -3899,6 +4101,9 @@ def render_getting_started_checklist(user_id="main"):
         {items_html}
     </div>
     '''
+
+
+
 
 
 
