@@ -166,22 +166,22 @@ with gr.Blocks(title="Channel Coach") as app:
       margin:0 auto!important;
       flex:1 1 auto!important;
       background:
-        radial-gradient(circle at 18% 0%, rgba(139,92,246,.26), transparent 40%),
-        radial-gradient(circle at 90% 15%, rgba(22,217,255,.10), transparent 32%),
-        linear-gradient(180deg, #171d35 0%, #11172a 58%, #0d1324 100%)!important;
-      border:2px solid rgba(139,92,246,.72)!important;
+        radial-gradient(circle at 18% 0%, rgba(139,92,246,.34), transparent 42%),
+        radial-gradient(circle at 88% 12%, rgba(22,217,255,.12), transparent 34%),
+        linear-gradient(180deg, #242a4a 0%, #1c2240 58%, #171c35 100%)!important;
+      border:2px solid rgba(154,106,255,.90)!important;
       border-radius:22px!important;
       box-shadow:
-        inset 0 0 32px rgba(139,92,246,.08),
-        0 18px 42px rgba(0,0,0,.36),
-        0 0 30px rgba(139,92,246,.16)!important;
+        inset 0 0 34px rgba(139,92,246,.12),
+        0 18px 42px rgba(0,0,0,.34),
+        0 0 34px rgba(139,92,246,.24)!important;
       padding:10px!important;
     }
 
     #coach-chatbot > div,
     #coach-chatbot .wrap,
     #coach-chatbot .container{
-      background:rgba(10,15,30,.34)!important;
+      background:#1b213c!important;
       border:0!important;
       box-shadow:none!important;
       border-radius:18px!important;
@@ -197,10 +197,10 @@ with gr.Blocks(title="Channel Coach") as app:
     #coach-chatbot [data-testid="user"]{
       background:linear-gradient(
         135deg,
-        rgba(139,92,246,.30),
-        rgba(255,62,165,.22)
+        rgba(139,92,246,.72),
+        rgba(255,62,165,.56)
       )!important;
-      border:1px solid rgba(255,62,165,.30)!important;
+      border:1px solid rgba(255,110,196,.68)!important;
       color:#fff!important;
     }
 
@@ -209,12 +209,12 @@ with gr.Blocks(title="Channel Coach") as app:
     #coach-chatbot [data-testid="bot"]{
       background:linear-gradient(
         135deg,
-        rgba(31,42,72,.98),
-        rgba(20,28,50,.98)
+        #30385f,
+        #272f52
       )!important;
-      border:1px solid rgba(22,217,255,.28)!important;
-      color:#f3f5fb!important;
-      box-shadow:0 8px 22px rgba(0,0,0,.20)!important;
+      border:1px solid rgba(22,217,255,.34)!important;
+      color:#f7f8ff!important;
+      box-shadow:0 8px 22px rgba(0,0,0,.22)!important;
     }
 
     #coach-chat-composer{
