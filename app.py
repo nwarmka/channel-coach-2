@@ -100,7 +100,7 @@ with gr.Blocks(title="Channel Coach") as app:
 
     #channel-coach-menu{
       width:280px!important; max-width:280px!important;
-      position:fixed!important; left:22px!important; top:82px!important; z-index:9999!important;
+      position:fixed!important; right:22px!important; left:auto!important; top:82px!important; z-index:9999!important;
       padding:14px!important;
       background:rgba(5,7,13,.98)!important;
       border:1px solid rgba(139,92,246,.56)!important;
@@ -684,12 +684,14 @@ with gr.Blocks(title="Channel Coach") as app:
         # APP SHELL / NAVIGATION
         # =========================
         with gr.Row():
-            menu_button = gr.Button("☰", scale=0, min_width=52)
             gr.Markdown("## ✦ CHANNEL COACH")
+            menu_button = gr.Button("☰", scale=0, min_width=52)
 
         with gr.Column(visible=False, elem_id="channel-coach-menu") as menu_panel:
+            home_nav = gr.Button("🏠 Home")
+            back_nav = gr.Button("← Back")
             chat_nav = gr.Button("💬 Coach Chat")
-            dashboard_nav = gr.Button("🏠 Dashboard")
+            dashboard_nav = gr.Button("📊 Dashboard")
             calendar_nav = gr.Button("📅 Calendar")
             toolkit_nav = gr.Button("🎬 Toolkit")
             analytics_nav = gr.Button("📊 Analytics")
@@ -697,6 +699,8 @@ with gr.Blocks(title="Channel Coach") as app:
             logout_button = gr.Button("↪️ Log Out")
 
         menu_open = gr.State(False)
+        current_page = gr.State("dashboard")
+        previous_page = gr.State("dashboard")
 
         # =========================
         # WORKSPACE
@@ -816,15 +820,42 @@ with gr.Blocks(title="Channel Coach") as app:
     # =========================
     # PAGE NAVIGATION
     # =========================
+    PAGE_NAMES = ["chat", "dashboard", "calendar", "toolkit", "analytics", "settings"]
+
     def toggle_menu(is_open):
-        new_state = not is_open
+        new_state = not bool(is_open)
         return new_state, gr.update(visible=new_state)
 
-    def show_page(page_name):
-        names = ["chat", "dashboard", "calendar", "toolkit", "analytics", "settings"]
+    def navigate_to(page_name, current):
+        target = page_name if page_name in PAGE_NAMES else "dashboard"
+        current = current if current in PAGE_NAMES else "dashboard"
+        previous = current if current != target else current
         return (
-            [gr.update(visible=(name == page_name)) for name in names]
-            + [gr.update(visible=False), False]
+            *[gr.update(visible=(name == target)) for name in PAGE_NAMES],
+            gr.update(visible=False),
+            False,
+            target,
+            previous,
+        )
+
+    def navigate_back(current, previous):
+        current = current if current in PAGE_NAMES else "dashboard"
+        target = previous if previous in PAGE_NAMES else "dashboard"
+        return (
+            *[gr.update(visible=(name == target)) for name in PAGE_NAMES],
+            gr.update(visible=False),
+            False,
+            target,
+            current,
+        )
+
+    def reset_navigation():
+        return (
+            *[gr.update(visible=(name == "dashboard")) for name in PAGE_NAMES],
+            gr.update(visible=False),
+            False,
+            "dashboard",
+            "dashboard",
         )
 
     page_outputs = [
@@ -836,19 +867,65 @@ with gr.Blocks(title="Channel Coach") as app:
         settings_page,
         menu_panel,
         menu_open,
+        current_page,
+        previous_page,
     ]
 
     menu_button.click(
         toggle_menu,
         inputs=[menu_open],
-        outputs=[menu_open, menu_panel]
+        outputs=[menu_open, menu_panel],
+        show_progress="hidden",
     )
-    chat_nav.click(lambda: show_page("chat"), outputs=page_outputs)
-    dashboard_nav.click(lambda: show_page("dashboard"), outputs=page_outputs)
-    calendar_nav.click(lambda: show_page("calendar"), outputs=page_outputs)
-    toolkit_nav.click(lambda: show_page("toolkit"), outputs=page_outputs)
-    analytics_nav.click(lambda: show_page("analytics"), outputs=page_outputs)
-    settings_nav.click(lambda: show_page("settings"), outputs=page_outputs)
+
+    home_nav.click(
+        lambda current: navigate_to("dashboard", current),
+        inputs=[current_page],
+        outputs=page_outputs,
+        show_progress="hidden",
+    )
+    back_nav.click(
+        navigate_back,
+        inputs=[current_page, previous_page],
+        outputs=page_outputs,
+        show_progress="hidden",
+    )
+    chat_nav.click(
+        lambda current: navigate_to("chat", current),
+        inputs=[current_page],
+        outputs=page_outputs,
+        show_progress="hidden",
+    )
+    dashboard_nav.click(
+        lambda current: navigate_to("dashboard", current),
+        inputs=[current_page],
+        outputs=page_outputs,
+        show_progress="hidden",
+    )
+    calendar_nav.click(
+        lambda current: navigate_to("calendar", current),
+        inputs=[current_page],
+        outputs=page_outputs,
+        show_progress="hidden",
+    )
+    toolkit_nav.click(
+        lambda current: navigate_to("toolkit", current),
+        inputs=[current_page],
+        outputs=page_outputs,
+        show_progress="hidden",
+    )
+    analytics_nav.click(
+        lambda current: navigate_to("analytics", current),
+        inputs=[current_page],
+        outputs=page_outputs,
+        show_progress="hidden",
+    )
+    settings_nav.click(
+        lambda current: navigate_to("settings", current),
+        inputs=[current_page],
+        outputs=page_outputs,
+        show_progress="hidden",
+    )
 
     def login_and_open_app(email, password, remember):
         email = (email or "").strip()
@@ -897,6 +974,8 @@ with gr.Blocks(title="Channel Coach") as app:
             gr.update(visible=False),
             False,
             gr.update(visible=False),
+            "dashboard",
+            "dashboard",
         )
 
     def send_password_reset(email):
@@ -932,6 +1011,10 @@ with gr.Blocks(title="Channel Coach") as app:
         inputs=[login_email, login_password, remember_me],
         outputs=[login_status, workspace_name, saved_login, login_screen, app_shell],
         show_progress="full"
+    ).then(
+        reset_navigation,
+        outputs=page_outputs,
+        show_progress="hidden",
     ).then(
         load_workspace_ui,
         inputs=[workspace_name],
@@ -980,6 +1063,8 @@ with gr.Blocks(title="Channel Coach") as app:
             app_shell,
             menu_open,
             menu_panel,
+            current_page,
+            previous_page,
         ],
         show_progress="hidden",
     )
@@ -987,6 +1072,10 @@ with gr.Blocks(title="Channel Coach") as app:
         restore_and_open_app,
         inputs=[saved_login],
         outputs=[login_status, workspace_name, saved_login, login_screen, app_shell],
+    ).then(
+        reset_navigation,
+        outputs=page_outputs,
+        show_progress="hidden",
     ).then(
         load_workspace_ui,
         inputs=[workspace_name],
