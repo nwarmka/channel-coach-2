@@ -5,7 +5,6 @@ from features import *
 from ui.calendar import build_calendar_page
 from ui.dashboard import build_dashboard_page
 from ui.toolkit import build_toolkit_page
-from ui.analytics import build_analytics_page
 from ui.settings import build_settings_page
 from ui.chat import build_chat_page
 from auth import (
@@ -293,11 +292,11 @@ with gr.Blocks(title="Channel Coach") as app:
       }
     }
 
-    #calendar-page,#dashboard-page,#projects-page,#toolkit-page,#analytics-page,#settings-page{
+    #calendar-page,#dashboard-page,#projects-page,#toolkit-page,#settings-page{
       max-width:1400px!important;margin:0 auto!important;
     }
 
-    #calendar-page h2,#dashboard-page h2,#projects-page h2,#toolkit-page h2,#analytics-page h2,#settings-page h2{
+    #calendar-page h2,#dashboard-page h2,#projects-page h2,#toolkit-page h2,#settings-page h2{
       background:linear-gradient(90deg,var(--pink),var(--purple),var(--cyan));
       -webkit-background-clip:text;background-clip:text;color:transparent!important;
     }
@@ -753,9 +752,9 @@ with gr.Blocks(title="Channel Coach") as app:
             home_nav = gr.Button("🏠 Home")
             back_nav = gr.Button("← Back")
             chat_nav = gr.Button("💬 Coach Chat")
+            dashboard_nav = gr.Button("📊 Dashboard")
             calendar_nav = gr.Button("📅 Calendar")
             toolkit_nav = gr.Button("🎬 Toolkit")
-            analytics_nav = gr.Button("📊 Analytics")
             settings_nav = gr.Button("⚙️ Settings")
             logout_button = gr.Button("↪️ Log Out")
 
@@ -811,7 +810,6 @@ with gr.Blocks(title="Channel Coach") as app:
                     gr.update(),
                     gr.update(),
                     gr.update(),
-                    gr.update(),
                 )
 
             safe_workspace = current_workspace
@@ -822,7 +820,6 @@ with gr.Blocks(title="Channel Coach") as app:
                 render_content_calendar(user_id=safe_workspace),
                 render_upcoming_content(user_id=safe_workspace),
                 gr.update(choices=get_calendar_choices(safe_workspace)),
-                render_analytics_tracker(safe_workspace),
                 render_getting_started_checklist(safe_workspace),
                 profile.get("channel_name", ""),
                 profile.get("creator_name", ""),
@@ -854,11 +851,6 @@ with gr.Blocks(title="Channel Coach") as app:
             visible=False,
         )
 
-        analytics_page, analytics_output = build_analytics_page(
-            workspace_name,
-            visible=False,
-        )
-
         settings_components = build_settings_page(
             workspace_name,
             dashboard_output,
@@ -881,7 +873,7 @@ with gr.Blocks(title="Channel Coach") as app:
     # =========================
     # PAGE NAVIGATION
     # =========================
-    PAGE_NAMES = ["chat", "dashboard", "calendar", "toolkit", "analytics", "settings"]
+    PAGE_NAMES = ["chat", "dashboard", "calendar", "toolkit", "settings"]
 
     def toggle_menu(is_open):
         new_state = not bool(is_open)
@@ -924,7 +916,6 @@ with gr.Blocks(title="Channel Coach") as app:
         dashboard_page,
         calendar_page,
         toolkit_page,
-        analytics_page,
         settings_page,
         menu_panel,
         menu_open,
@@ -957,6 +948,12 @@ with gr.Blocks(title="Channel Coach") as app:
         outputs=page_outputs,
         show_progress="hidden",
     )
+    dashboard_nav.click(
+        lambda current: navigate_to("dashboard", current),
+        inputs=[current_page],
+        outputs=page_outputs,
+        show_progress="hidden",
+    )
     calendar_nav.click(
         lambda current: navigate_to("calendar", current),
         inputs=[current_page],
@@ -965,12 +962,6 @@ with gr.Blocks(title="Channel Coach") as app:
     )
     toolkit_nav.click(
         lambda current: navigate_to("toolkit", current),
-        inputs=[current_page],
-        outputs=page_outputs,
-        show_progress="hidden",
-    )
-    analytics_nav.click(
-        lambda current: navigate_to("analytics", current),
         inputs=[current_page],
         outputs=page_outputs,
         show_progress="hidden",
@@ -1046,7 +1037,6 @@ with gr.Blocks(title="Channel Coach") as app:
             cc_calendar_output,
             cc_upcoming_output,
             cc_calendar_item_picker,
-            analytics_output,
             onboarding_output,
             profile_channel_name,
             profile_creator_name,
@@ -1079,7 +1069,6 @@ with gr.Blocks(title="Channel Coach") as app:
             cc_calendar_output,
             cc_upcoming_output,
             cc_calendar_item_picker,
-            analytics_output,
             onboarding_output,
             profile_channel_name,
             profile_creator_name,
@@ -1140,7 +1129,6 @@ with gr.Blocks(title="Channel Coach") as app:
             cc_calendar_output,
             cc_upcoming_output,
             cc_calendar_item_picker,
-            analytics_output,
             onboarding_output,
             profile_channel_name,
             profile_creator_name,
@@ -1182,7 +1170,6 @@ app.launch(
     head=custom_head,
     css=custom_css,
 )
-
 
 
 
