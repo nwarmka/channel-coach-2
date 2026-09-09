@@ -289,26 +289,29 @@ def build_calendar_page(workspace_name, visible=False):
             }
 
             #calendar-page .cc-calendar-header {
-                margin: 4px 0 14px;
+                margin: 2px 0 8px;
             }
 
             #calendar-page .cc-calendar-kicker {
                 color: #16d9ff;
-                font-size: .76rem;
+                font-size: .70rem;
                 font-weight: 800;
                 letter-spacing: .16em;
                 text-transform: uppercase;
-                margin-bottom: 4px;
+                margin-bottom: 2px;
             }
 
             #calendar-page .cc-calendar-title {
                 margin: 0;
-                font-size: 2rem;
+                font-size: 1.65rem;
+                line-height: 1.1;
             }
 
             #calendar-page .cc-calendar-subtitle {
                 opacity: .72;
-                margin-top: 4px;
+                margin-top: 2px;
+                font-size: .90rem;
+                line-height: 1.2;
             }
 
             #calendar-page .cc-toolbar {
@@ -464,7 +467,7 @@ def build_calendar_page(workspace_name, visible=False):
                 }
 
                 #calendar-page .cc-calendar-title {
-                    font-size: 1.55rem;
+                    font-size: 1.40rem;
                 }
             }
             </style>
@@ -718,6 +721,7 @@ def build_calendar_page(workspace_name, visible=False):
 
 
 build_calendar_tab = build_calendar_page
+
 
 
 
