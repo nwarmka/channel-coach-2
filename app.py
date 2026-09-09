@@ -7,6 +7,7 @@ from ui.dashboard import build_dashboard_page
 from ui.toolkit import build_toolkit_page
 from ui.settings import build_settings_page
 from ui.chat import build_chat_page
+from credits import ensure_initial_credits, get_credit_balance
 from auth import (
     empty_saved_session,
     login_user,
@@ -746,6 +747,7 @@ with gr.Blocks(title="Channel Coach") as app:
         # =========================
         with gr.Row():
             gr.Markdown("## ✦ CHANNEL COACH")
+            credit_balance = gr.Markdown("**Credits: —**", elem_id="credit-balance")
             menu_button = gr.Button("☰", scale=0, min_width=52)
 
         with gr.Column(visible=False, elem_id="channel-coach-menu") as menu_panel:
@@ -786,6 +788,18 @@ with gr.Blocks(title="Channel Coach") as app:
             workspace_name,
             visible=True,
         )
+
+        def load_credit_balance(current_workspace):
+            """Grant the one-time starter balance and show the current total."""
+            if not current_workspace:
+                return "**Credits: —**"
+            try:
+                ensure_initial_credits(current_workspace)
+                balance = get_credit_balance(current_workspace)
+                return f"**Credits: {balance}**"
+            except Exception as exc:
+                print(f"Credit balance load failed: {exc}")
+                return "**Credits: unavailable**"
 
         def load_workspace_ui(current_workspace):
             # Never load the shared/default workspace for a logged-out visitor.
@@ -1056,6 +1070,11 @@ with gr.Blocks(title="Channel Coach") as app:
             profile_preferred_tone,
             profile_things_to_avoid
         ]
+    ).then(
+        load_credit_balance,
+        inputs=[workspace_name],
+        outputs=[credit_balance],
+        show_progress="hidden",
     )
 
     signup_button.click(
@@ -1116,6 +1135,11 @@ with gr.Blocks(title="Channel Coach") as app:
             profile_preferred_tone,
             profile_things_to_avoid
         ]
+    ).then(
+        load_credit_balance,
+        inputs=[workspace_name],
+        outputs=[credit_balance],
+        show_progress="hidden",
     )
 
 # =========================
