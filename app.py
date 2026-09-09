@@ -753,7 +753,6 @@ with gr.Blocks(title="Channel Coach") as app:
             home_nav = gr.Button("🏠 Home")
             back_nav = gr.Button("← Back")
             chat_nav = gr.Button("💬 Coach Chat")
-            dashboard_nav = gr.Button("📊 Dashboard")
             calendar_nav = gr.Button("📅 Calendar")
             toolkit_nav = gr.Button("🎬 Toolkit")
             analytics_nav = gr.Button("📊 Analytics")
@@ -954,12 +953,6 @@ with gr.Blocks(title="Channel Coach") as app:
     )
     chat_nav.click(
         lambda current: navigate_to("chat", current),
-        inputs=[current_page],
-        outputs=page_outputs,
-        show_progress="hidden",
-    )
-    dashboard_nav.click(
-        lambda current: navigate_to("dashboard", current),
         inputs=[current_page],
         outputs=page_outputs,
         show_progress="hidden",
@@ -1189,7 +1182,6 @@ app.launch(
     head=custom_head,
     css=custom_css,
 )
-
 
 
 
