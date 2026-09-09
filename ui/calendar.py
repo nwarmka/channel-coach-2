@@ -1,4 +1,4 @@
-# Channel Coach - Full Screen Content Calendar UI
+# Channel Coach - Full Screen Interactive Content Calendar
 
 import calendar as pycalendar
 import html
@@ -7,6 +7,9 @@ from datetime import date, timedelta
 import gradio as gr
 
 from features import (
+    CONTENT_TYPES,
+    CONTENT_STATUSES,
+    add_content_item,
     get_calendar_choices,
     load_content_calendar,
     render_content_calendar,
@@ -122,27 +125,13 @@ def _today_month(workspace_name):
     )
 
 
-def _select_calendar_day(cell_index, workspace_name, month, year):
-    try:
-        selected = _six_week_dates(month, year)[int(cell_index)]
-    except (TypeError, ValueError, IndexError):
-        return (
-            "### Select a day",
-            '<div class="cc-day-empty">Click any date in the calendar.</div>',
-            gr.update(visible=True),
-            gr.update(visible=False),
-        )
-
+def _day_details_html(workspace_name, selected_iso):
     items = _filtered_items(workspace_name)
+
     day_items = [
         item for item in items
-        if item.get("publish_date") == selected.isoformat()
+        if item.get("publish_date") == selected_iso
     ]
-
-    heading = (
-        f"### {selected.strftime('%A, %B')} "
-        f"{selected.day}, {selected.year}"
-    )
 
     parts = ['<div class="cc-day-view-list">']
 
@@ -160,22 +149,105 @@ def _select_calendar_day(cell_index, workspace_name, month, year):
                 item.get("content_type") or "Long Video"
             )
             topic = html.escape(item.get("game_topic") or "")
+            notes = html.escape(item.get("notes") or "")
 
             parts.append(
                 '<div class="cc-open-day-event">'
                 f'<strong>{title}</strong>'
                 f'<span>{status} · {content_type}</span>'
                 + (f'<span>{topic}</span>' if topic else "")
+                + (f'<span>{notes}</span>' if notes else "")
                 + '</div>'
             )
 
     parts.append("</div>")
+    return "".join(parts)
+
+
+def _select_calendar_day(cell_index, workspace_name, month, year):
+    try:
+        selected = _six_week_dates(month, year)[int(cell_index)]
+    except (TypeError, ValueError, IndexError):
+        return (
+            "### Select a day",
+            '<div class="cc-day-empty">Click any date in the calendar.</div>',
+            "",
+            gr.update(visible=True),
+            gr.update(visible=False),
+            "",
+            "",
+        )
+
+    selected_iso = selected.isoformat()
+
+    heading = (
+        f"### {selected.strftime('%A, %B')} "
+        f"{selected.day}, {selected.year}"
+    )
 
     return (
         heading,
-        "".join(parts),
+        _day_details_html(workspace_name, selected_iso),
+        selected_iso,
         gr.update(visible=False),
         gr.update(visible=True),
+        "",
+        "",
+    )
+
+
+def _save_day_item(
+    title,
+    content_type,
+    game_topic,
+    status,
+    selected_date,
+    notes,
+    workspace_name,
+    month,
+    year,
+):
+    title = (title or "").strip()
+
+    if not selected_date:
+        return (
+            "Choose a date first.",
+            "",
+            notes or "",
+            '<div class="cc-day-empty">Click a date in the calendar.</div>',
+            *_button_updates(workspace_name, month, year),
+        )
+
+    if not title:
+        return (
+            "Type what you need to do first.",
+            title,
+            notes or "",
+            _day_details_html(workspace_name, selected_date),
+            *_button_updates(workspace_name, month, year),
+        )
+
+    # Reuse Channel Coach's existing calendar persistence.
+    add_content_item(
+        title,
+        content_type,
+        game_topic,
+        status,
+        selected_date,
+        notes,
+        month,
+        year,
+        "All",
+        "All",
+        workspace_name,
+    )
+
+    return (
+        f"Saved to {selected_date}.",
+        "",
+        "",
+        _day_details_html(workspace_name, selected_date),
+        *_button_updates(workspace_name, month, year),
     )
 
 
@@ -340,6 +412,18 @@ def build_calendar_page(workspace_name, visible=False):
                 margin-bottom: 12px;
             }
 
+            #calendar-page .cc-day-form {
+                margin: 10px 0 18px !important;
+                padding: 16px !important;
+                border: 1px solid rgba(255,62,165,.30) !important;
+                border-radius: 14px !important;
+                background: rgba(7,10,17,.72) !important;
+            }
+
+            #calendar-page .cc-save-day {
+                margin-top: 8px !important;
+            }
+
             #calendar-page .cc-day-view-list {
                 display: flex;
                 flex-direction: column;
@@ -389,7 +473,7 @@ def build_calendar_page(workspace_name, visible=False):
                 <div class="cc-calendar-kicker">Creator Planner</div>
                 <h2 class="cc-calendar-title">📅 Content Calendar</h2>
                 <div class="cc-calendar-subtitle">
-                    Click a date to open that day.
+                    Click a date to plan that day.
                 </div>
             </div>
             """
@@ -455,6 +539,8 @@ def build_calendar_page(workspace_name, visible=False):
                         )
                         calendar_day_buttons.append(button)
 
+        selected_date = gr.Textbox(visible=False)
+
         with gr.Column(
             elem_classes=["cc-open-day-view"],
             visible=False,
@@ -465,13 +551,53 @@ def build_calendar_page(workspace_name, visible=False):
             )
 
             day_view_heading = gr.Markdown("### Select a day")
+
+            with gr.Column(elem_classes=["cc-day-form"]):
+                task_title = gr.Textbox(
+                    label="What do you need to do?",
+                    placeholder="Example: Edit Walking Dead Short",
+                )
+
+                with gr.Row():
+                    task_content_type = gr.Dropdown(
+                        CONTENT_TYPES,
+                        value=CONTENT_TYPES[0] if CONTENT_TYPES else None,
+                        label="Content Type",
+                    )
+
+                    task_status = gr.Dropdown(
+                        CONTENT_STATUSES,
+                        value=CONTENT_STATUSES[0] if CONTENT_STATUSES else None,
+                        label="Status",
+                    )
+
+                task_game_topic = gr.Textbox(
+                    label="Game / Topic",
+                    placeholder="Optional",
+                )
+
+                task_notes = gr.Textbox(
+                    label="Notes",
+                    placeholder="Anything else you need to remember...",
+                    lines=3,
+                )
+
+                save_day_button = gr.Button(
+                    "💾 Save to This Day",
+                    variant="primary",
+                    elem_classes=["cc-save-day"],
+                )
+
+                save_day_status = gr.Markdown()
+
+            gr.Markdown("### Scheduled for this day")
             day_details_output = gr.HTML(
                 '<div class="cc-day-empty">'
-                'Click a date in the calendar.'
+                'Nothing scheduled for this day yet.'
                 '</div>'
             )
 
-        # Keep these hidden because app.py expects them.
+        # Hidden compatibility components expected by app.py.
         calendar_output = gr.HTML(
             value=render_content_calendar(
                 today.month,
@@ -541,11 +667,37 @@ def build_calendar_page(workspace_name, visible=False):
                 outputs=[
                     day_view_heading,
                     day_details_output,
+                    selected_date,
                     month_grid_container,
                     selected_day_container,
+                    save_day_status,
+                    task_title,
                 ],
                 show_progress="hidden",
             )
+
+        save_day_button.click(
+            _save_day_item,
+            inputs=[
+                task_title,
+                task_content_type,
+                task_game_topic,
+                task_status,
+                selected_date,
+                task_notes,
+                workspace_name,
+                calendar_month,
+                calendar_year,
+            ],
+            outputs=[
+                save_day_status,
+                task_title,
+                task_notes,
+                day_details_output,
+                *calendar_day_buttons,
+            ],
+            show_progress="hidden",
+        )
 
         back_button.click(
             _close_day,
