@@ -165,20 +165,28 @@ with gr.Blocks(title="Channel Coach") as app:
       max-width:900px!important;
       margin:0 auto!important;
       flex:1 1 auto!important;
-      background:transparent!important;
-      border:0!important;
-      box-shadow:none!important;
+      background:
+        radial-gradient(circle at 15% 0%, rgba(139,92,246,.10), transparent 34%),
+        linear-gradient(180deg, rgba(12,17,31,.98), rgba(7,11,22,.98))!important;
+      border:1px solid rgba(139,92,246,.48)!important;
+      border-radius:22px!important;
+      box-shadow:
+        0 18px 42px rgba(0,0,0,.34),
+        0 0 26px rgba(139,92,246,.08)!important;
+      padding:8px!important;
     }
 
     #coach-chatbot > div{
       background:transparent!important;
       border:0!important;
       box-shadow:none!important;
+      border-radius:18px!important;
     }
 
     #coach-chatbot .message{
       border-radius:18px!important;
       line-height:1.55!important;
+      box-shadow:0 8px 22px rgba(0,0,0,.16)!important;
     }
 
     #coach-chatbot .message.user,
@@ -195,8 +203,12 @@ with gr.Blocks(title="Channel Coach") as app:
     #coach-chatbot .message.bot,
     #coach-chatbot .message.assistant,
     #coach-chatbot [data-testid="bot"]{
-      background:transparent!important;
-      border:0!important;
+      background:linear-gradient(
+        135deg,
+        rgba(20,28,48,.96),
+        rgba(14,19,34,.96)
+      )!important;
+      border:1px solid rgba(22,217,255,.18)!important;
       color:#f3f5fb!important;
     }
 
