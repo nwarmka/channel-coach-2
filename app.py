@@ -781,6 +781,7 @@ with gr.Blocks(title="Channel Coach") as app:
         # Creator Dashboard remains the logged-in home screen.
         chat_page = build_chat_page(
             workspace_name,
+            credit_balance,
             visible=False,
         )
 
