@@ -750,9 +750,7 @@ with gr.Blocks(title="Channel Coach") as app:
 
         with gr.Column(visible=False, elem_id="channel-coach-menu") as menu_panel:
             home_nav = gr.Button("🏠 Home")
-            back_nav = gr.Button("← Back")
             chat_nav = gr.Button("💬 Coach Chat")
-            dashboard_nav = gr.Button("📊 Dashboard")
             calendar_nav = gr.Button("📅 Calendar")
             toolkit_nav = gr.Button("🎬 Toolkit")
             settings_nav = gr.Button("⚙️ Settings")
@@ -891,17 +889,6 @@ with gr.Blocks(title="Channel Coach") as app:
             previous,
         )
 
-    def navigate_back(current, previous):
-        current = current if current in PAGE_NAMES else "dashboard"
-        target = previous if previous in PAGE_NAMES else "dashboard"
-        return (
-            *[gr.update(visible=(name == target)) for name in PAGE_NAMES],
-            gr.update(visible=False),
-            False,
-            target,
-            current,
-        )
-
     def reset_navigation():
         return (
             *[gr.update(visible=(name == "dashboard")) for name in PAGE_NAMES],
@@ -936,20 +923,8 @@ with gr.Blocks(title="Channel Coach") as app:
         outputs=page_outputs,
         show_progress="hidden",
     )
-    back_nav.click(
-        navigate_back,
-        inputs=[current_page, previous_page],
-        outputs=page_outputs,
-        show_progress="hidden",
-    )
     chat_nav.click(
         lambda current: navigate_to("chat", current),
-        inputs=[current_page],
-        outputs=page_outputs,
-        show_progress="hidden",
-    )
-    dashboard_nav.click(
-        lambda current: navigate_to("dashboard", current),
         inputs=[current_page],
         outputs=page_outputs,
         show_progress="hidden",
@@ -1170,7 +1145,6 @@ app.launch(
     head=custom_head,
     css=custom_css,
 )
-
 
 
 
