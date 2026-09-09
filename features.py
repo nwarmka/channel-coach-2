@@ -1596,6 +1596,9 @@ def render_creator_dashboard(user_id="main"):
           flex-direction:column;
           gap:16px;
           width:100%;
+          max-width:none;
+          min-width:0;
+          box-sizing:border-box;
       }}
 
       .cc-dashboard-hero {{
@@ -1662,9 +1665,9 @@ def render_creator_dashboard(user_id="main"):
           font-size:.86rem;
       }}
 
-      .cc-dashboard-grid {{
+      .cc-home-dashboard-grid {{
           display:grid;
-          grid-template-columns:1fr;
+          grid-template-columns:minmax(0, 1.35fr) minmax(320px, .85fr);
           gap:14px;
           width:100%;
           align-items:start;
@@ -1672,6 +1675,7 @@ def render_creator_dashboard(user_id="main"):
 
       .cc-dashboard-panel {{
           width:100%;
+          min-width:0;
           box-sizing:border-box;
       }}
 
@@ -1709,7 +1713,7 @@ def render_creator_dashboard(user_id="main"):
               grid-template-columns:repeat(2, minmax(0, 1fr));
           }}
 
-          .cc-dashboard-grid {{
+          .cc-home-dashboard-grid {{
               grid-template-columns:1fr;
           }}
       }}
@@ -1732,7 +1736,7 @@ def render_creator_dashboard(user_id="main"):
 
         {stats_html}
 
-        <div class="cc-dashboard-grid">
+        <div class="cc-home-dashboard-grid">
             {next_item_html}
 
             <div class="cc-dashboard-panel">
