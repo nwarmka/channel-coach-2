@@ -315,37 +315,47 @@ def build_calendar_page(workspace_name, visible=False):
             }
 
             #calendar-page .cc-toolbar {
-                padding: 6px 10px !important;
-                margin-bottom: 8px !important;
-                border-radius: 14px !important;
+                padding: 4px 8px !important;
+                margin-bottom: 6px !important;
+                border-radius: 12px !important;
                 min-height: 0 !important;
+                flex-wrap: nowrap !important;
+                align-items: center !important;
             }
 
             #calendar-page .cc-nav-row {
-                align-items: center;
-                gap: 6px;
+                align-items: center !important;
+                gap: 5px !important;
                 min-height: 0 !important;
+                flex-wrap: nowrap !important;
             }
 
             #calendar-page .cc-nav-button {
-                min-width: 48px !important;
-                max-width: 56px !important;
+                min-width: 42px !important;
+                max-width: 46px !important;
+                min-height: 34px !important;
+                height: 34px !important;
+                padding: 3px 8px !important;
             }
 
             #calendar-page .cc-today-button {
-                min-width: 88px !important;
-                max-width: 110px !important;
+                min-width: 76px !important;
+                max-width: 86px !important;
+                min-height: 34px !important;
+                height: 34px !important;
+                padding: 3px 10px !important;
             }
 
             #calendar-page .cc-month-heading {
-                flex: 1 1 auto;
+                flex: 1 1 auto !important;
+                min-width: 0 !important;
                 text-align: center;
             }
 
             #calendar-page .cc-month-heading h2 {
                 margin: 0 !important;
-                line-height: 1.05 !important;
-                font-size: 1.35rem !important;
+                line-height: 1 !important;
+                font-size: 1.20rem !important;
             }
 
             #calendar-page .cc-month-grid {
@@ -724,6 +734,7 @@ def build_calendar_page(workspace_name, visible=False):
 
 
 build_calendar_tab = build_calendar_page
+
 
 
 
