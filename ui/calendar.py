@@ -291,11 +291,11 @@ def build_calendar_page(workspace_name, visible=False):
                 calendar_status,
                 calendar_publish_date,
                 calendar_notes,
+                workspace_name,
                 calendar_month,
                 calendar_year,
                 calendar_status_filter,
                 calendar_type_filter,
-                workspace_name,
             ],
             outputs=[
                 calendar_output,
@@ -306,11 +306,11 @@ def build_calendar_page(workspace_name, visible=False):
         )
 
         refresh_inputs = [
+            workspace_name,
             calendar_month,
             calendar_year,
             calendar_status_filter,
             calendar_type_filter,
-            workspace_name,
         ]
 
         calendar_refresh_button.click(
@@ -385,11 +385,11 @@ def build_calendar_page(workspace_name, visible=False):
                 calendar_status,
                 calendar_publish_date,
                 calendar_notes,
+                workspace_name,
                 calendar_month,
                 calendar_year,
                 calendar_status_filter,
                 calendar_type_filter,
-                workspace_name,
             ],
             outputs=[
                 calendar_output,
@@ -403,11 +403,11 @@ def build_calendar_page(workspace_name, visible=False):
             delete_content_item,
             inputs=[
                 calendar_item_picker,
+                workspace_name,
                 calendar_month,
                 calendar_year,
                 calendar_status_filter,
                 calendar_type_filter,
-                workspace_name,
             ],
             outputs=[
                 calendar_output,
@@ -436,6 +436,7 @@ def build_calendar_page(workspace_name, visible=False):
 # Anything still importing build_calendar_tab will continue working
 # while we finish organizing the rest of the app.
 build_calendar_tab = build_calendar_page
+
 
 
 
