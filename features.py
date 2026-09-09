@@ -1664,9 +1664,15 @@ def render_creator_dashboard(user_id="main"):
 
       .cc-dashboard-grid {{
           display:grid;
-          grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+          grid-template-columns:1fr;
           gap:14px;
+          width:100%;
           align-items:start;
+      }}
+
+      .cc-dashboard-panel {{
+          width:100%;
+          box-sizing:border-box;
       }}
 
       .cc-dashboard-panel h3 {{
@@ -4101,6 +4107,9 @@ def render_getting_started_checklist(user_id="main"):
         {items_html}
     </div>
     '''
+
+
+
 
 
 
