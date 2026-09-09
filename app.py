@@ -609,6 +609,51 @@ with gr.Blocks(title="Channel Coach") as app:
       stroke:#ffffff !important;
     }
 
+
+    /* Coach Chat final specificity override.
+       The generic #channel-coach-app .block rule is more specific than ui/chat.py,
+       so force the chat surface to win here. */
+    #channel-coach-app #chat-page #coach-chatbot,
+    #channel-coach-app #chat-page #coach-chatbot.block,
+    #channel-coach-app #chat-page div#coach-chatbot {
+      background:
+        radial-gradient(circle at 16% 0%, rgba(139,92,246,.38), transparent 38%),
+        radial-gradient(circle at 88% 10%, rgba(22,217,255,.14), transparent 30%),
+        linear-gradient(180deg,#30365f 0%,#252b50 55%,#1d2342 100%) !important;
+      background-color:#252b50 !important;
+      border:2px solid rgba(168,85,247,.95) !important;
+      border-radius:22px !important;
+      box-shadow:
+        inset 0 0 36px rgba(139,92,246,.14),
+        0 0 34px rgba(139,92,246,.26) !important;
+    }
+
+    #channel-coach-app #chat-page #coach-chatbot > div,
+    #channel-coach-app #chat-page #coach-chatbot .wrap,
+    #channel-coach-app #chat-page #coach-chatbot .container,
+    #channel-coach-app #chat-page #coach-chatbot [class*="container"],
+    #channel-coach-app #chat-page #coach-chatbot [class*="panel"] {
+      background:transparent !important;
+      background-color:transparent !important;
+      border-color:transparent !important;
+      box-shadow:none !important;
+    }
+
+    #channel-coach-app #chat-page #coach-chatbot .message.bot,
+    #channel-coach-app #chat-page #coach-chatbot .message.assistant,
+    #channel-coach-app #chat-page #coach-chatbot [data-testid="bot"] {
+      background:linear-gradient(135deg,#3b456f,#303961) !important;
+      border:1px solid rgba(22,217,255,.40) !important;
+      color:#fff !important;
+    }
+
+    #channel-coach-app #chat-page #coach-chatbot .message.user,
+    #channel-coach-app #chat-page #coach-chatbot [data-testid="user"] {
+      background:linear-gradient(135deg,#7c3aed,#d946ef) !important;
+      border:1px solid rgba(255,126,205,.72) !important;
+      color:#fff !important;
+    }
+
     #workspace-internal{display:none!important}
 
     *{scrollbar-width:thin;scrollbar-color:#7c3cff #070a10}
@@ -1144,7 +1189,6 @@ app.launch(
     head=custom_head,
     css=custom_css,
 )
-
 
 
 
