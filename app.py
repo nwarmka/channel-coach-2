@@ -401,10 +401,31 @@ with gr.Blocks(title="Channel Coach") as app:
       letter-spacing:.05em!important;
     }
 
+    /* Remember Me: make the checked state obvious on desktop and installed mobile/PWA */
     #remember-me{
       background:transparent!important;
       border:0!important;
       box-shadow:none!important;
+    }
+
+    #remember-me input[type="checkbox"]{
+      appearance:auto!important;
+      -webkit-appearance:checkbox!important;
+      width:20px!important;
+      height:20px!important;
+      min-height:20px!important;
+      accent-color:#ff3ea5!important;
+      cursor:pointer!important;
+    }
+
+    #remember-me input[type="checkbox"]:checked{
+      accent-color:#ff3ea5!important;
+      filter:drop-shadow(0 0 5px rgba(255,62,165,.65));
+    }
+
+    #remember-me label{
+      color:#eef1f8!important;
+      cursor:pointer!important;
     }
 
     #login-status{
