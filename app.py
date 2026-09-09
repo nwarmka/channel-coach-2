@@ -8,6 +8,14 @@ from ui.toolkit import build_toolkit_page
 from ui.analytics import build_analytics_page
 from ui.settings import build_settings_page
 from ui.chat import build_chat_page
+from auth import (
+    empty_saved_session,
+    login_user,
+    logout_user,
+    request_password_reset,
+    restore_saved_session,
+    signup_user,
+)
 
 
 with gr.Blocks(title="Channel Coach") as app:
@@ -583,16 +591,18 @@ with gr.Blocks(title="Channel Coach") as app:
     # =========================
     # ACCOUNT LOGIN
     # =========================
+    # One stable key/secret is important for desktop AND the installed PWA.
+    # Set CHANNEL_COACH_BROWSER_SECRET once in Render and do not rotate it
+    # unless you intentionally want every remembered device to sign in again.
+    browser_secret = os.environ.get(
+        "CHANNEL_COACH_BROWSER_SECRET",
+        "channel-coach-browser-state-v2",
+    )
+
     saved_login = gr.BrowserState(
-        empty_saved_session(),
-        storage_key="channel_coach_login",
-        # BrowserState uses encrypted localStorage. A stable secret is required
-        # for saved sessions to survive app restarts/deploys.
-        secret=(
-            os.environ.get("CHANNEL_COACH_BROWSER_SECRET")
-            or os.environ.get("SUPABASE_KEY")
-            or "channel-coach-browser-state-v1"
-        ),
+        default_value=empty_saved_session(),
+        storage_key="channel_coach_login_v2",
+        secret=browser_secret,
     )
 
     with gr.Column(visible=True, elem_id="login-screen") as login_screen:
@@ -641,6 +651,11 @@ with gr.Blocks(title="Channel Coach") as app:
             elem_id="signup-button"
         )
 
+        forgot_password_button = gr.Button(
+            "FORGOT PASSWORD?",
+            elem_id="forgot-password-button"
+        )
+
         login_status = gr.Markdown(elem_id="login-status")
 
     with gr.Column(visible=False, elem_id="channel-coach-app") as app_shell:
@@ -658,6 +673,7 @@ with gr.Blocks(title="Channel Coach") as app:
             toolkit_nav = gr.Button("🎬 Toolkit")
             analytics_nav = gr.Button("📊 Analytics")
             settings_nav = gr.Button("⚙️ Settings")
+            logout_button = gr.Button("↪️ Log Out")
 
         menu_open = gr.State(False)
 
@@ -689,7 +705,30 @@ with gr.Blocks(title="Channel Coach") as app:
         )
 
         def load_workspace_ui(current_workspace):
-            safe_workspace = current_workspace or "main"
+            # Never load the shared/default workspace for a logged-out visitor.
+            # Login/restore must provide a real Supabase user ID first.
+            if not current_workspace:
+                return (
+                    gr.update(),
+                    gr.update(),
+                    gr.update(),
+                    gr.update(),
+                    gr.update(),
+                    gr.update(),
+                    gr.update(),
+                    gr.update(),
+                    gr.update(),
+                    gr.update(),
+                    gr.update(),
+                    gr.update(),
+                    gr.update(),
+                    gr.update(),
+                    gr.update(),
+                    gr.update(),
+                    gr.update(),
+                )
+
+            safe_workspace = current_workspace
             profile = load_creator_profile(safe_workspace)
             return (
                 f"Current workspace: **{safe_workspace}**",
@@ -818,13 +857,30 @@ with gr.Blocks(title="Channel Coach") as app:
     def restore_and_open_app(saved_session):
         message, user_id, session = restore_saved_session(saved_session)
         logged_in = bool(user_id)
+
         return (
             message,
-            user_id,
-            session,
+            user_id or "",
+            session if logged_in else empty_saved_session(),
             gr.update(visible=not logged_in),
             gr.update(visible=logged_in),
         )
+
+    def logout_and_close_app(saved_session):
+        message, _, cleared = logout_user(saved_session)
+        return (
+            message,
+            "",
+            cleared,
+            gr.update(visible=True),
+            gr.update(visible=False),
+            False,
+            gr.update(visible=False),
+        )
+
+    def send_password_reset(email):
+        redirect_to = os.environ.get("CHANNEL_COACH_PASSWORD_RESET_REDIRECT", "").strip()
+        return request_password_reset(email, redirect_to or None)
 
     workspace_button.click(
         load_workspace_ui,
@@ -885,6 +941,27 @@ with gr.Blocks(title="Channel Coach") as app:
         outputs=login_status,
         show_progress="full"
     )
+    forgot_password_button.click(
+        send_password_reset,
+        inputs=[login_email],
+        outputs=login_status,
+        show_progress="hidden",
+    )
+
+    logout_button.click(
+        logout_and_close_app,
+        inputs=[saved_login],
+        outputs=[
+            login_status,
+            workspace_name,
+            saved_login,
+            login_screen,
+            app_shell,
+            menu_open,
+            menu_panel,
+        ],
+        show_progress="hidden",
+    )
     app.load(
         restore_and_open_app,
         inputs=[saved_login],
@@ -940,7 +1017,6 @@ app.launch(
     head=custom_head,
     css=custom_css,
 )
-
 
 
 
