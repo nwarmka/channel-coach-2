@@ -25,7 +25,8 @@ def _respond(message, history, workspace_name):
 def build_chat_page(workspace_name, visible=False):
     """
     Full-page Coach Chat.
-    Backend is unchanged; this version only cleans up the visual styling.
+    Backend is unchanged; this version gives the conversation area
+    a visibly distinct cyberpunk panel.
     """
 
     css = """
@@ -38,52 +39,91 @@ def build_chat_page(workspace_name, visible=False):
     }
 
     #coach-chat-header {
-        background: transparent !important;
-        border: none !important;
-        box-shadow: none !important;
-        margin-bottom: 8px !important;
+        background: rgba(18, 20, 40, .92) !important;
+        border: 1px solid rgba(168, 85, 247, .55) !important;
+        border-radius: 18px !important;
+        box-shadow: 0 0 22px rgba(168, 85, 247, .10) !important;
+        margin: 0 auto 14px !important;
+        padding: 12px 16px !important;
+        width: min(900px, 96%) !important;
     }
 
     .cc-chat-title {
         font-weight: 800;
         letter-spacing: .04em;
+        color: #f7f7ff;
     }
 
     .cc-chat-orb {
-        color: #a855f7;
+        color: #22d3ee;
         margin-right: 7px;
+        text-shadow: 0 0 10px rgba(34, 211, 238, .55);
     }
 
-    /* Remove Gradio's big gray Chatbot panel */
-    #coach-chatbot,
+    /* Distinct conversation surface */
+    #coach-chatbot {
+        min-height: 58vh !important;
+        width: min(900px, 96%) !important;
+        margin: 0 auto !important;
+        padding: 14px 14px 105px 14px !important;
+
+        background:
+            radial-gradient(circle at 16% 0%, rgba(139, 92, 246, .30), transparent 36%),
+            radial-gradient(circle at 90% 12%, rgba(34, 211, 238, .10), transparent 30%),
+            linear-gradient(180deg, #252b4d 0%, #1e2442 55%, #181d35 100%) !important;
+
+        border: 2px solid rgba(168, 85, 247, .82) !important;
+        border-radius: 22px !important;
+
+        box-shadow:
+            inset 0 0 34px rgba(139, 92, 246, .10),
+            0 18px 40px rgba(0, 0, 0, .35),
+            0 0 30px rgba(139, 92, 246, .16) !important;
+    }
+
+    /* Override Gradio's internal transparent/gray wrappers */
     #coach-chatbot > div,
     #coach-chatbot .wrap,
     #coach-chatbot .panel,
     #coach-chatbot .container,
-    #coach-chatbot .bubble-wrap {
+    #coach-chatbot .bubble-wrap,
+    #coach-chatbot [class*="container"],
+    #coach-chatbot [class*="panel"] {
         background: transparent !important;
         border: none !important;
         box-shadow: none !important;
     }
 
-    #coach-chatbot {
-        min-height: 58vh !important;
-        padding: 10px 0 100px 0 !important;
-    }
-
-    /* Remove gray empty-state / internal panel styling */
-    #coach-chatbot [class*="container"],
-    #coach-chatbot [class*="panel"] {
-        background: transparent !important;
-        border-color: transparent !important;
-        box-shadow: none !important;
-    }
-
-    /* Chat messages */
+    /* Base chat message style */
     #coach-chatbot .message {
         border-radius: 18px !important;
-        border: 1px solid rgba(168, 85, 247, .24) !important;
-        box-shadow: none !important;
+        line-height: 1.55 !important;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, .18) !important;
+    }
+
+    /* User messages */
+    #coach-chatbot .message.user,
+    #coach-chatbot [data-testid="user"] {
+        background: linear-gradient(
+            135deg,
+            rgba(124, 58, 237, .82),
+            rgba(192, 38, 211, .66)
+        ) !important;
+        border: 1px solid rgba(244, 114, 182, .62) !important;
+        color: white !important;
+    }
+
+    /* Coach messages */
+    #coach-chatbot .message.bot,
+    #coach-chatbot .message.assistant,
+    #coach-chatbot [data-testid="bot"] {
+        background: linear-gradient(
+            135deg,
+            #343c67,
+            #2a3158
+        ) !important;
+        border: 1px solid rgba(34, 211, 238, .30) !important;
+        color: #f7f8ff !important;
     }
 
     /* Composer */
@@ -94,12 +134,12 @@ def build_chat_page(workspace_name, visible=False):
         width: min(900px, 96%) !important;
         margin: 0 auto !important;
         padding: 8px 10px !important;
-        border: 1px solid rgba(168, 85, 247, .65) !important;
+        border: 1px solid rgba(168, 85, 247, .72) !important;
         border-radius: 24px !important;
-        background: rgba(7, 7, 14, .97) !important;
+        background: rgba(12, 14, 28, .98) !important;
         box-shadow:
-            0 0 18px rgba(168, 85, 247, .12),
-            0 8px 30px rgba(0, 0, 0, .28) !important;
+            0 0 20px rgba(168, 85, 247, .16),
+            0 8px 30px rgba(0, 0, 0, .30) !important;
         align-items: center !important;
     }
 
@@ -131,9 +171,23 @@ def build_chat_page(workspace_name, visible=False):
         height: 46px !important;
         padding: 0 !important;
         font-size: 20px !important;
-        background: linear-gradient(135deg, #7c3aed, #c026d3) !important;
+        background: linear-gradient(135deg, #7c3aed, #ec4899) !important;
         border: none !important;
-        box-shadow: 0 0 16px rgba(168, 85, 247, .35) !important;
+        box-shadow: 0 0 18px rgba(236, 72, 153, .38) !important;
+    }
+
+    @media (max-width: 700px) {
+        #coach-chat-header,
+        #coach-chatbot,
+        #coach-chat-composer {
+            width: 100% !important;
+        }
+
+        #coach-chatbot {
+            min-height: 56vh !important;
+            padding-left: 10px !important;
+            padding-right: 10px !important;
+        }
     }
     """
 
