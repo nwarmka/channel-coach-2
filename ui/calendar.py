@@ -315,14 +315,16 @@ def build_calendar_page(workspace_name, visible=False):
             }
 
             #calendar-page .cc-toolbar {
-                padding: 10px 12px !important;
-                margin-bottom: 10px !important;
+                padding: 6px 10px !important;
+                margin-bottom: 8px !important;
                 border-radius: 14px !important;
+                min-height: 0 !important;
             }
 
             #calendar-page .cc-nav-row {
                 align-items: center;
-                gap: 8px;
+                gap: 6px;
+                min-height: 0 !important;
             }
 
             #calendar-page .cc-nav-button {
@@ -342,7 +344,8 @@ def build_calendar_page(workspace_name, visible=False):
 
             #calendar-page .cc-month-heading h2 {
                 margin: 0 !important;
-                line-height: 1.15 !important;
+                line-height: 1.05 !important;
+                font-size: 1.35rem !important;
             }
 
             #calendar-page .cc-month-grid {
@@ -721,6 +724,7 @@ def build_calendar_page(workspace_name, visible=False):
 
 
 build_calendar_tab = build_calendar_page
+
 
 
 
