@@ -1717,6 +1717,14 @@ def render_creator_dashboard(user_id="main"):
           opacity:.72;
       }}
 
+      /* Desktop: remove the small leftover gap below the dashboard cards. */
+      @media(min-width:901px) {{
+          .cc-dashboard-wrap {{
+              margin-bottom:-10px;
+              padding-bottom:0 !important;
+          }}
+      }}
+
       @media(max-width:900px) {{
           .cc-dashboard-stats {{
               grid-template-columns:repeat(2, minmax(0, 1fr));
