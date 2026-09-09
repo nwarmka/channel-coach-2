@@ -1667,24 +1667,25 @@ def render_creator_dashboard(user_id="main"):
 
       .cc-home-dashboard-grid {{
           display:grid;
-          grid-template-columns:minmax(0, 1fr) minmax(360px, 1fr);
+          grid-template-columns:minmax(0, 1.25fr) minmax(360px, .75fr);
           gap:14px;
           width:100%;
           align-items:start;
-          grid-auto-rows:max-content;
+      }}
+
+      .cc-home-dashboard-left {{
+          display:flex;
+          flex-direction:column;
+          gap:14px;
+          min-width:0;
       }}
 
       .cc-dashboard-panel {{
           width:100%;
           min-width:0;
           box-sizing:border-box;
-      }}
-
-      /* Keep short dashboard cards from stretching to the height of a tall neighbor. */
-      .cc-home-dashboard-grid > .cc-dashboard-panel {{
-          align-self:start !important;
-          height:auto !important;
-          min-height:0 !important;
+          align-self:start;
+          height:auto;
       }}
 
       .cc-dashboard-panel h3 {{
@@ -1724,6 +1725,12 @@ def render_creator_dashboard(user_id="main"):
           .cc-home-dashboard-grid {{
               grid-template-columns:1fr;
           }}
+
+          .cc-home-dashboard-left {{
+              display:flex;
+              flex-direction:column;
+              gap:14px;
+          }}
       }}
 
       @media(max-width:560px) {{
@@ -1745,17 +1752,19 @@ def render_creator_dashboard(user_id="main"):
         {stats_html}
 
         <div class="cc-home-dashboard-grid">
-            {next_item_html}
+            <div class="cc-home-dashboard-left">
+                {next_item_html}
+
+                <div class="cc-dashboard-panel">
+                    <div class="cc-small-label">Coming Up</div>
+                    {render_upcoming_content(user_id=user_id)}
+                </div>
+            </div>
 
             <div class="cc-dashboard-panel">
                 <div class="cc-small-label">Creator Health</div>
                 {render_needs_attention(user_id)}
             </div>
-        </div>
-
-        <div class="cc-dashboard-panel">
-            <div class="cc-small-label">Coming Up</div>
-            {render_upcoming_content(user_id=user_id)}
         </div>
     </div>
     """
