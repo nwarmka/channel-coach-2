@@ -21,7 +21,7 @@ def _respond(message, history, workspace_name):
     return "", history
 
 
-def build_chat_page(workspace_name, visible=False):
+def build_chat_page(workspace_name, credit_balance=None, visible=False):
     """
     Full-page Coach Chat.
     Backend behavior is unchanged. This version keeps the styling
