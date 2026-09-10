@@ -1,13 +1,6 @@
-import uuid
-
 import gradio as gr
 
-from credits import get_credit_balance, grant_credits, spend_credits
 from features import ask_creator_coach
-
-
-def _balance_markdown(balance):
-    return f"**Credits: {int(balance)}**"
 
 
 def _respond(message, history, workspace_name):
@@ -15,80 +8,20 @@ def _respond(message, history, workspace_name):
     history = history or []
 
     if not message:
-        return "", history, gr.update()
+        return "", history
 
-    user_id = (workspace_name or "").strip()
-    if not user_id:
-        history = history + [{
-            "role": "assistant",
-            "content": "Please sign in before using Coach Chat.",
-        }]
-        return "", history, "**Credits: —**"
-
-    action_id = str(uuid.uuid4())
-    spend_key = f"coach-chat:{action_id}"
-    refund_key = f"refund:coach-chat:{action_id}"
-
-    try:
-        new_balance = spend_credits(
-            user_id,
-            1,
-            description="Coach Chat message",
-            transaction_key=spend_key,
-        )
-    except RuntimeError as exc:
-        history = history + [{"role": "assistant", "content": str(exc)}]
-        try:
-            balance_ui = _balance_markdown(get_credit_balance(user_id))
-        except Exception:
-            balance_ui = "**Credits: unavailable**"
-        return "", history, balance_ui
-    except Exception as exc:
-        print(f"Coach Chat credit deduction failed: {exc}")
-        history = history + [{
-            "role": "assistant",
-            "content": "Coach Chat could not verify your credits. Please try again.",
-        }]
-        return "", history, "**Credits: unavailable**"
-
-    try:
-        reply = ask_creator_coach(message, user_id=user_id)
-        if (
-            not reply
-            or str(reply).startswith("Coach Chat error:")
-            or str(reply).startswith("Missing OPENAI_API_KEY")
-        ):
-            raise RuntimeError(str(reply or "Coach Chat returned no response."))
-    except Exception as exc:
-        try:
-            refunded_balance = grant_credits(
-                user_id,
-                1,
-                description="Refund for failed Coach Chat message",
-                transaction_type="refund",
-                transaction_key=refund_key,
-            )
-            balance_ui = _balance_markdown(refunded_balance)
-        except Exception as refund_exc:
-            print(f"Coach Chat refund failed: {refund_exc}")
-            balance_ui = "**Credits: unavailable**"
-
-        print(f"Coach Chat request failed after credit deduction: {exc}")
-        history = history + [{
-            "role": "assistant",
-            "content": "Coach Chat hit an error, so your credit was refunded. Please try again.",
-        }]
-        return "", history, balance_ui
+    user_id = (workspace_name or "main").strip() or "main"
+    reply = ask_creator_coach(message, user_id=user_id)
 
     history = history + [
         {"role": "user", "content": message},
         {"role": "assistant", "content": reply},
     ]
 
-    return "", history, _balance_markdown(new_balance)
+    return "", history
 
 
-def build_chat_page(workspace_name, credit_balance, visible=False):
+def build_chat_page(workspace_name, visible=False):
     """
     Full-page Coach Chat.
     Backend behavior is unchanged. This version keeps the styling
@@ -143,8 +76,8 @@ def build_chat_page(workspace_name, credit_balance, visible=False):
         padding: 12px !important;
 
         background:
-            radial-gradient(circle at 18% 0%, rgba(139, 92, 246, .18), transparent 34%),
-            linear-gradient(180deg, #232946 0%, #1a2038 100%) !important;
+            radial-gradient(circle at 18% 0%, rgba(139, 92, 246, .10), transparent 34%),
+            linear-gradient(180deg, #0b1020 0%, #080d18 100%) !important;
 
         border: 1px solid rgba(168, 85, 247, .62) !important;
         border-radius: 18px !important;
@@ -174,11 +107,28 @@ def build_chat_page(workspace_name, credit_balance, visible=False):
     }
 
     #coach-chatbot .message {
-        max-width: 78% !important;
+        max-width: 92% !important;
+        width: auto !important;
         border-radius: 16px !important;
-        line-height: 1.5 !important;
-        padding: 10px 13px !important;
+        line-height: 1.6 !important;
+        padding: 12px 15px !important;
         box-shadow: 0 6px 16px rgba(0, 0, 0, .16) !important;
+    }
+
+    #coach-chatbot .message p,
+    #coach-chatbot .message li,
+    #coach-chatbot .message span,
+    #coach-chatbot .message div {
+        color: inherit !important;
+    }
+
+    #coach-chatbot .message p {
+        margin-top: 0 !important;
+        margin-bottom: .8em !important;
+    }
+
+    #coach-chatbot .message p:last-child {
+        margin-bottom: 0 !important;
     }
 
     #coach-chatbot .message.user,
@@ -192,12 +142,19 @@ def build_chat_page(workspace_name, credit_balance, visible=False):
         color: white !important;
     }
 
+    #coach-chatbot [data-testid="bot"],
+    #coach-chatbot [data-testid="assistant"],
+    #coach-chatbot .message-row.bot,
+    #coach-chatbot .message-row.assistant {
+        background: transparent !important;
+    }
+
     #coach-chatbot .message.bot,
     #coach-chatbot .message.assistant,
     #coach-chatbot [data-testid="bot"] {
-        background: rgba(48, 57, 92, .95) !important;
-        border: 1px solid rgba(34, 211, 238, .22) !important;
-        color: #f7f8ff !important;
+        background: rgba(15, 23, 42, .96) !important;
+        border: 1px solid rgba(139, 92, 246, .30) !important;
+        color: #f8fafc !important;
     }
 
     #coach-chat-composer {
@@ -314,13 +271,13 @@ def build_chat_page(workspace_name, credit_balance, visible=False):
         send_button.click(
             fn=_respond,
             inputs=[message_box, chatbot, workspace_name],
-            outputs=[message_box, chatbot, credit_balance],
+            outputs=[message_box, chatbot],
         )
 
         message_box.submit(
             fn=_respond,
             inputs=[message_box, chatbot, workspace_name],
-            outputs=[message_box, chatbot, credit_balance],
+            outputs=[message_box, chatbot],
         )
 
     return chat_page
