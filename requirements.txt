@@ -1,4 +1,4 @@
-gradio
+gradio==6.26.0
 openai
 python-dotenv
 opencv-python-headless
