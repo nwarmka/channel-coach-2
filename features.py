@@ -3356,7 +3356,7 @@ def build_creator_coach_context(user_id="main"):
         }
     }
 
-    return json.dumps(context, indent=2, ensure_ascii=False)
+    return json.dumps(context, indent=2, ensure_ascii=False, default=str)
 
 
 def ask_creator_coach(user_question, user_id="main"):
@@ -4136,6 +4136,7 @@ def render_getting_started_checklist(user_id="main"):
         {items_html}
     </div>
     '''
+
 
 
 
