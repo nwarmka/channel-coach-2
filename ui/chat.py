@@ -24,8 +24,7 @@ def _respond(message, history, workspace_name):
 def build_chat_page(workspace_name, credit_balance=None, visible=False):
     """
     Full-page Coach Chat.
-    Backend behavior is unchanged. This version keeps the styling
-    clean, compact, and closer to the original layout.
+    Assistant messages use the full chat width instead of smaller nested boxes.
     """
 
     css = """
@@ -73,11 +72,19 @@ def build_chat_page(workspace_name, credit_balance=None, visible=False):
         min-height: 50vh !important;
         height: 50vh !important;
         margin: 0 auto 10px !important;
-        padding: 12px !important;
+        padding: 12px 18px !important;
 
         background:
-            radial-gradient(circle at 18% 0%, rgba(139, 92, 246, .10), transparent 34%),
-            linear-gradient(180deg, #0b1020 0%, #080d18 100%) !important;
+            radial-gradient(
+                circle at 18% 0%,
+                rgba(139, 92, 246, .10),
+                transparent 34%
+            ),
+            linear-gradient(
+                180deg,
+                #0b1020 0%,
+                #080d18 100%
+            ) !important;
 
         border: 1px solid rgba(168, 85, 247, .62) !important;
         border-radius: 18px !important;
@@ -85,8 +92,14 @@ def build_chat_page(workspace_name, credit_balance=None, visible=False):
         box-shadow:
             inset 0 0 28px rgba(139, 92, 246, .05),
             0 12px 28px rgba(0, 0, 0, .24) !important;
+
+        overflow-y: auto !important;
     }
 
+    /*
+       Remove Gradio's extra internal boxes and panels.
+       The outer Coach Chat container remains.
+    */
     #coach-chatbot > div,
     #coach-chatbot .wrap,
     #coach-chatbot .panel,
@@ -99,20 +112,27 @@ def build_chat_page(workspace_name, credit_balance=None, visible=False):
         box-shadow: none !important;
     }
 
-    /* Remove Gradio's generic Chatbot heading/label */
+    /*
+       Remove Gradio's generic Chatbot heading/label.
+    */
     #coach-chatbot label,
     #coach-chatbot .label-wrap,
     #coach-chatbot [class*="label"] {
         display: none !important;
     }
 
+    /*
+       Base message styling.
+       Messages are allowed to use the full available width.
+    */
     #coach-chatbot .message {
-        max-width: 92% !important;
-        width: auto !important;
-        border-radius: 16px !important;
+        max-width: none !important;
+        width: 100% !important;
+        border-radius: 0 !important;
         line-height: 1.6 !important;
-        padding: 12px 15px !important;
-        box-shadow: 0 6px 16px rgba(0, 0, 0, .16) !important;
+        padding: 12px 8px !important;
+        box-shadow: none !important;
+        margin: 0 !important;
     }
 
     #coach-chatbot .message p,
@@ -131,32 +151,52 @@ def build_chat_page(workspace_name, credit_balance=None, visible=False):
         margin-bottom: 0 !important;
     }
 
-    #coach-chatbot .message.user,
-    #coach-chatbot [data-testid="user"] {
-        background: linear-gradient(
-            135deg,
-            rgba(124, 58, 237, .86),
-            rgba(190, 24, 93, .68)
-        ) !important;
-        border: 1px solid rgba(244, 114, 182, .48) !important;
-        color: white !important;
-    }
-
+    /*
+       Assistant messages:
+       full-width, no separate card or bubble.
+    */
+    #coach-chatbot .message.bot,
+    #coach-chatbot .message.assistant,
     #coach-chatbot [data-testid="bot"],
     #coach-chatbot [data-testid="assistant"],
     #coach-chatbot .message-row.bot,
     #coach-chatbot .message-row.assistant {
         background: transparent !important;
-    }
-
-    #coach-chatbot .message.bot,
-    #coach-chatbot .message.assistant,
-    #coach-chatbot [data-testid="bot"] {
-        background: rgba(15, 23, 42, .96) !important;
-        border: 1px solid rgba(139, 92, 246, .30) !important;
+        border: none !important;
+        box-shadow: none !important;
         color: #f8fafc !important;
+        max-width: none !important;
+        width: 100% !important;
     }
 
+    /*
+       User messages:
+       keep a colored bubble so your messages are easy to distinguish.
+    */
+    #coach-chatbot .message.user,
+    #coach-chatbot [data-testid="user"] {
+        width: auto !important;
+        max-width: 80% !important;
+        margin-left: auto !important;
+        padding: 10px 14px !important;
+
+        background: linear-gradient(
+            135deg,
+            rgba(124, 58, 237, .86),
+            rgba(190, 24, 93, .68)
+        ) !important;
+
+        border: 1px solid rgba(244, 114, 182, .48) !important;
+        border-radius: 16px !important;
+        color: white !important;
+
+        box-shadow:
+            0 6px 16px rgba(0, 0, 0, .16) !important;
+    }
+
+    /*
+       Composer / input area.
+    */
     #coach-chat-composer {
         width: min(900px, 96%) !important;
         margin: 0 auto !important;
@@ -201,7 +241,13 @@ def build_chat_page(workspace_name, credit_balance=None, visible=False):
         border-radius: 13px !important;
         font-size: 17px !important;
         color: white !important;
-        background: linear-gradient(135deg, #7c3aed, #ec4899) !important;
+
+        background: linear-gradient(
+            135deg,
+            #7c3aed,
+            #ec4899
+        ) !important;
+
         border: none !important;
         box-shadow: 0 0 15px rgba(236, 72, 153, .28) !important;
     }
@@ -220,16 +266,21 @@ def build_chat_page(workspace_name, credit_balance=None, visible=False):
         #coach-chatbot {
             min-height: 54vh !important;
             height: 54vh !important;
-            padding: 9px !important;
+            padding: 10px 12px !important;
         }
 
-        #coach-chatbot .message {
+        #coach-chatbot .message.user,
+        #coach-chatbot [data-testid="user"] {
             max-width: 88% !important;
         }
     }
     """
 
-    with gr.Column(visible=visible, elem_id="chat-page") as chat_page:
+    with gr.Column(
+        visible=visible,
+        elem_id="chat-page",
+    ) as chat_page:
+
         gr.HTML(f"<style>{css}</style>")
 
         with gr.Row(elem_id="coach-chat-header"):
@@ -270,18 +321,31 @@ def build_chat_page(workspace_name, credit_balance=None, visible=False):
 
         send_button.click(
             fn=_respond,
-            inputs=[message_box, chatbot, workspace_name],
-            outputs=[message_box, chatbot],
+            inputs=[
+                message_box,
+                chatbot,
+                workspace_name,
+            ],
+            outputs=[
+                message_box,
+                chatbot,
+            ],
         )
 
         message_box.submit(
             fn=_respond,
-            inputs=[message_box, chatbot, workspace_name],
-            outputs=[message_box, chatbot],
+            inputs=[
+                message_box,
+                chatbot,
+                workspace_name,
+            ],
+            outputs=[
+                message_box,
+                chatbot,
+            ],
         )
 
     return chat_page
-
 
 
 
