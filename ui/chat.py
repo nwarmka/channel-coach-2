@@ -23,9 +23,9 @@ def _respond(message, history, workspace_name):
 
 def build_chat_page(workspace_name, credit_balance=None, visible=False):
     """
-    Full-page Coach Chat.
-    Removes the nested assistant message boxes so coach replies sit
-    directly inside the main chat window.
+    Full-page Coach Chat using Gradio's panel layout.
+    Keeps the Channel Coach styling while avoiding the nested
+    chat-bubble look.
     """
 
     css = """
@@ -66,7 +66,6 @@ def build_chat_page(workspace_name, credit_balance=None, visible=False):
     .cc-chat-orb {
         color: #22d3ee;
         font-size: 15px;
-
         text-shadow:
             0 0 10px rgba(34, 211, 238, .55);
     }
@@ -79,17 +78,16 @@ def build_chat_page(workspace_name, credit_balance=None, visible=False):
     }
 
     /* =========================
-       MAIN CHAT WINDOW
+       CHAT WINDOW
        ========================= */
 
     #coach-chatbot {
         width: min(900px, 96%) !important;
 
-        min-height: 300px !important;
-        height: 300px !important;
+        min-height: 320px !important;
+        height: 320px !important;
 
         margin: 0 auto 26px !important;
-        padding: 14px 18px !important;
 
         background:
             radial-gradient(
@@ -112,187 +110,48 @@ def build_chat_page(workspace_name, credit_balance=None, visible=False):
             inset 0 0 28px rgba(139, 92, 246, .05),
             0 12px 28px rgba(0, 0, 0, .24) !important;
 
-        overflow-y: auto !important;
+        overflow: hidden !important;
     }
 
-    /* =========================
-       REMOVE GRADIO INNER BOXES
-       ========================= */
-
-    #coach-chatbot > div,
-    #coach-chatbot .wrap,
-    #coach-chatbot .panel,
-    #coach-chatbot .container,
-    #coach-chatbot .bubble-wrap,
-    #coach-chatbot .message-wrap,
-    #coach-chatbot .message-row,
-    #coach-chatbot [class*="container"],
-    #coach-chatbot [class*="panel"],
-    #coach-chatbot [class*="wrap"] {
+    /*
+       Remove Gradio's outer component chrome,
+       but leave the panel message layout alone.
+    */
+    #coach-chatbot > div {
         background: transparent !important;
         border: none !important;
-        outline: none !important;
         box-shadow: none !important;
     }
 
-    /* Remove Gradio label */
     #coach-chatbot label,
     #coach-chatbot .label-wrap {
         display: none !important;
     }
 
-    /* =========================
-       MESSAGE ROWS
-       ========================= */
-
-    #coach-chatbot .message-row {
-        width: 100% !important;
-        max-width: 100% !important;
-
-        margin: 0 !important;
-        padding: 0 !important;
-
-        background: transparent !important;
-        border: none !important;
-        box-shadow: none !important;
-    }
-
-    /* =========================
-       ASSISTANT MESSAGE
-       ========================= */
-
-    #coach-chatbot [data-testid="assistant"],
-    #coach-chatbot [data-testid="bot"] {
-        width: 100% !important;
-        max-width: 100% !important;
-
-        margin: 0 !important;
-        padding: 0 !important;
-
-        background: transparent !important;
-
-        border: none !important;
-        outline: none !important;
-
-        box-shadow: none !important;
-    }
-
-    #coach-chatbot [data-testid="assistant"] > div,
-    #coach-chatbot [data-testid="bot"] > div {
-        width: 100% !important;
-        max-width: 100% !important;
-
-        margin: 0 !important;
-        padding: 0 !important;
-
-        background: transparent !important;
-
-        border: none !important;
-        outline: none !important;
-
-        box-shadow: none !important;
-    }
-
-    #coach-chatbot .message.assistant,
-    #coach-chatbot .message.bot,
-    #coach-chatbot [data-testid="assistant"] .message,
-    #coach-chatbot [data-testid="bot"] .message {
-        width: 100% !important;
-        max-width: 100% !important;
-
-        margin: 0 !important;
-        padding: 8px 0 !important;
-
-        background: transparent !important;
-
-        border: none !important;
-        outline: none !important;
-
-        border-radius: 0 !important;
-
-        box-shadow: none !important;
-
-        color: #f8fafc !important;
-
+    /*
+       Make text readable and keep the panel clean.
+    */
+    #coach-chatbot .message {
         line-height: 1.65 !important;
     }
 
-    /* =========================
-       KILL THE LAST INNER BORDER
-       ========================= */
-
-    #coach-chatbot [data-testid="assistant"] *,
-    #coach-chatbot [data-testid="bot"] * {
-        border-color: transparent !important;
-        box-shadow: none !important;
-    }
-
-    #coach-chatbot [data-testid="assistant"] .prose,
-    #coach-chatbot [data-testid="assistant"] .markdown,
-    #coach-chatbot [data-testid="assistant"] [class*="prose"],
-    #coach-chatbot [data-testid="assistant"] [class*="markdown"],
-    #coach-chatbot [data-testid="assistant"] [class*="message"],
-    #coach-chatbot [data-testid="assistant"] [class*="bubble"],
-
-    #coach-chatbot [data-testid="bot"] .prose,
-    #coach-chatbot [data-testid="bot"] .markdown,
-    #coach-chatbot [data-testid="bot"] [class*="prose"],
-    #coach-chatbot [data-testid="bot"] [class*="markdown"],
-    #coach-chatbot [data-testid="bot"] [class*="message"],
-    #coach-chatbot [data-testid="bot"] [class*="bubble"] {
-        width: 100% !important;
-        max-width: 100% !important;
-
-        margin: 0 !important;
-
-        background: transparent !important;
-
-        border: none !important;
-        outline: none !important;
-
-        border-radius: 0 !important;
-
-        box-shadow: none !important;
-
-        padding-left: 0 !important;
-        padding-right: 0 !important;
-    }
-
-    /* =========================
-       ASSISTANT TEXT
-       ========================= */
-
-    #coach-chatbot [data-testid="assistant"] p,
-    #coach-chatbot [data-testid="bot"] p {
-        color: #f8fafc !important;
-
+    #coach-chatbot .message p {
         margin-top: 0 !important;
         margin-bottom: 14px !important;
     }
 
-    #coach-chatbot [data-testid="assistant"] p:last-child,
-    #coach-chatbot [data-testid="bot"] p:last-child {
+    #coach-chatbot .message p:last-child {
         margin-bottom: 0 !important;
-    }
-
-    #coach-chatbot [data-testid="assistant"] li,
-    #coach-chatbot [data-testid="bot"] li {
-        color: #f8fafc !important;
     }
 
     /* =========================
        USER MESSAGE
        ========================= */
 
+    /*
+       Keep your own messages visually distinct.
+    */
     #coach-chatbot [data-testid="user"] {
-        width: auto !important;
-        max-width: 78% !important;
-
-        margin-left: auto !important;
-        margin-right: 0 !important;
-
-        padding: 10px 14px !important;
-
         background:
             linear-gradient(
                 135deg,
@@ -303,31 +162,35 @@ def build_chat_page(workspace_name, credit_balance=None, visible=False):
         border:
             1px solid rgba(244, 114, 182, .48) !important;
 
-        border-radius: 16px !important;
+        border-radius: 14px !important;
 
-        color: white !important;
-
-        box-shadow:
-            0 6px 16px rgba(0, 0, 0, .16) !important;
-    }
-
-    #coach-chatbot [data-testid="user"] .message {
-        background: transparent !important;
-        border: none !important;
-        box-shadow: none !important;
         color: white !important;
     }
 
     /* =========================
-       CHAT ACTION BUTTONS
+       ASSISTANT MESSAGE
+       ========================= */
+
+    /*
+       Coach responses should read more like
+       full-width content inside the panel.
+    */
+    #coach-chatbot [data-testid="assistant"],
+    #coach-chatbot [data-testid="bot"] {
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        color: #f8fafc !important;
+    }
+
+    /* =========================
+       ACTION BUTTONS
        ========================= */
 
     #coach-chatbot button {
         background: rgba(10, 13, 26, .72) !important;
-
         border:
             1px solid rgba(148, 163, 184, .24) !important;
-
         border-radius: 7px !important;
     }
 
@@ -365,9 +228,7 @@ def build_chat_page(workspace_name, credit_balance=None, visible=False):
 
     #coach-chat-input textarea {
         background: transparent !important;
-
         border: none !important;
-
         box-shadow: none !important;
 
         color: white !important;
@@ -378,8 +239,7 @@ def build_chat_page(workspace_name, credit_balance=None, visible=False):
     }
 
     #coach-chat-input textarea::placeholder {
-        color:
-            rgba(226, 232, 240, .48) !important;
+        color: rgba(226, 232, 240, .48) !important;
     }
 
     #coach-chat-input textarea:focus {
@@ -435,12 +295,6 @@ def build_chat_page(workspace_name, credit_balance=None, visible=False):
         #coach-chatbot {
             min-height: 54vh !important;
             height: 54vh !important;
-
-            padding: 10px 12px !important;
-        }
-
-        #coach-chatbot [data-testid="user"] {
-            max-width: 88% !important;
         }
     }
     """
@@ -466,6 +320,7 @@ def build_chat_page(workspace_name, credit_balance=None, visible=False):
             value=[],
             elem_id="coach-chatbot",
             label=None,
+            layout="panel",
         )
 
         with gr.Row(elem_id="coach-chat-composer"):
@@ -516,7 +371,6 @@ def build_chat_page(workspace_name, credit_balance=None, visible=False):
         )
 
     return chat_page
-
 
 
     
