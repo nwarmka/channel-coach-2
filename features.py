@@ -3434,8 +3434,9 @@ Answer as Coach Chat.
 
     try:
         response = client.responses.create(
-            model="gpt-4.1-mini",
+            model="gpt-5.6-luna",
             input=prompt,
+            reasoning={"effort": "none"},
             max_output_tokens=450,
         )
         return response.output_text
@@ -4183,7 +4184,6 @@ def render_getting_started_checklist(user_id="main"):
         {items_html}
     </div>
     '''
-
 
 
 
