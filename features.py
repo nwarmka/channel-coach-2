@@ -3401,22 +3401,14 @@ def build_creator_coach_context(user_id="main"):
     return context_json
 
 
-def ask_creator_coach(user_question, user_id="main"):
-    if not user_question or not str(user_question).strip():
-        return "Ask me something like: **What should I work on today?**"
-
-    if not os.getenv("OPENAI_API_KEY"):
-        return (
-            "Missing OPENAI_API_KEY. "
-            "Add your OpenAI API key to your Render environment variables."
-        )
-
-    total_start = time.perf_counter()
-
+def _build_creator_coach_prompt(user_question, user_id="main"):
+    """
+    Build the Coach Chat prompt and return (prompt, context_seconds).
+    Context is still cached by build_creator_coach_context().
+    """
     context_start = time.perf_counter()
     creator_context = build_creator_coach_context(user_id)
     context_seconds = time.perf_counter() - context_start
-    print(f"[COACH TIMING] CONTEXT: {context_seconds:.2f} seconds", flush=True)
 
     prompt = f"""
 You are Coach Chat inside Channel Coach, a supportive creator mentor
@@ -3439,29 +3431,116 @@ Creator's Question:
 Answer as Coach Chat.
 """
 
-    try:
-        api_start = time.perf_counter()
+    return prompt, context_seconds
 
-        response = client.responses.create(
+
+def stream_creator_coach(user_question, user_id="main"):
+    """
+    Stream Coach Chat text as it is generated.
+
+    This uses:
+    - GPT-5.6 Luna
+    - reasoning effort "none"
+    - Fast mode (service_tier="fast")
+    - Responses API streaming
+
+    The function yields text deltas as soon as OpenAI sends them.
+    """
+    if not user_question or not str(user_question).strip():
+        yield "Ask me something like: **What should I work on today?**"
+        return
+
+    if not os.getenv("OPENAI_API_KEY"):
+        yield (
+            "Missing OPENAI_API_KEY. "
+            "Add your OpenAI API key to your Render environment variables."
+        )
+        return
+
+    total_start = time.perf_counter()
+    prompt, context_seconds = _build_creator_coach_prompt(
+        user_question,
+        user_id=user_id,
+    )
+
+    print(
+        f"[COACH TIMING] CONTEXT: {context_seconds:.2f} seconds",
+        flush=True,
+    )
+
+    api_start = time.perf_counter()
+    first_token_logged = False
+
+    try:
+        stream = client.responses.create(
             model="gpt-5.6-luna",
             input=prompt,
             reasoning={"effort": "none"},
             max_output_tokens=300,
+            service_tier="fast",
+            stream=True,
+            stream_options={"include_obfuscation": False},
         )
+
+        for event in stream:
+            event_type = getattr(event, "type", "")
+
+            if event_type == "response.output_text.delta":
+                delta = getattr(event, "delta", "")
+
+                if delta:
+                    if not first_token_logged:
+                        first_token_seconds = time.perf_counter() - api_start
+                        print(
+                            f"[COACH TIMING] FIRST TOKEN: "
+                            f"{first_token_seconds:.2f} seconds",
+                            flush=True,
+                        )
+                        first_token_logged = True
+
+                    yield delta
 
         api_seconds = time.perf_counter() - api_start
         total_seconds = time.perf_counter() - total_start
 
-        print(f"[COACH TIMING] OPENAI: {api_seconds:.2f} seconds", flush=True)
-        print(f"[COACH TIMING] TOTAL: {total_seconds:.2f} seconds", flush=True)
-
-        return response.output_text
+        print(
+            f"[COACH TIMING] OPENAI STREAM TOTAL: "
+            f"{api_seconds:.2f} seconds",
+            flush=True,
+        )
+        print(
+            f"[COACH TIMING] TOTAL: {total_seconds:.2f} seconds",
+            flush=True,
+        )
 
     except Exception as e:
         total_seconds = time.perf_counter() - total_start
-        print(f"[COACH TIMING] ERROR AFTER: {total_seconds:.2f} seconds", flush=True)
-        print(f"[COACH TIMING] ERROR: {e}", flush=True)
-        return f"Coach Chat error: {e}"
+
+        print(
+            f"[COACH TIMING] ERROR AFTER: {total_seconds:.2f} seconds",
+            flush=True,
+        )
+        print(
+            f"[COACH TIMING] ERROR: {e}",
+            flush=True,
+        )
+
+        yield f"Coach Chat error: {e}"
+
+
+def ask_creator_coach(user_question, user_id="main"):
+    """
+    Non-streaming compatibility wrapper.
+
+    Other parts of Channel Coach can continue calling ask_creator_coach()
+    exactly as before. Coach Chat itself should call stream_creator_coach().
+    """
+    return "".join(
+        stream_creator_coach(
+            user_question,
+            user_id=user_id,
+        )
+    )
 
 # =========================
 # IMAGE / VIDEO HELPERS
