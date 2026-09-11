@@ -2,6 +2,7 @@ import os
 import json
 import base64
 import uuid
+import time
 import calendar
 import html
 import cv2
@@ -3304,18 +3305,48 @@ def _summarize_analytics_for_coach(entries, limit=5):
     return cleaned
 
 
+# =========================
+# COACH CHAT CONTEXT CACHE
+# =========================
+# Rebuilding the full creator workspace on every chat message can be slow,
+# especially when some data lives in Supabase. Cache the compact context
+# briefly so follow-up questions can get to OpenAI faster.
+
+COACH_CONTEXT_CACHE = {}
+COACH_CONTEXT_CACHE_SECONDS = 45
+
+
+def clear_coach_context_cache(user_id=None):
+    """Clear cached Coach Chat context for one workspace or all workspaces."""
+    if user_id is None:
+        COACH_CONTEXT_CACHE.clear()
+        return
+
+    uid = workspace_id(user_id)
+    COACH_CONTEXT_CACHE.pop(uid, None)
+
+
 def build_creator_coach_context(user_id="main"):
     """
-    Builds a compact workspace snapshot so Coach Chat can answer using
-    the creator's real Channel Coach data instead of giving generic advice.
+    Build a compact workspace snapshot for Coach Chat.
+
+    The result is cached briefly so each follow-up message does not reload
+    the same creator profile, calendar, reviews, and analytics from storage.
     """
+    uid = workspace_id(user_id)
+    now = time.time()
+
+    cached = COACH_CONTEXT_CACHE.get(uid)
+    if cached and (now - cached["time"]) < COACH_CONTEXT_CACHE_SECONDS:
+        return cached["context"]
+
     try:
-        profile = load_creator_profile(user_id)
+        profile = load_creator_profile(uid)
     except Exception:
         profile = {}
 
     try:
-        calendar_items = load_content_calendar(user_id)
+        calendar_items = load_content_calendar(uid)
     except Exception:
         calendar_items = []
 
@@ -3329,34 +3360,45 @@ def build_creator_coach_context(user_id="main"):
     except Exception:
         analytics_entries = []
 
-    try:
-        dashboard_stats = get_dashboard_stats(user_id)
-    except Exception:
-        dashboard_stats = {}
-
-    try:
-        health_html = render_creator_health()
-        health_text = html.unescape(str(health_html))
-        health_text = health_text.replace("<", " <").replace(">", "> ")[:1200]
-    except Exception:
-        health_text = ""
-
+    # Keep the chat context lean. Dashboard rendering and creator-health HTML
+    # are useful for the UI, but rebuilding them for every chat question adds
+    # latency and duplicates data already represented below.
     context = {
         "creator_profile": _summarize_creator_profile_for_coach(profile),
-        "dashboard_stats": dashboard_stats,
-        "creator_health_snapshot": health_text,
         "nearest_calendar_items": _summarize_calendar_for_coach(calendar_items),
         "recent_video_reviews": _summarize_reviews_for_coach(review_history),
         "recent_analytics": _summarize_analytics_for_coach(analytics_entries),
         "data_status": {
-            "has_creator_profile": any(str(v).strip() for v in profile.values()) if isinstance(profile, dict) else False,
-            "calendar_items_count": len(calendar_items) if isinstance(calendar_items, list) else 0,
-            "video_reviews_count": len(review_history) if isinstance(review_history, list) else 0,
-            "analytics_snapshots_count": len(analytics_entries) if isinstance(analytics_entries, list) else 0
-        }
+            "has_creator_profile": (
+                any(str(v).strip() for v in profile.values())
+                if isinstance(profile, dict)
+                else False
+            ),
+            "calendar_items_count": (
+                len(calendar_items) if isinstance(calendar_items, list) else 0
+            ),
+            "video_reviews_count": (
+                len(review_history) if isinstance(review_history, list) else 0
+            ),
+            "analytics_snapshots_count": (
+                len(analytics_entries) if isinstance(analytics_entries, list) else 0
+            ),
+        },
     }
 
-    return json.dumps(context, indent=2, ensure_ascii=False, default=str)
+    context_json = json.dumps(
+        context,
+        ensure_ascii=False,
+        separators=(",", ":"),
+        default=str,
+    )
+
+    COACH_CONTEXT_CACHE[uid] = {
+        "time": now,
+        "context": context_json,
+    }
+
+    return context_json
 
 
 def ask_creator_coach(user_question, user_id="main"):
@@ -3364,7 +3406,10 @@ def ask_creator_coach(user_question, user_id="main"):
         return "Ask me something like: **What should I work on today?**"
 
     if not os.getenv("OPENAI_API_KEY"):
-        return "Missing OPENAI_API_KEY. Add your OpenAI API key to your Render environment variables."
+        return (
+            "Missing OPENAI_API_KEY. "
+            "Add your OpenAI API key to your Render environment variables."
+        )
 
     creator_context = build_creator_coach_context(user_id)
 
@@ -3375,7 +3420,8 @@ Use the creator's saved workspace data to give practical, specific advice.
 Do not pretend data exists if it is missing.
 If the workspace is empty, give the creator a simple next step instead of generic strategy.
 Prioritize actions that help the creator publish consistently and improve over time.
-Use a warm, direct tone. Keep the response organized and not too long.
+Use a warm, direct tone.
+Keep normal answers concise unless the creator asks for detail.
 
 Creator Workspace Data:
 {creator_context}
@@ -3389,7 +3435,8 @@ Answer as Coach Chat.
     try:
         response = client.responses.create(
             model="gpt-4.1-mini",
-            input=prompt
+            input=prompt,
+            max_output_tokens=450,
         )
         return response.output_text
     except Exception as e:
