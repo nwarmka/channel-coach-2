@@ -3411,16 +3411,23 @@ def ask_creator_coach(user_question, user_id="main"):
             "Add your OpenAI API key to your Render environment variables."
         )
 
+    total_start = time.perf_counter()
+
+    context_start = time.perf_counter()
     creator_context = build_creator_coach_context(user_id)
+    context_seconds = time.perf_counter() - context_start
+    print(f"[COACH TIMING] CONTEXT: {context_seconds:.2f} seconds", flush=True)
 
     prompt = f"""
-You are Coach Chat inside Channel Coach, a supportive creator mentor for small content creators.
+You are Coach Chat inside Channel Coach, a supportive creator mentor
+for small content creators.
 
 Use the creator's saved workspace data to give practical, specific advice.
 Do not pretend data exists if it is missing.
-If the workspace is empty, give the creator a simple next step instead of generic strategy.
+If the workspace is empty, give the creator a simple next step instead
+of generic strategy.
 Prioritize actions that help the creator publish consistently and improve over time.
-Use a warm, direct tone.
+Be warm and direct.
 Keep normal answers concise unless the creator asks for detail.
 
 Creator Workspace Data:
@@ -3433,16 +3440,28 @@ Answer as Coach Chat.
 """
 
     try:
+        api_start = time.perf_counter()
+
         response = client.responses.create(
             model="gpt-5.6-luna",
             input=prompt,
             reasoning={"effort": "none"},
-            max_output_tokens=450,
+            max_output_tokens=300,
         )
-        return response.output_text
-    except Exception as e:
-        return f"Coach Chat error: {e}"
 
+        api_seconds = time.perf_counter() - api_start
+        total_seconds = time.perf_counter() - total_start
+
+        print(f"[COACH TIMING] OPENAI: {api_seconds:.2f} seconds", flush=True)
+        print(f"[COACH TIMING] TOTAL: {total_seconds:.2f} seconds", flush=True)
+
+        return response.output_text
+
+    except Exception as e:
+        total_seconds = time.perf_counter() - total_start
+        print(f"[COACH TIMING] ERROR AFTER: {total_seconds:.2f} seconds", flush=True)
+        print(f"[COACH TIMING] ERROR: {e}", flush=True)
+        return f"Coach Chat error: {e}"
 
 # =========================
 # IMAGE / VIDEO HELPERS
