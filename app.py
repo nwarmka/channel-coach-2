@@ -8,6 +8,7 @@ from ui.toolkit import build_toolkit_page
 from ui.settings import build_settings_page
 from ui.chat import build_chat_page
 from ui.bug_report import build_bug_report_page
+from ui.bug_admin import build_bug_admin_page
 from credits import ensure_initial_credits, get_credit_balance
 from auth import (
     empty_saved_session,
@@ -544,6 +545,7 @@ with gr.Blocks(title="Channel Coach") as app:
             toolkit_nav = gr.Button("🎬 Toolkit")
             settings_nav = gr.Button("⚙️ Settings")
             bug_report_nav = gr.Button("🐞 Report a Bug")
+            bug_admin_nav = gr.Button("🛠️ Bug Dashboard")
             logout_button = gr.Button("↪️ Log Out")
 
         menu_open = gr.State(False)
@@ -663,6 +665,11 @@ with gr.Blocks(title="Channel Coach") as app:
             visible=False,
         )
 
+        bug_admin_page = build_bug_admin_page(
+            workspace_name,
+            visible=False,
+        )
+
         settings_page = settings_components["page"]
         onboarding_output = settings_components["onboarding_output"]
         profile_channel_name = settings_components["profile_channel_name"]
@@ -679,7 +686,7 @@ with gr.Blocks(title="Channel Coach") as app:
     # =========================
     # PAGE NAVIGATION
     # =========================
-    PAGE_NAMES = ["chat", "dashboard", "calendar", "toolkit", "settings", "bugs"]
+    PAGE_NAMES = ["chat", "dashboard", "calendar", "toolkit", "settings", "bugs", "bug_admin"]
 
     def toggle_menu(is_open):
         new_state = not bool(is_open)
@@ -713,6 +720,7 @@ with gr.Blocks(title="Channel Coach") as app:
         toolkit_page,
         settings_page,
         bug_report_page,
+        bug_admin_page,
         menu_panel,
         menu_open,
         current_page,
@@ -758,6 +766,12 @@ with gr.Blocks(title="Channel Coach") as app:
     )
     bug_report_nav.click(
         lambda current: navigate_to("bugs", current),
+        inputs=[current_page],
+        outputs=page_outputs,
+        show_progress="hidden",
+    )
+    bug_admin_nav.click(
+        lambda current: navigate_to("bug_admin", current),
         inputs=[current_page],
         outputs=page_outputs,
         show_progress="hidden",
