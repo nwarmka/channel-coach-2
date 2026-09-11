@@ -3473,13 +3473,16 @@ def stream_creator_coach(user_question, user_id="main"):
 
     try:
         stream = client.responses.create(
-            model="gpt-4.1-nano",
+            model="gpt-5.6-luna",
             input=prompt,
+            reasoning={"effort": "none"},
             max_output_tokens=300,
             service_tier="fast",
             stream=True,
             stream_options={"include_obfuscation": False},
         )
+
+        completed_response = None
 
         for event in stream:
             event_type = getattr(event, "type", "")
@@ -3498,6 +3501,21 @@ def stream_creator_coach(user_question, user_id="main"):
                         first_token_logged = True
 
                     yield delta
+
+            elif event_type == "response.completed":
+                completed_response = getattr(event, "response", None)
+
+        actual_service_tier = getattr(
+            completed_response,
+            "service_tier",
+            None,
+        )
+
+        print(
+            f"[COACH TIMING] SERVICE TIER: "
+            f"{actual_service_tier or 'not reported'}",
+            flush=True,
+        )
 
         api_seconds = time.perf_counter() - api_start
         total_seconds = time.perf_counter() - total_start
