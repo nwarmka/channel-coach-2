@@ -3468,6 +3468,11 @@ def stream_creator_coach(user_question, user_id="main"):
         flush=True,
     )
 
+    print(
+        f"[COACH TIMING] PROMPT CHARS: {len(prompt):,}",
+        flush=True,
+    )
+
     api_start = time.perf_counter()
     first_token_logged = False
 
@@ -4299,7 +4304,6 @@ def render_getting_started_checklist(user_id="main"):
         {items_html}
     </div>
     '''
-
 
 
 
