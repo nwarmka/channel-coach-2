@@ -13,273 +13,339 @@ load_dotenv()
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+CHANNEL_COACH_ADMIN_USER_ID = os.getenv("CHANNEL_COACH_ADMIN_USER_ID", "").strip()
 
-_bug_client = None
+_admin_client = None
 
 
 def _client():
-    """
-    Backend-only Supabase client for bug reports.
+    global _admin_client
 
-    SUPABASE_SERVICE_ROLE_KEY must stay in Render/server environment variables.
-    Never expose it in browser code or commit it to GitHub.
-    """
-    global _bug_client
-
-    if _bug_client is not None:
-        return _bug_client
+    if _admin_client is not None:
+        return _admin_client
 
     if not create_client or not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
-        raise RuntimeError(
-            "Bug reporting is not configured. Add SUPABASE_URL and "
-            "SUPABASE_SERVICE_ROLE_KEY to the Render environment."
-        )
+        raise RuntimeError("Admin bug dashboard is not configured.")
 
-    _bug_client = create_client(
+    _admin_client = create_client(
         SUPABASE_URL,
         SUPABASE_SERVICE_ROLE_KEY,
     )
+    return _admin_client
 
-    return _bug_client
 
-
-def _valid_user_id(user_id):
+def _is_admin(user_id):
     try:
-        return str(uuid.UUID(str(user_id)))
-    except (ValueError, TypeError, AttributeError):
-        raise ValueError("A valid signed-in user is required to submit a bug report.")
+        current = str(uuid.UUID(str(user_id)))
+        configured = str(uuid.UUID(CHANNEL_COACH_ADMIN_USER_ID))
+        return current == configured
+    except Exception:
+        return False
 
 
-def submit_bug_report(
-    page_name,
-    category,
-    severity,
-    what_happened,
-    expected_behavior,
-    steps_to_reproduce,
-    user_id,
-):
-    """
-    Save a bug report to Supabase.
-    """
-    user_id = _valid_user_id(user_id)
+def _render_reports(rows):
+    if not rows:
+        return """
+        <div class="bug-admin-empty">
+            No bug reports match these filters.
+        </div>
+        """
 
-    what_happened = (what_happened or "").strip()
-    expected_behavior = (expected_behavior or "").strip()
-    steps_to_reproduce = (steps_to_reproduce or "").strip()
-    page_name = (page_name or "Other").strip()
-    category = (category or "Other").strip()
-    severity = (severity or "Medium").strip()
+    cards = []
 
-    if not what_happened:
-        return (
-            "❌ Please tell us what happened.",
-            gr.update(),
-            gr.update(),
-            gr.update(),
+    for row in rows:
+        report_id = str(row.get("id", ""))
+        page_name = row.get("page_name", "Other")
+        category = row.get("category", "Other")
+        severity = row.get("severity", "Medium")
+        status = row.get("status", "new")
+        what = row.get("what_happened", "")
+        expected = row.get("expected_behavior", "")
+        steps = row.get("steps_to_reproduce", "")
+        created = str(row.get("created_at", "")).replace("T", " ")[:19]
+
+        cards.append(
+            f"""
+            <div class="bug-admin-card">
+                <div class="bug-admin-top">
+                    <span class="bug-admin-severity">{severity}</span>
+                    <span class="bug-admin-status">{status.upper()}</span>
+                    <span class="bug-admin-date">{created}</span>
+                </div>
+
+                <div class="bug-admin-meta">
+                    <b>{page_name}</b> · {category}
+                </div>
+
+                <div class="bug-admin-section">
+                    <span>WHAT HAPPENED</span>
+                    <p>{gr.utils.sanitize_html(what) if hasattr(gr.utils, "sanitize_html") else what}</p>
+                </div>
+
+                <div class="bug-admin-section">
+                    <span>EXPECTED</span>
+                    <p>{gr.utils.sanitize_html(expected) if hasattr(gr.utils, "sanitize_html") else expected or "—"}</p>
+                </div>
+
+                <div class="bug-admin-section">
+                    <span>STEPS</span>
+                    <p>{gr.utils.sanitize_html(steps) if hasattr(gr.utils, "sanitize_html") else steps or "—"}</p>
+                </div>
+
+                <div class="bug-admin-id">
+                    Report ID: {report_id}
+                </div>
+            </div>
+            """
         )
+
+    return "".join(cards)
+
+
+def load_bug_reports(status_filter, severity_filter, user_id):
+    if not _is_admin(user_id):
+        return (
+            """
+            <div class="bug-admin-denied">
+                🔒 This page is restricted to the Channel Coach administrator.
+            </div>
+            """,
+            gr.update(choices=[], value=None),
+        )
+
+    try:
+        query = (
+            _client()
+            .table("bug_reports")
+            .select("*")
+            .order("created_at", desc=True)
+        )
+
+        if status_filter and status_filter != "All":
+            query = query.eq("status", status_filter.lower())
+
+        if severity_filter and severity_filter != "All":
+            query = query.eq("severity", severity_filter)
+
+        result = query.execute()
+        rows = result.data or []
+
+        choices = [
+            (
+                f'{row.get("severity", "Medium")} | '
+                f'{row.get("status", "new").upper()} | '
+                f'{row.get("page_name", "Other")} | '
+                f'{str(row.get("what_happened", ""))[:55]}',
+                str(row.get("id")),
+            )
+            for row in rows
+        ]
+
+        return (
+            _render_reports(rows),
+            gr.update(choices=choices, value=None),
+        )
+
+    except Exception as exc:
+        print(f"Bug dashboard load failed: {exc}", flush=True)
+        return (
+            "<div class='bug-admin-denied'>❌ Could not load bug reports.</div>",
+            gr.update(choices=[], value=None),
+        )
+
+
+def update_bug_status(report_id, new_status, user_id):
+    if not _is_admin(user_id):
+        return "❌ Admin access required."
+
+    if not report_id:
+        return "❌ Choose a bug report first."
+
+    status = (new_status or "").strip().lower()
+
+    if status not in {"new", "reviewing", "fixed", "closed"}:
+        return "❌ Invalid status."
 
     try:
         (
             _client()
             .table("bug_reports")
-            .insert({
-                "user_id": user_id,
-                "page_name": page_name,
-                "category": category,
-                "severity": severity,
-                "what_happened": what_happened,
-                "expected_behavior": expected_behavior,
-                "steps_to_reproduce": steps_to_reproduce,
-                "status": "new",
-            })
+            .update({"status": status})
+            .eq("id", report_id)
             .execute()
         )
-
-        return (
-            "✅ Bug report submitted. Thank you — it has been saved for review.",
-            "",
-            "",
-            "",
-        )
+        return f"✅ Bug report marked {status}."
 
     except Exception as exc:
-        print(f"Bug report submission failed: {exc}", flush=True)
-        return (
-            "❌ I couldn't save the bug report right now. Please try again.",
-            gr.update(),
-            gr.update(),
-            gr.update(),
-        )
+        print(f"Bug status update failed: {exc}", flush=True)
+        return "❌ Could not update that bug report."
 
 
-def build_bug_report_page(workspace_name, visible=False):
-    """
-    Build the in-app Channel Coach bug report page.
-    """
-
+def build_bug_admin_page(workspace_name, visible=False):
     css = """
-    #bug-report-page {
+    #bug-admin-page {
         width: 100% !important;
-        max-width: 900px !important;
+        max-width: 1000px !important;
         margin: 0 auto !important;
         padding: 8px 0 30px !important;
-        background: transparent !important;
-        border: none !important;
-        box-shadow: none !important;
     }
 
-    #bug-report-card {
-        padding: 22px !important;
-        background:
-            radial-gradient(circle at 12% 0%, rgba(139,92,246,.12), transparent 34%),
-            linear-gradient(180deg, rgba(13,17,29,.98), rgba(7,10,18,.99)) !important;
-        border: 1px solid rgba(139,92,246,.46) !important;
-        border-radius: 20px !important;
-        box-shadow:
-            0 18px 38px rgba(0,0,0,.32),
-            0 0 24px rgba(139,92,246,.08) !important;
-    }
-
-    #bug-report-page h2 {
-        margin-bottom: 6px !important;
+    #bug-admin-page h2 {
         background: linear-gradient(90deg,#ff3ea5,#8b5cf6,#16d9ff);
-        -webkit-background-clip: text;
-        background-clip: text;
-        color: transparent !important;
+        -webkit-background-clip:text;
+        background-clip:text;
+        color:transparent !important;
     }
 
-    #bug-report-page .cc-bug-subtitle {
-        color: #9aa5bd;
-        margin-bottom: 18px;
+    #bug-admin-list {
+        margin-top: 16px !important;
     }
 
-    #bug-submit-button {
-        margin-top: 8px !important;
-        min-height: 48px !important;
-        background: linear-gradient(90deg,#8b5cf6,#ff3ea5) !important;
-        color: white !important;
-        border: none !important;
-        font-weight: 900 !important;
+    .bug-admin-card {
+        margin: 0 0 14px;
+        padding: 18px;
+        border-radius: 18px;
+        background: linear-gradient(180deg,rgba(18,23,42,.98),rgba(9,12,23,.98));
+        border: 1px solid rgba(139,92,246,.42);
+        box-shadow: 0 12px 26px rgba(0,0,0,.25);
+        color: #eef2ff;
     }
 
-    #bug-report-status {
-        margin-top: 10px !important;
+    .bug-admin-top {
+        display:flex;
+        gap:10px;
+        align-items:center;
+        flex-wrap:wrap;
+        margin-bottom:10px;
     }
 
-    #bug-report-status p {
-        color: #e8ebf5 !important;
+    .bug-admin-severity,
+    .bug-admin-status {
+        padding:4px 9px;
+        border-radius:999px;
+        font-size:11px;
+        font-weight:900;
+        letter-spacing:.05em;
+        background:rgba(139,92,246,.18);
+        border:1px solid rgba(139,92,246,.35);
+    }
+
+    .bug-admin-date {
+        color:#8f9bb3;
+        font-size:12px;
+        margin-left:auto;
+    }
+
+    .bug-admin-meta {
+        color:#cbd5e1;
+        margin-bottom:14px;
+    }
+
+    .bug-admin-section {
+        margin-top:12px;
+        padding-top:12px;
+        border-top:1px solid rgba(255,255,255,.06);
+    }
+
+    .bug-admin-section span {
+        color:#22d3ee;
+        font-size:10px;
+        font-weight:900;
+        letter-spacing:.08em;
+    }
+
+    .bug-admin-section p {
+        color:#e8ebf5;
+        margin:6px 0 0;
+        white-space:pre-wrap;
+    }
+
+    .bug-admin-id {
+        color:#6f7b93;
+        font-size:10px;
+        margin-top:14px;
+    }
+
+    .bug-admin-denied,
+    .bug-admin-empty {
+        padding:22px;
+        border-radius:16px;
+        background:rgba(15,23,42,.88);
+        border:1px solid rgba(139,92,246,.3);
+        color:#cbd5e1;
+        text-align:center;
     }
     """
 
-    with gr.Column(
-        visible=visible,
-        elem_id="bug-report-page",
-    ) as page:
-
+    with gr.Column(visible=visible, elem_id="bug-admin-page") as page:
         gr.HTML(f"<style>{css}</style>")
+        gr.Markdown("## 🛠️ Bug Dashboard")
+        gr.Markdown("Review tester reports and update their status.")
 
-        with gr.Column(elem_id="bug-report-card"):
-            gr.HTML(
-                """
-                <h2>🐞 Report a Bug</h2>
-                <div class="cc-bug-subtitle">
-                    Tell us what went wrong so we can improve Channel Coach.
-                </div>
-                """
+        with gr.Row():
+            status_filter = gr.Dropdown(
+                choices=["All", "New", "Reviewing", "Fixed", "Closed"],
+                value="All",
+                label="Status",
             )
-
-            with gr.Row():
-                page_name = gr.Dropdown(
-                    choices=[
-                        "Home / Dashboard",
-                        "Coach Chat",
-                        "Calendar",
-                        "Toolkit",
-                        "Settings",
-                        "Login / Account",
-                        "Credits",
-                        "Other",
-                    ],
-                    value="Other",
-                    label="Where did it happen?",
-                )
-
-                category = gr.Dropdown(
-                    choices=[
-                        "Something didn't work",
-                        "Wrong or missing data",
-                        "Layout / visual issue",
-                        "Slow / performance issue",
-                        "Login / account issue",
-                        "Credits issue",
-                        "Other",
-                    ],
-                    value="Something didn't work",
-                    label="Type of problem",
-                )
-
-                severity = gr.Dropdown(
-                    choices=[
-                        "Low",
-                        "Medium",
-                        "High",
-                        "Critical",
-                    ],
-                    value="Medium",
-                    label="How serious is it?",
-                )
-
-            what_happened = gr.Textbox(
-                label="What happened?",
-                placeholder="Example: I clicked an event on the calendar and nothing opened.",
-                lines=5,
+            severity_filter = gr.Dropdown(
+                choices=["All", "Low", "Medium", "High", "Critical"],
+                value="All",
+                label="Severity",
             )
+            refresh_button = gr.Button("↻ Refresh")
 
-            expected_behavior = gr.Textbox(
-                label="What did you expect to happen?",
-                placeholder="Example: I expected the event editor to open.",
-                lines=4,
-            )
+        report_list = gr.HTML(
+            "<div class='bug-admin-empty'>Open this page to load reports.</div>",
+            elem_id="bug-admin-list",
+        )
 
-            steps_to_reproduce = gr.Textbox(
-                label="How can we reproduce it? (optional)",
-                placeholder=(
-                    "Example:\n"
-                    "1. Open Calendar\n"
-                    "2. Click an event\n"
-                    "3. Nothing happens"
-                ),
-                lines=5,
-            )
+        gr.Markdown("### Update a report")
+        report_picker = gr.Dropdown(
+            choices=[],
+            label="Bug report",
+        )
+        new_status = gr.Dropdown(
+            choices=["New", "Reviewing", "Fixed", "Closed"],
+            value="Reviewing",
+            label="New status",
+        )
+        update_button = gr.Button("UPDATE STATUS", variant="primary")
+        update_message = gr.Markdown()
 
-            submit_button = gr.Button(
-                "SUBMIT BUG REPORT",
-                variant="primary",
-                elem_id="bug-submit-button",
-            )
+        refresh_button.click(
+            load_bug_reports,
+            inputs=[status_filter, severity_filter, workspace_name],
+            outputs=[report_list, report_picker],
+            show_progress="hidden",
+        )
 
-            status = gr.Markdown(elem_id="bug-report-status")
+        status_filter.change(
+            load_bug_reports,
+            inputs=[status_filter, severity_filter, workspace_name],
+            outputs=[report_list, report_picker],
+            show_progress="hidden",
+        )
 
-            submit_button.click(
-                fn=submit_bug_report,
-                inputs=[
-                    page_name,
-                    category,
-                    severity,
-                    what_happened,
-                    expected_behavior,
-                    steps_to_reproduce,
-                    workspace_name,
-                ],
-                outputs=[
-                    status,
-                    what_happened,
-                    expected_behavior,
-                    steps_to_reproduce,
-                ],
-                show_progress="hidden",
-            )
+        severity_filter.change(
+            load_bug_reports,
+            inputs=[status_filter, severity_filter, workspace_name],
+            outputs=[report_list, report_picker],
+            show_progress="hidden",
+        )
+
+        update_button.click(
+            update_bug_status,
+            inputs=[report_picker, new_status, workspace_name],
+            outputs=[update_message],
+            show_progress="hidden",
+        ).then(
+            load_bug_reports,
+            inputs=[status_filter, severity_filter, workspace_name],
+            outputs=[report_list, report_picker],
+            show_progress="hidden",
+        )
 
     return page
+
 
