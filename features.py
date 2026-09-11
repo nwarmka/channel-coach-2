@@ -3473,9 +3473,8 @@ def stream_creator_coach(user_question, user_id="main"):
 
     try:
         stream = client.responses.create(
-            model="gpt-5.6-luna",
+            model="gpt-4.1-nano",
             input=prompt,
-            reasoning={"effort": "none"},
             max_output_tokens=300,
             service_tier="fast",
             stream=True,
