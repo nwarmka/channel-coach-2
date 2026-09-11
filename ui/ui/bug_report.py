@@ -283,3 +283,4 @@ def build_bug_report_page(workspace_name, visible=False):
 
     return page
 
+
