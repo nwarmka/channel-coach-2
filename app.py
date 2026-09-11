@@ -7,6 +7,7 @@ from ui.dashboard import build_dashboard_page
 from ui.toolkit import build_toolkit_page
 from ui.settings import build_settings_page
 from ui.chat import build_chat_page
+from ui.bug_report import build_bug_report_page
 from credits import ensure_initial_credits, get_credit_balance
 from auth import (
     empty_saved_session,
@@ -542,6 +543,7 @@ with gr.Blocks(title="Channel Coach") as app:
             calendar_nav = gr.Button("📅 Calendar")
             toolkit_nav = gr.Button("🎬 Toolkit")
             settings_nav = gr.Button("⚙️ Settings")
+            bug_report_nav = gr.Button("🐞 Report a Bug")
             logout_button = gr.Button("↪️ Log Out")
 
         menu_open = gr.State(False)
@@ -656,6 +658,11 @@ with gr.Blocks(title="Channel Coach") as app:
             visible=False,
         )
 
+        bug_report_page = build_bug_report_page(
+            workspace_name,
+            visible=False,
+        )
+
         settings_page = settings_components["page"]
         onboarding_output = settings_components["onboarding_output"]
         profile_channel_name = settings_components["profile_channel_name"]
@@ -672,7 +679,7 @@ with gr.Blocks(title="Channel Coach") as app:
     # =========================
     # PAGE NAVIGATION
     # =========================
-    PAGE_NAMES = ["chat", "dashboard", "calendar", "toolkit", "settings"]
+    PAGE_NAMES = ["chat", "dashboard", "calendar", "toolkit", "settings", "bugs"]
 
     def toggle_menu(is_open):
         new_state = not bool(is_open)
@@ -705,6 +712,7 @@ with gr.Blocks(title="Channel Coach") as app:
         calendar_page,
         toolkit_page,
         settings_page,
+        bug_report_page,
         menu_panel,
         menu_open,
         current_page,
@@ -744,6 +752,12 @@ with gr.Blocks(title="Channel Coach") as app:
     )
     settings_nav.click(
         lambda current: navigate_to("settings", current),
+        inputs=[current_page],
+        outputs=page_outputs,
+        show_progress="hidden",
+    )
+    bug_report_nav.click(
+        lambda current: navigate_to("bugs", current),
         inputs=[current_page],
         outputs=page_outputs,
         show_progress="hidden",
@@ -956,7 +970,6 @@ app.launch(
     head=custom_head,
     css=custom_css,
 )
-
 
 
 
