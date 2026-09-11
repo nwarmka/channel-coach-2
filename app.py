@@ -118,180 +118,10 @@ with gr.Blocks(title="Channel Coach") as app:
       background:linear-gradient(90deg,rgba(139,92,246,.20),rgba(255,62,165,.15))!important;
       border-color:rgba(255,62,165,.42)!important;
     }
-
     /* =========================
-       FULL PAGE COACH CHAT
+       PAGE WIDTHS
+       Coach Chat styling now lives entirely in ui/chat.py.
        ========================= */
-
-    #chat-page{
-      width:100%!important;
-      max-width:none!important;
-      height:calc(100vh - 105px)!important;
-      min-height:650px!important;
-      margin:0!important;
-      padding:0!important;
-      border:0!important;
-      border-radius:0!important;
-      background:transparent!important;
-      box-shadow:none!important;
-    }
-
-    #coach-chat-header{
-      max-width:900px!important;
-      width:100%!important;
-      margin:0 auto!important;
-      padding:8px 18px 10px!important;
-    }
-
-    .cc-chat-title{
-      display:flex;
-      align-items:center;
-      gap:10px;
-      color:#f7f7fb;
-      font-size:.9rem;
-      font-weight:900;
-      letter-spacing:.12em;
-    }
-
-    .cc-chat-orb{
-      color:var(--cyan);
-      text-shadow:
-        0 0 12px rgba(22,217,255,.65),
-        0 0 24px rgba(139,92,246,.35);
-    }
-
-    #coach-chatbot{
-      width:100%!important;
-      max-width:900px!important;
-      margin:0 auto!important;
-      flex:1 1 auto!important;
-      background:
-        radial-gradient(circle at 18% 0%, rgba(139,92,246,.34), transparent 42%),
-        radial-gradient(circle at 88% 12%, rgba(22,217,255,.12), transparent 34%),
-        linear-gradient(180deg, #242a4a 0%, #1c2240 58%, #171c35 100%)!important;
-      border:2px solid rgba(154,106,255,.90)!important;
-      border-radius:22px!important;
-      box-shadow:
-        inset 0 0 34px rgba(139,92,246,.12),
-        0 18px 42px rgba(0,0,0,.34),
-        0 0 34px rgba(139,92,246,.24)!important;
-      padding:10px!important;
-    }
-
-    #coach-chatbot > div,
-    #coach-chatbot .wrap,
-    #coach-chatbot .container{
-      background:#1b213c!important;
-      border:0!important;
-      box-shadow:none!important;
-      border-radius:18px!important;
-    }
-
-    #coach-chatbot .message{
-      border-radius:18px!important;
-      line-height:1.55!important;
-      box-shadow:0 8px 22px rgba(0,0,0,.16)!important;
-    }
-
-    #coach-chatbot .message.user,
-    #coach-chatbot [data-testid="user"]{
-      background:linear-gradient(
-        135deg,
-        rgba(139,92,246,.72),
-        rgba(255,62,165,.56)
-      )!important;
-      border:1px solid rgba(255,110,196,.68)!important;
-      color:#fff!important;
-    }
-
-    #coach-chatbot .message.bot,
-    #coach-chatbot .message.assistant,
-    #coach-chatbot [data-testid="bot"]{
-      background:linear-gradient(
-        135deg,
-        #30385f,
-        #272f52
-      )!important;
-      border:1px solid rgba(22,217,255,.34)!important;
-      color:#f7f8ff!important;
-      box-shadow:0 8px 22px rgba(0,0,0,.22)!important;
-    }
-
-    #coach-chat-composer{
-      width:calc(100% - 28px)!important;
-      max-width:900px!important;
-      margin:10px auto 16px!important;
-      padding:9px 10px!important;
-      background:#10131c!important;
-      border:1px solid rgba(139,92,246,.48)!important;
-      border-radius:22px!important;
-      box-shadow:
-        0 12px 36px rgba(0,0,0,.38),
-        0 0 20px rgba(139,92,246,.08)!important;
-    }
-
-    #coach-chat-input{
-      background:transparent!important;
-      border:0!important;
-      box-shadow:none!important;
-    }
-
-    #coach-chat-input textarea{
-      background:transparent!important;
-      border:0!important;
-      box-shadow:none!important;
-      color:#fff!important;
-      min-height:46px!important;
-      padding:12px 8px!important;
-      resize:none!important;
-    }
-
-    #coach-chat-input textarea:focus{
-      border:0!important;
-      box-shadow:none!important;
-    }
-
-    #coach-chat-send{
-      width:48px!important;
-      min-width:48px!important;
-      height:48px!important;
-      padding:0!important;
-      border-radius:50%!important;
-      background:linear-gradient(
-        135deg,
-        var(--purple),
-        var(--pink)
-      )!important;
-      border:0!important;
-      box-shadow:0 0 22px rgba(255,62,165,.25)!important;
-      font-size:1.25rem!important;
-    }
-
-    #coach-chat-send:hover{
-      transform:scale(1.04)!important;
-      box-shadow:0 0 28px rgba(255,62,165,.38)!important;
-    }
-
-    @media(max-width:700px){
-      #chat-page{
-        height:calc(100vh - 85px)!important;
-        min-height:560px!important;
-      }
-
-      #coach-chat-header{
-        padding-left:8px!important;
-        padding-right:8px!important;
-      }
-
-      #coach-chatbot{
-        max-width:100%!important;
-      }
-
-      #coach-chat-composer{
-        width:calc(100% - 12px)!important;
-        margin-bottom:8px!important;
-      }
-    }
 
     #calendar-page,#dashboard-page,#projects-page,#toolkit-page,#settings-page{
       max-width:1400px!important;margin:0 auto!important;
@@ -609,50 +439,6 @@ with gr.Blocks(title="Channel Coach") as app:
       stroke:#ffffff !important;
     }
 
-
-    /* Coach Chat final specificity override.
-       The generic #channel-coach-app .block rule is more specific than ui/chat.py,
-       so force the chat surface to win here. */
-    #channel-coach-app #chat-page #coach-chatbot,
-    #channel-coach-app #chat-page #coach-chatbot.block,
-    #channel-coach-app #chat-page div#coach-chatbot {
-      background:
-        radial-gradient(circle at 16% 0%, rgba(139,92,246,.38), transparent 38%),
-        radial-gradient(circle at 88% 10%, rgba(22,217,255,.14), transparent 30%),
-        linear-gradient(180deg,#30365f 0%,#252b50 55%,#1d2342 100%) !important;
-      background-color:#252b50 !important;
-      border:2px solid rgba(168,85,247,.95) !important;
-      border-radius:22px !important;
-      box-shadow:
-        inset 0 0 36px rgba(139,92,246,.14),
-        0 0 34px rgba(139,92,246,.26) !important;
-    }
-
-    #channel-coach-app #chat-page #coach-chatbot > div,
-    #channel-coach-app #chat-page #coach-chatbot .wrap,
-    #channel-coach-app #chat-page #coach-chatbot .container,
-    #channel-coach-app #chat-page #coach-chatbot [class*="container"],
-    #channel-coach-app #chat-page #coach-chatbot [class*="panel"] {
-      background:transparent !important;
-      background-color:transparent !important;
-      border-color:transparent !important;
-      box-shadow:none !important;
-    }
-
-    #channel-coach-app #chat-page #coach-chatbot .message.bot,
-    #channel-coach-app #chat-page #coach-chatbot .message.assistant,
-    #channel-coach-app #chat-page #coach-chatbot [data-testid="bot"] {
-      background:linear-gradient(135deg,#3b456f,#303961) !important;
-      border:1px solid rgba(22,217,255,.40) !important;
-      color:#fff !important;
-    }
-
-    #channel-coach-app #chat-page #coach-chatbot .message.user,
-    #channel-coach-app #chat-page #coach-chatbot [data-testid="user"] {
-      background:linear-gradient(135deg,#7c3aed,#d946ef) !important;
-      border:1px solid rgba(255,126,205,.72) !important;
-      color:#fff !important;
-    }
 
     #workspace-internal{display:none!important}
 
@@ -1170,6 +956,7 @@ app.launch(
     head=custom_head,
     css=custom_css,
 )
+
 
 
 
