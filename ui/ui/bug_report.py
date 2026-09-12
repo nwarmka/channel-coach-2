@@ -282,5 +282,13 @@ def build_bug_report_page(workspace_name, visible=False):
             )
 
     return page
+    print(
+    "BUG_REPORT CHECK:",
+    __file__,
+    "builder exists:",
+    "build_bug_report_page" in globals(),
+    flush=True,
+)
+    
 
 
