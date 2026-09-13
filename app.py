@@ -487,6 +487,40 @@ with gr.Blocks(title="Channel Coach") as app:
       border-color: rgba(125, 24, 91, 0.80) !important;
     }
 
+    
+    /* True-black background with thicker dark-pink section borders */
+    html,
+    body,
+    .gradio-container,
+    #channel-coach-app {
+      background: #000000 !important;
+    }
+
+    #channel-coach-app .gr-box,
+    #channel-coach-app .block,
+    #channel-coach-app .panel,
+    #channel-coach-app .form,
+    #channel-coach-app .cc-card,
+    #channel-coach-app .cc-toolbar,
+    #channel-coach-app #dashboard-page .cc-dashboard-page-header,
+    #channel-coach-app #dashboard-page {
+      border-width: 2px !important;
+      border-style: solid !important;
+      border-color: rgba(125, 24, 91, 0.88) !important;
+    }
+
+    #channel-coach-app #dashboard-output .cc-dashboard-hero,
+    #channel-coach-app #dashboard-output .cc-dashboard-stat,
+    #channel-coach-app #dashboard-output .cc-dashboard-panel,
+    #channel-coach-app #dashboard-output .cc-dashboard-grid,
+    #channel-coach-app #dashboard-output .cc-dashboard-two-col,
+    #channel-coach-app #dashboard-output .cc-dashboard-full-stack,
+    #channel-coach-app #dashboard-output .cc-planner-wrap {
+      border-width: 2px !important;
+      border-style: solid !important;
+      border-color: rgba(125, 24, 91, 0.88) !important;
+    }
+
     </style>
     """)
 
