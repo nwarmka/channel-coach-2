@@ -464,15 +464,27 @@ with gr.Blocks(title="Channel Coach") as app:
     #channel-coach-app .form,
     #channel-coach-app .cc-card,
     #channel-coach-app .cc-toolbar {
-      border-color: rgba(48, 58, 82, 0.78) !important;
+      border-color: rgba(125, 24, 91, 0.80) !important;
     }
 
     #channel-coach-app #dashboard-page .cc-dashboard-page-header {
-      border-color: rgba(48, 58, 82, 0.78) !important;
+      border-color: rgba(125, 24, 91, 0.80) !important;
     }
 
     #channel-coach-app #dashboard-page {
-      border-color: rgba(48, 58, 82, 0.78) !important;
+      border-color: rgba(125, 24, 91, 0.80) !important;
+    }
+
+    
+    /* Dark magenta borders for dashboard bubbles/cards */
+    #channel-coach-app #dashboard-output .cc-dashboard-hero,
+    #channel-coach-app #dashboard-output .cc-dashboard-stat,
+    #channel-coach-app #dashboard-output .cc-dashboard-panel,
+    #channel-coach-app #dashboard-output .cc-dashboard-grid,
+    #channel-coach-app #dashboard-output .cc-dashboard-two-col,
+    #channel-coach-app #dashboard-output .cc-dashboard-full-stack,
+    #channel-coach-app #dashboard-output .cc-planner-wrap {
+      border-color: rgba(125, 24, 91, 0.80) !important;
     }
 
     </style>
@@ -1013,6 +1025,7 @@ app.launch(
     head=custom_head,
     css=custom_css,
 )
+
 
 
 
