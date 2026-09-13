@@ -137,7 +137,7 @@ def build_dashboard_page(workspace_name, visible=True):
             """
             <div class="cc-dashboard-page-header">
                 <div class="cc-dashboard-page-title">
-                    <span>ðŸ•¹ï¸</span>
+                    <span>\U0001F579\uFE0F</span>
                     <span>Creator Dashboard</span>
                 </div>
                 <div class="cc-dashboard-page-subtitle">
@@ -154,10 +154,10 @@ def build_dashboard_page(workspace_name, visible=True):
 
         with gr.Row(elem_id="dashboard-actions"):
             dashboard_refresh_button = gr.Button(
-                "ðŸ”„ Refresh Dashboard"
+                "\U0001F504 Refresh Dashboard"
             )
             dashboard_tip_button = gr.Button(
-                "âœ¨ Give Me One Tip"
+                "\u2728 Give Me One Tip"
             )
 
         dashboard_tip_output = gr.Textbox(
@@ -180,6 +180,10 @@ def build_dashboard_page(workspace_name, visible=True):
         )
 
     return dashboard_page, dashboard_output
+
+
+
+
 
 
 
