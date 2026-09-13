@@ -534,19 +534,19 @@ with gr.Blocks(title="Channel Coach") as app:
         # APP SHELL / NAVIGATION
         # =========================
         with gr.Row():
-            gr.Markdown("## âœ¦ CHANNEL COACH")
-            credit_balance = gr.Markdown("**Credits: â€”**", elem_id="credit-balance")
-            menu_button = gr.Button("â˜°", scale=0, min_width=52)
+            gr.Markdown("## \u2726 CHANNEL COACH")
+            credit_balance = gr.Markdown("**Credits: \u2014**", elem_id="credit-balance")
+            menu_button = gr.Button("\u2630", scale=0, min_width=52)
 
         with gr.Column(visible=False, elem_id="channel-coach-menu") as menu_panel:
-            home_nav = gr.Button("ðŸ  Home")
-            chat_nav = gr.Button("ðŸ’¬ Coach Chat")
-            calendar_nav = gr.Button("ðŸ“… Calendar")
-            toolkit_nav = gr.Button("ðŸŽ¬ Toolkit")
-            settings_nav = gr.Button("âš™ï¸ Settings")
-            bug_report_nav = gr.Button("ðŸž Report a Bug")
-            bug_admin_nav = gr.Button("ðŸ› ï¸ Bug Dashboard", visible=False)
-            logout_button = gr.Button("â†ªï¸ Log Out")
+            home_nav = gr.Button("\U0001F3E0 Home")
+            chat_nav = gr.Button("\U0001F4AC Coach Chat")
+            calendar_nav = gr.Button("\U0001F4C5 Calendar")
+            toolkit_nav = gr.Button("\U0001F3AC Toolkit")
+            settings_nav = gr.Button("\u2699\uFE0F Settings")
+            bug_report_nav = gr.Button("\U0001F41E Report a Bug")
+            bug_admin_nav = gr.Button("\U0001F6E0\uFE0F Bug Dashboard", visible=False)
+            logout_button = gr.Button("\u21AA\uFE0F Log Out")
 
         menu_open = gr.State(False)
         current_page = gr.State("dashboard")
@@ -565,7 +565,7 @@ with gr.Blocks(title="Channel Coach") as app:
             )
             workspace_indicator = gr.Markdown("Current workspace: **main**")
 
-            workspace_button = gr.Button("ðŸ”„ Load Workspace")
+            workspace_button = gr.Button("\U0001F504 Load Workspace")
 
         # Coach Chat is available from the menu.
         # Creator Dashboard remains the logged-in home screen.
@@ -583,14 +583,14 @@ with gr.Blocks(title="Channel Coach") as app:
         def load_credit_balance(current_workspace):
             """Grant the one-time starter balance and show the current total."""
             if not current_workspace:
-                return "**Credits: â€”**"
+                return "**Credits: \u2014**"
             try:
                 ensure_initial_credits(current_workspace)
                 balance = get_credit_balance(current_workspace)
                 return f"**Credits: {balance}**"
             except Exception as exc:
                 print(f"Credit balance load failed: {exc}")
-                return "**Credits: unavailable**"
+                return "**Credits: \u2014**"
 
         def load_workspace_ui(current_workspace):
             # Never load the shared/default workspace for a logged-out visitor.
