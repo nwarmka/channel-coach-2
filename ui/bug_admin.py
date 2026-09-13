@@ -1,8 +1,9 @@
 import os
-import uuid
 
 import gradio as gr
 from dotenv import load_dotenv
+
+from auth import create_supabase_client
 
 try:
     from supabase import create_client
@@ -13,7 +14,7 @@ load_dotenv()
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
-CHANNEL_COACH_ADMIN_USER_ID = os.getenv("CHANNEL_COACH_ADMIN_USER_ID", "").strip()
+ADMIN_EMAIL = "warmkanikki@gmail.com"
 
 _admin_client = None
 
@@ -34,14 +35,41 @@ def _client():
     return _admin_client
 
 
-def _is_admin(user_id):
-    try:
-        current = str(uuid.UUID(str(user_id)))
-        configured = str(uuid.UUID(CHANNEL_COACH_ADMIN_USER_ID))
-        return current == configured
-    except Exception:
+def _is_admin(saved_session):
+    """Verify the active Supabase session and administrator email."""
+    if not isinstance(saved_session, dict):
         return False
 
+    access_token = str(saved_session.get("access_token", "") or "").strip()
+    refresh_token = str(saved_session.get("refresh_token", "") or "").strip()
+
+    if not access_token or not refresh_token:
+        return False
+
+    try:
+        client = create_supabase_client()
+        session_response = client.auth.set_session(access_token, refresh_token)
+
+        if not session_response.user:
+            return False
+
+        verified_response = client.auth.get_user()
+        verified_user = getattr(verified_response, "user", None)
+
+        if not verified_user:
+            return False
+
+        verified_email = str(verified_user.email or "").strip().lower()
+        return verified_email == ADMIN_EMAIL
+
+    except Exception as exc:
+        print(f"Admin verification failed: {exc}", flush=True)
+        return False
+
+
+def admin_button_visibility(saved_session):
+    """Only show the dashboard link to the verified administrator."""
+    return gr.update(visible=_is_admin(saved_session))
 
 def _render_reports(rows):
     if not rows:
@@ -74,7 +102,7 @@ def _render_reports(rows):
                 </div>
 
                 <div class="bug-admin-meta">
-                    <b>{page_name}</b> · {category}
+                    <b>{page_name}</b> Â· {category}
                 </div>
 
                 <div class="bug-admin-section">
@@ -84,12 +112,12 @@ def _render_reports(rows):
 
                 <div class="bug-admin-section">
                     <span>EXPECTED</span>
-                    <p>{gr.utils.sanitize_html(expected) if hasattr(gr.utils, "sanitize_html") else expected or "—"}</p>
+                    <p>{gr.utils.sanitize_html(expected) if hasattr(gr.utils, "sanitize_html") else expected or "â€”"}</p>
                 </div>
 
                 <div class="bug-admin-section">
                     <span>STEPS</span>
-                    <p>{gr.utils.sanitize_html(steps) if hasattr(gr.utils, "sanitize_html") else steps or "—"}</p>
+                    <p>{gr.utils.sanitize_html(steps) if hasattr(gr.utils, "sanitize_html") else steps or "â€”"}</p>
                 </div>
 
                 <div class="bug-admin-id">
@@ -102,12 +130,12 @@ def _render_reports(rows):
     return "".join(cards)
 
 
-def load_bug_reports(status_filter, severity_filter, user_id):
-    if not _is_admin(user_id):
+def load_bug_reports(status_filter, severity_filter, saved_session):
+    if not _is_admin(saved_session):
         return (
             """
             <div class="bug-admin-denied">
-                🔒 This page is restricted to the Channel Coach administrator.
+                ðŸ”’ This page is restricted to the Channel Coach administrator.
             </div>
             """,
             gr.update(choices=[], value=None),
@@ -149,22 +177,22 @@ def load_bug_reports(status_filter, severity_filter, user_id):
     except Exception as exc:
         print(f"Bug dashboard load failed: {exc}", flush=True)
         return (
-            "<div class='bug-admin-denied'>❌ Could not load bug reports.</div>",
+            "<div class='bug-admin-denied'>âŒ Could not load bug reports.</div>",
             gr.update(choices=[], value=None),
         )
 
 
-def update_bug_status(report_id, new_status, user_id):
-    if not _is_admin(user_id):
-        return "❌ Admin access required."
+def update_bug_status(report_id, new_status, saved_session):
+    if not _is_admin(saved_session):
+        return "âŒ Admin access required."
 
     if not report_id:
-        return "❌ Choose a bug report first."
+        return "âŒ Choose a bug report first."
 
     status = (new_status or "").strip().lower()
 
     if status not in {"new", "reviewing", "fixed", "closed"}:
-        return "❌ Invalid status."
+        return "âŒ Invalid status."
 
     try:
         (
@@ -174,14 +202,14 @@ def update_bug_status(report_id, new_status, user_id):
             .eq("id", report_id)
             .execute()
         )
-        return f"✅ Bug report marked {status}."
+        return f"âœ… Bug report marked {status}."
 
     except Exception as exc:
         print(f"Bug status update failed: {exc}", flush=True)
-        return "❌ Could not update that bug report."
+        return "âŒ Could not update that bug report."
 
 
-def build_bug_admin_page(workspace_name, visible=False):
+def build_bug_admin_page(saved_session, visible=False):
     css = """
     #bug-admin-page {
         width: 100% !important;
@@ -279,7 +307,7 @@ def build_bug_admin_page(workspace_name, visible=False):
 
     with gr.Column(visible=visible, elem_id="bug-admin-page") as page:
         gr.HTML(f"<style>{css}</style>")
-        gr.Markdown("## 🛠️ Bug Dashboard")
+        gr.Markdown("## ðŸ› ï¸ Bug Dashboard")
         gr.Markdown("Review tester reports and update their status.")
 
         with gr.Row():
@@ -293,7 +321,7 @@ def build_bug_admin_page(workspace_name, visible=False):
                 value="All",
                 label="Severity",
             )
-            refresh_button = gr.Button("↻ Refresh")
+            refresh_button = gr.Button("â†» Refresh")
 
         report_list = gr.HTML(
             "<div class='bug-admin-empty'>Open this page to load reports.</div>",
@@ -315,33 +343,33 @@ def build_bug_admin_page(workspace_name, visible=False):
 
         refresh_button.click(
             load_bug_reports,
-            inputs=[status_filter, severity_filter, workspace_name],
+            inputs=[status_filter, severity_filter, saved_session],
             outputs=[report_list, report_picker],
             show_progress="hidden",
         )
 
         status_filter.change(
             load_bug_reports,
-            inputs=[status_filter, severity_filter, workspace_name],
+            inputs=[status_filter, severity_filter, saved_session],
             outputs=[report_list, report_picker],
             show_progress="hidden",
         )
 
         severity_filter.change(
             load_bug_reports,
-            inputs=[status_filter, severity_filter, workspace_name],
+            inputs=[status_filter, severity_filter, saved_session],
             outputs=[report_list, report_picker],
             show_progress="hidden",
         )
 
         update_button.click(
             update_bug_status,
-            inputs=[report_picker, new_status, workspace_name],
+            inputs=[report_picker, new_status, saved_session],
             outputs=[update_message],
             show_progress="hidden",
         ).then(
             load_bug_reports,
-            inputs=[status_filter, severity_filter, workspace_name],
+            inputs=[status_filter, severity_filter, saved_session],
             outputs=[report_list, report_picker],
             show_progress="hidden",
         )
