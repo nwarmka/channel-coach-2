@@ -8,7 +8,7 @@ from ui.toolkit import build_toolkit_page
 from ui.settings import build_settings_page
 from ui.chat import build_chat_page
 from ui.bug_report import build_bug_report_page
-from ui.bug_admin import build_bug_admin_page
+from ui.bug_admin import admin_button_visibility, build_bug_admin_page
 from credits import ensure_initial_credits, get_credit_balance
 from auth import (
     empty_saved_session,
@@ -534,19 +534,19 @@ with gr.Blocks(title="Channel Coach") as app:
         # APP SHELL / NAVIGATION
         # =========================
         with gr.Row():
-            gr.Markdown("## ✦ CHANNEL COACH")
-            credit_balance = gr.Markdown("**Credits: —**", elem_id="credit-balance")
-            menu_button = gr.Button("☰", scale=0, min_width=52)
+            gr.Markdown("## âœ¦ CHANNEL COACH")
+            credit_balance = gr.Markdown("**Credits: â€”**", elem_id="credit-balance")
+            menu_button = gr.Button("â˜°", scale=0, min_width=52)
 
         with gr.Column(visible=False, elem_id="channel-coach-menu") as menu_panel:
-            home_nav = gr.Button("🏠 Home")
-            chat_nav = gr.Button("💬 Coach Chat")
-            calendar_nav = gr.Button("📅 Calendar")
-            toolkit_nav = gr.Button("🎬 Toolkit")
-            settings_nav = gr.Button("⚙️ Settings")
-            bug_report_nav = gr.Button("🐞 Report a Bug")
-            bug_admin_nav = gr.Button("🛠️ Bug Dashboard")
-            logout_button = gr.Button("↪️ Log Out")
+            home_nav = gr.Button("ðŸ  Home")
+            chat_nav = gr.Button("ðŸ’¬ Coach Chat")
+            calendar_nav = gr.Button("ðŸ“… Calendar")
+            toolkit_nav = gr.Button("ðŸŽ¬ Toolkit")
+            settings_nav = gr.Button("âš™ï¸ Settings")
+            bug_report_nav = gr.Button("ðŸž Report a Bug")
+            bug_admin_nav = gr.Button("ðŸ› ï¸ Bug Dashboard", visible=False)
+            logout_button = gr.Button("â†ªï¸ Log Out")
 
         menu_open = gr.State(False)
         current_page = gr.State("dashboard")
@@ -565,7 +565,7 @@ with gr.Blocks(title="Channel Coach") as app:
             )
             workspace_indicator = gr.Markdown("Current workspace: **main**")
 
-            workspace_button = gr.Button("🔄 Load Workspace")
+            workspace_button = gr.Button("ðŸ”„ Load Workspace")
 
         # Coach Chat is available from the menu.
         # Creator Dashboard remains the logged-in home screen.
@@ -583,7 +583,7 @@ with gr.Blocks(title="Channel Coach") as app:
         def load_credit_balance(current_workspace):
             """Grant the one-time starter balance and show the current total."""
             if not current_workspace:
-                return "**Credits: —**"
+                return "**Credits: â€”**"
             try:
                 ensure_initial_credits(current_workspace)
                 balance = get_credit_balance(current_workspace)
@@ -666,7 +666,7 @@ with gr.Blocks(title="Channel Coach") as app:
         )
 
         bug_admin_page = build_bug_admin_page(
-            workspace_name,
+            saved_login,
             visible=False,
         )
 
@@ -890,6 +890,11 @@ with gr.Blocks(title="Channel Coach") as app:
         inputs=[workspace_name],
         outputs=[credit_balance],
         show_progress="hidden",
+    ).then(
+        admin_button_visibility,
+        inputs=[saved_login],
+        outputs=[bug_admin_nav],
+        show_progress="hidden",
     )
 
     signup_button.click(
@@ -954,6 +959,11 @@ with gr.Blocks(title="Channel Coach") as app:
         load_credit_balance,
         inputs=[workspace_name],
         outputs=[credit_balance],
+        show_progress="hidden",
+    ).then(
+        admin_button_visibility,
+        inputs=[saved_login],
+        outputs=[bug_admin_nav],
         show_progress="hidden",
     )
 
