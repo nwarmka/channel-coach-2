@@ -708,33 +708,6 @@ def _planner_project_card(item, item_date=None, compact=False):
     </div>
     """
 
-    # Compact cards are the "Next Creator Tasks" cards on the home dashboard.
-    # Wrap them in a real link so they are keyboard/touch accessible. app.py
-    # intercepts this class and opens the Calendar page.
-    if compact and item_date:
-        # item_date is normally a date object, but accept strings too so
-        # dashboard rendering cannot crash if a stored value reaches here
-        # in string form.
-        if hasattr(item_date, "isoformat"):
-            raw_date_value = item_date.isoformat()
-        else:
-            raw_date_value = str(item_date)
-
-        date_value = html.escape(raw_date_value, quote=True)
-        safe_aria_title = html.escape(
-            item.get("title", "Untitled"),
-            quote=True,
-        )
-
-        return (
-            '<a class="cc-dashboard-task-link" '
-            f'href="#cc-calendar-date-{date_value}" '
-            f'data-date="{date_value}" '
-            f'aria-label="Open {safe_aria_title} in calendar">'
-            f'{card_html}'
-            '</a>'
-        )
-
     return card_html
 
 
@@ -1849,29 +1822,6 @@ def render_creator_dashboard(user_id="main"):
           margin-top:10px;
           opacity:.72;
       }}
-
-      .cc-dashboard-task-link {
-          display:block;
-          color:inherit !important;
-          text-decoration:none !important;
-          border-radius:16px;
-          cursor:pointer;
-          transition:transform .16s ease, filter .16s ease;
-      }
-
-      .cc-dashboard-task-link:hover {
-          transform:translateY(-2px);
-          filter:brightness(1.08);
-      }
-
-      .cc-dashboard-task-link:focus-visible {
-          outline:2px solid #16d9ff;
-          outline-offset:3px;
-      }
-
-      .cc-dashboard-task-link .cc-planner-project-card {
-          cursor:pointer;
-      }
 
       /* Desktop: remove the small leftover gap below the dashboard cards. */
       @media(min-width:901px) {{
@@ -4459,37 +4409,3 @@ def render_getting_started_checklist(user_id="main"):
         {items_html}
     </div>
     '''
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
