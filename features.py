@@ -1073,22 +1073,125 @@ def update_content_item(selected_item_id, title, content_type, game_topic, statu
         message
     )
 
-def delete_content_item(selected_item_id, month, year, status_filter, type_filter, user_id="main"):
+def prepare_delete_content_item(selected_item_id, user_id="main"):
+    """Prepare a calendar item for deletion without deleting it yet."""
     if not selected_item_id:
         return (
-            render_content_calendar(month, year, status_filter, type_filter, user_id),
-            render_upcoming_content(user_id=user_id),
-            gr.update(choices=get_calendar_choices(user_id)),
-            "❌ Choose an item to delete first."
+            "❌ Choose an item to delete first.",
+            None,
+            gr.update(visible=False),
+            gr.update(visible=False),
         )
 
-    message = db_delete_calendar_item(selected_item_id, user_id=workspace_id(user_id))
+    selected_item = next(
+        (
+            item
+            for item in load_content_calendar(user_id)
+            if str(item.get("id")) == str(selected_item_id)
+        ),
+        None,
+    )
+
+    if not selected_item:
+        return (
+            "❌ Could not find that calendar item.",
+            None,
+            gr.update(visible=False),
+            gr.update(visible=False),
+        )
+
+    title = selected_item.get("title", "Untitled")
 
     return (
-        render_content_calendar(month, year, status_filter, type_filter, user_id),
+        f'⚠️ Delete "{title}"? This cannot be undone.',
+        selected_item_id,
+        gr.update(visible=True),
+        gr.update(visible=True),
+    )
+
+
+def delete_content_item(
+    selected_item_id,
+    user_id,
+    month,
+    year,
+    status_filter,
+    type_filter,
+):
+    """Permanently delete a selected calendar item and refresh calendar UI."""
+    if not selected_item_id:
+        return (
+            render_content_calendar(
+                month,
+                year,
+                status_filter,
+                type_filter,
+                user_id,
+            ),
+            render_upcoming_content(user_id=user_id),
+            gr.update(
+                choices=get_calendar_choices(user_id),
+                value=None,
+            ),
+            "❌ No calendar item was selected.",
+            None,
+            gr.update(visible=False),
+            gr.update(visible=False),
+        )
+
+    selected_item = next(
+        (
+            item
+            for item in load_content_calendar(user_id)
+            if str(item.get("id")) == str(selected_item_id)
+        ),
+        None,
+    )
+
+    title = (
+        selected_item.get("title", "Calendar item")
+        if selected_item
+        else "Calendar item"
+    )
+
+    message = db_delete_calendar_item(
+        selected_item_id,
+        user_id=workspace_id(user_id),
+    )
+
+    # Prefer the database helper's error message if deletion failed.
+    if isinstance(message, str) and message.lstrip().startswith("❌"):
+        status_message = message
+    else:
+        status_message = f'✅ "{title}" was deleted from your calendar.'
+
+    return (
+        render_content_calendar(
+            month,
+            year,
+            status_filter,
+            type_filter,
+            user_id,
+        ),
         render_upcoming_content(user_id=user_id),
-        gr.update(choices=get_calendar_choices(user_id), value=None),
-        message
+        gr.update(
+            choices=get_calendar_choices(user_id),
+            value=None,
+        ),
+        status_message,
+        None,
+        gr.update(visible=False),
+        gr.update(visible=False),
+    )
+
+
+def cancel_delete_content_item():
+    """Cancel a pending calendar deletion."""
+    return (
+        "Deletion canceled.",
+        None,
+        gr.update(visible=False),
+        gr.update(visible=False),
     )
 
 def get_dashboard_stats(user_id="main"):
@@ -4304,6 +4407,7 @@ def render_getting_started_checklist(user_id="main"):
         {items_html}
     </div>
     '''
+
 
 
 
