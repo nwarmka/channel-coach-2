@@ -645,6 +645,14 @@ with gr.Blocks(title="Channel Coach") as app:
             visible=True,
         )
 
+        # Hidden bridge used by clickable "Next Creator Tasks" cards.
+        # features.py renders links like #cc-calendar-date-YYYY-MM-DD.
+        dashboard_task_nav = gr.Textbox(
+            value="",
+            visible=False,
+            elem_id="dashboard-task-nav",
+        )
+
         def load_credit_balance(current_workspace):
             """Grant the one-time starter balance and show the current total."""
             if not current_workspace:
@@ -791,6 +799,65 @@ with gr.Blocks(title="Channel Coach") as app:
         current_page,
         previous_page,
     ]
+
+    # Dashboard task cards use hash links. This small browser-side bridge
+    # copies the selected date into a hidden Gradio textbox, which lets
+    # Python switch to the Calendar page reliably.
+    gr.HTML(
+        """
+        <script>
+        (() => {
+          if (window.__ccDashboardTaskBridgeInstalled) return;
+          window.__ccDashboardTaskBridgeInstalled = true;
+
+          function sendDateToGradio(dateValue) {
+            const root = document.querySelector('#dashboard-task-nav');
+            if (!root) return;
+            const input = root.querySelector('textarea, input');
+            if (!input) return;
+
+            const setter =
+              Object.getOwnPropertyDescriptor(
+                input.tagName === 'TEXTAREA'
+                  ? HTMLTextAreaElement.prototype
+                  : HTMLInputElement.prototype,
+                'value'
+              )?.set;
+
+            if (setter) setter.call(input, dateValue);
+            else input.value = dateValue;
+
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+
+          document.addEventListener('click', (event) => {
+            const card = event.target.closest('a.cc-dashboard-task-link');
+            if (!card) return;
+
+            const dateValue = card.dataset.date || '';
+            if (!dateValue) return;
+
+            event.preventDefault();
+            sendDateToGradio(dateValue);
+          });
+        })();
+        </script>
+        """,
+        visible=False,
+    )
+
+    def open_calendar_from_dashboard(selected_date, current):
+        """Open Calendar when a dashboard task card is clicked."""
+        nav = navigate_to("calendar", current)
+        return (*nav, selected_date or "")
+
+    dashboard_task_nav.change(
+        open_calendar_from_dashboard,
+        inputs=[dashboard_task_nav, current_page],
+        outputs=[*page_outputs, dashboard_task_nav],
+        show_progress="hidden",
+    )
 
     menu_button.click(
         toggle_menu,
@@ -1059,6 +1126,7 @@ app.launch(
     head=custom_head,
     css=custom_css,
 )
+
 
 
 
