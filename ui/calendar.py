@@ -10,6 +10,7 @@ from features import (
     CONTENT_TYPES,
     CONTENT_STATUSES,
     add_content_item,
+    delete_content_item,
     get_calendar_choices,
     load_content_calendar,
     render_content_calendar,
@@ -176,6 +177,7 @@ def _select_calendar_day(cell_index, workspace_name, month, year):
             gr.update(visible=False),
             "",
             "",
+            gr.update(choices=[], value=None),
         )
 
     selected_iso = selected.isoformat()
@@ -193,6 +195,82 @@ def _select_calendar_day(cell_index, workspace_name, month, year):
         gr.update(visible=True),
         "",
         "",
+        gr.update(
+            choices=_day_delete_choices(workspace_name, selected_iso),
+            value=None,
+        ),
+    )
+
+
+def _day_delete_choices(workspace_name, selected_iso):
+    """Return (label, id) choices for items scheduled on the selected day."""
+    if not selected_iso:
+        return []
+
+    choices = []
+    for item in _filtered_items(workspace_name):
+        if item.get("publish_date") != selected_iso:
+            continue
+
+        item_id = item.get("id")
+        if item_id is None:
+            continue
+
+        title = (item.get("title") or "Untitled").strip()
+        content_type = (item.get("content_type") or "").strip()
+        label = f"{title} · {content_type}" if content_type else title
+        choices.append((label, str(item_id)))
+
+    return choices
+
+
+def _delete_day_item(
+    selected_item_id,
+    selected_date,
+    workspace_name,
+    month,
+    year,
+):
+    """Delete an item from the open calendar day and refresh the visible calendar."""
+    if not selected_date:
+        return (
+            "Choose a date first.",
+            gr.update(choices=[], value=None),
+            '<div class="cc-day-empty">Click a date in the calendar.</div>',
+            *_button_updates(workspace_name, month, year),
+        )
+
+    if not selected_item_id:
+        return (
+            "Choose a scheduled item to delete first.",
+            gr.update(
+                choices=_day_delete_choices(workspace_name, selected_date),
+                value=None,
+            ),
+            _day_details_html(workspace_name, selected_date),
+            *_button_updates(workspace_name, month, year),
+        )
+
+    # features.delete_content_item performs the database deletion.
+    result = delete_content_item(
+        selected_item_id,
+        workspace_name,
+        month,
+        year,
+        "All",
+        "All",
+    )
+
+    status_message = result[3] if len(result) > 3 else "Calendar item deleted."
+
+    return (
+        status_message,
+        gr.update(
+            choices=_day_delete_choices(workspace_name, selected_date),
+            value=None,
+        ),
+        _day_details_html(workspace_name, selected_date),
+        *_button_updates(workspace_name, month, year),
     )
 
 
@@ -466,6 +544,19 @@ def build_calendar_page(workspace_name, visible=False):
                 opacity: .72;
             }
 
+            #calendar-page .cc-delete-day-form {
+                margin: 12px 0 18px !important;
+                padding: 16px !important;
+                border: 1px solid rgba(239,68,68,.42) !important;
+                border-radius: 14px !important;
+                background: rgba(127,29,29,.10) !important;
+            }
+
+            #calendar-page .cc-delete-day-button button,
+            #calendar-page button.cc-delete-day-button {
+                margin-top: 8px !important;
+            }
+
             @media (max-width: 760px) {
                 #calendar-page {
                     padding-left: 4px !important;
@@ -613,6 +704,23 @@ def build_calendar_page(workspace_name, visible=False):
                 '</div>'
             )
 
+            with gr.Column(elem_classes=["cc-delete-day-form"]):
+                gr.Markdown("### 🗑️ Delete a scheduled item")
+
+                delete_day_picker = gr.Dropdown(
+                    choices=[],
+                    label="Choose an item from this day",
+                    value=None,
+                )
+
+                delete_day_button = gr.Button(
+                    "🗑️ Delete Selected Item",
+                    variant="stop",
+                    elem_classes=["cc-delete-day-button"],
+                )
+
+                delete_day_status = gr.Markdown()
+
         # Hidden compatibility components expected by app.py.
         calendar_output = gr.HTML(
             value=render_content_calendar(
@@ -688,6 +796,7 @@ def build_calendar_page(workspace_name, visible=False):
                     selected_day_container,
                     save_day_status,
                     task_title,
+                    delete_day_picker,
                 ],
                 show_progress="hidden",
             )
@@ -715,6 +824,24 @@ def build_calendar_page(workspace_name, visible=False):
             show_progress="hidden",
         )
 
+        delete_day_button.click(
+            _delete_day_item,
+            inputs=[
+                delete_day_picker,
+                selected_date,
+                workspace_name,
+                calendar_month,
+                calendar_year,
+            ],
+            outputs=[
+                delete_day_status,
+                delete_day_picker,
+                day_details_output,
+                *calendar_day_buttons,
+            ],
+            show_progress="hidden",
+        )
+
         back_button.click(
             _close_day,
             inputs=None,
@@ -734,7 +861,6 @@ def build_calendar_page(workspace_name, visible=False):
 
 
 build_calendar_tab = build_calendar_page
-
 
 
 
