@@ -692,7 +692,7 @@ def _planner_project_card(item, item_date=None, compact=False):
 
     topic_html = f'<div class="cc-planner-topic">{topic}</div>' if topic else ''
 
-    return f"""
+    card_html = f"""
     <div class="cc-planner-project-card {css_class}{compact_class}" title="{notes}">
         <div class="cc-planner-card-top">
             <div>
@@ -707,6 +707,21 @@ def _planner_project_card(item, item_date=None, compact=False):
         </div>
     </div>
     """
+
+    # Compact cards are the "Next Creator Tasks" cards on the home dashboard.
+    # Wrap them in a real link so they are keyboard/touch accessible. app.py
+    # intercepts this class and opens the Calendar page.
+    if compact and item_date:
+        date_value = html.escape(item_date.isoformat(), quote=True)
+        return (
+            f'<a class="cc-dashboard-task-link" '
+            f'href="#cc-calendar-date-{date_value}" '
+            f'data-date="{date_value}" '
+            f'aria-label="Open {title} in calendar">'
+            f'{card_html}</a>'
+        )
+
+    return card_html
 
 
 def render_monthly_schedule_view(month=None, year=None, status_filter="All", type_filter="All", user_id="main"):
@@ -1820,6 +1835,29 @@ def render_creator_dashboard(user_id="main"):
           margin-top:10px;
           opacity:.72;
       }}
+
+      .cc-dashboard-task-link {
+          display:block;
+          color:inherit !important;
+          text-decoration:none !important;
+          border-radius:16px;
+          cursor:pointer;
+          transition:transform .16s ease, filter .16s ease;
+      }
+
+      .cc-dashboard-task-link:hover {
+          transform:translateY(-2px);
+          filter:brightness(1.08);
+      }
+
+      .cc-dashboard-task-link:focus-visible {
+          outline:2px solid #16d9ff;
+          outline-offset:3px;
+      }
+
+      .cc-dashboard-task-link .cc-planner-project-card {
+          cursor:pointer;
+      }
 
       /* Desktop: remove the small leftover gap below the dashboard cards. */
       @media(min-width:901px) {{
@@ -4407,6 +4445,7 @@ def render_getting_started_checklist(user_id="main"):
         {items_html}
     </div>
     '''
+
 
 
 
