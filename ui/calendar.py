@@ -574,6 +574,22 @@ def build_calendar_page(workspace_name, visible=False):
                     font-size: 1.40rem;
                 }
             }
+            /* Keep Calendar day cells above Gradio/global card styling */
+            #calendar-page .cc-month-grid .cc-day-button {
+                position: relative !important;
+                z-index: 10 !important;
+                pointer-events: auto !important;
+            }
+
+            #calendar-page .cc-month-grid .cc-day-button * {
+                pointer-events: none !important;
+            }
+
+            #calendar-page .cc-month-grid button.cc-day-button {
+                pointer-events: auto !important;
+                cursor: pointer !important;
+            }
+
             </style>
 
             <div class="cc-calendar-header">
