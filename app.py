@@ -444,6 +444,23 @@ with gr.Blocks(title="Channel Coach") as app:
 
     #workspace-internal{display:none!important}
 
+    /* Dashboard task navigation bridge must stay rendered so clicks can reach Gradio. */
+    #dashboard-task-nav,
+    #dashboard-task-bridge {
+      position: fixed !important;
+      left: -10000px !important;
+      top: -10000px !important;
+      width: 1px !important;
+      height: 1px !important;
+      min-height: 0 !important;
+      overflow: hidden !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+      border: 0 !important;
+      padding: 0 !important;
+      margin: 0 !important;
+    }
+
     *{scrollbar-width:thin;scrollbar-color:#7c3cff #070a10}
     ::-webkit-scrollbar{width:10px;height:10px}
     ::-webkit-scrollbar-track{background:#070a10}
@@ -649,7 +666,9 @@ with gr.Blocks(title="Channel Coach") as app:
         # features.py renders links like #cc-calendar-date-YYYY-MM-DD.
         dashboard_task_nav = gr.Textbox(
             value="",
-            visible=False,
+            visible=True,
+            show_label=False,
+            container=False,
             elem_id="dashboard-task-nav",
         )
 
@@ -844,7 +863,8 @@ with gr.Blocks(title="Channel Coach") as app:
         })();
         </script>
         """,
-        visible=False,
+        visible=True,
+        elem_id="dashboard-task-bridge",
     )
 
     def open_calendar_from_dashboard(selected_date, current):
