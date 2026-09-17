@@ -657,7 +657,11 @@ with gr.Blocks(title="Channel Coach") as app:
             visible=False,
         )
 
-        dashboard_page, dashboard_output = build_dashboard_page(
+        (
+            dashboard_page,
+            dashboard_output,
+            dashboard_open_calendar_button,
+        ) = build_dashboard_page(
             workspace_name,
             visible=True,
         )
