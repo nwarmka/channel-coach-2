@@ -258,18 +258,41 @@ def normalize_project_item(item):
     return item
 
 
+def get_project_stage(item):
+    """Return a clear 0/20/40/60/80/100 production stage and the next action.
+
+    The checklist still stores the detailed work, but progress now advances through
+    recognizable creator milestones instead of uneven percentages.
+    """
+    checklist = PROJECT_CHECKLIST_TEMPLATE.copy()
+    if isinstance(item.get("checklist"), dict):
+        checklist.update({key: bool(value) for key, value in item["checklist"].items()})
+
+    # Milestones are intentionally cumulative. Optional supporting tasks can still
+    # be checked without preventing a project from reaching 100%.
+    script_ready = checklist.get("script_written", False)
+    recording_ready = checklist.get("gameplay_recorded", False) or checklist.get("voiceover_recorded", False)
+    edit_ready = checklist.get("editing_complete", False)
+    package_ready = checklist.get("thumbnail_finished", False) or checklist.get("description_done", False)
+    upload_ready = checklist.get("uploaded_scheduled", False)
+
+    if upload_ready:
+        return 100, "Complete", "Project is uploaded or scheduled."
+    if package_ready:
+        return 80, "Packaging", "Upload or schedule the finished content to reach 100%."
+    if edit_ready:
+        return 60, "Editing complete", "Finish the thumbnail or description to reach 80%."
+    if recording_ready:
+        return 40, "Recorded", "Finish editing to reach 60%."
+    if script_ready:
+        return 20, "Planned", "Record gameplay or voiceover to reach 40%."
+    return 0, "Getting started", "Mark Script written to reach 20%."
+
+
 def calculate_item_progress(item):
-    """Checklist-based progress. Falls back to status for older untouched items."""
-    checklist = item.get("checklist")
-
-    if isinstance(checklist, dict) and checklist:
-        fixed = PROJECT_CHECKLIST_TEMPLATE.copy()
-        fixed.update({key: bool(value) for key, value in checklist.items()})
-        completed = sum(1 for value in fixed.values() if value)
-        total = len(fixed)
-        return int(round((completed / total) * 100)) if total else 0
-
-    return STATUS_PROGRESS.get(item.get("status", "Idea"), 10)
+    """Return project progress in clear 20% production stages."""
+    progress, _, _ = get_project_stage(item)
+    return progress
 
 
 def find_calendar_item(selected_item_id, user_id="main"):
@@ -293,6 +316,7 @@ def render_project_workspace_overview(selected_item_id, user_id="main"):
 
     item = normalize_project_item(item)
     progress = calculate_item_progress(item)
+    stage_progress, stage_name, stage_next_action = get_project_stage(item)
     checklist = item.get("checklist", PROJECT_CHECKLIST_TEMPLATE.copy())
     completed = sum(1 for key, label in PROJECT_CHECKLIST_ITEMS if checklist.get(key))
     total = len(PROJECT_CHECKLIST_ITEMS)
@@ -323,6 +347,11 @@ def render_project_workspace_overview(selected_item_id, user_id="main"):
             </div>
             <div class="cc-progress-wrap cc-project-progress-big">
                 <div class="cc-progress-fill" style="width:{progress}%"></div>
+            </div>
+            <div class="cc-project-stage-guide">
+                <strong>Stage: {html.escape(stage_name)} · {stage_progress}%</strong>
+                <span>{html.escape(stage_next_action)}</span>
+                <small>0% Start → 20% Planned → 40% Recorded → 60% Edited → 80% Packaged → 100% Complete</small>
             </div>
             <div class="cc-project-meta-row">
                 <span>📅 Target: {publish_date}</span>
@@ -4409,3 +4438,4 @@ def render_getting_started_checklist(user_id="main"):
         {items_html}
     </div>
     '''
+
