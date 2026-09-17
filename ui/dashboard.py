@@ -12,16 +12,14 @@ def build_dashboard_page(workspace_name, visible=True):
     Build the Creator Dashboard page.
 
     Returns:
-        dashboard_page: the page container used by app.py navigation
-        dashboard_output: the main dashboard HTML component used by workspace refreshes
+        dashboard_page
+        dashboard_output
+        dashboard_open_calendar_button
     """
 
     css = """
-    #dashboard-page {
-        padding-top: 0 !important;
-    }
+    #dashboard-page { padding-top: 0 !important; }
 
-    /* Compact page title area */
     #dashboard-page .cc-dashboard-page-header {
         width: 100%;
         margin: 0 0 10px 0;
@@ -51,16 +49,9 @@ def build_dashboard_page(workspace_name, visible=True):
         line-height: 1.35;
     }
 
-    /* Tighten the rendered dashboard area */
-    #dashboard-output {
-        margin-top: 0 !important;
-    }
+    #dashboard-output { margin-top: 0 !important; }
+    #dashboard-output .cc-dashboard-wrap { gap: 10px !important; }
 
-    #dashboard-output .cc-dashboard-wrap {
-        gap: 10px !important;
-    }
-
-    /* Make the Welcome Back card much more compact */
     #dashboard-output .cc-dashboard-hero {
         padding: 14px 18px !important;
         border-radius: 16px !important;
@@ -85,7 +76,18 @@ def build_dashboard_page(workspace_name, visible=True):
         line-height: 1.1 !important;
     }
 
-    /* Keep dashboard controls compact and visually secondary */
+    #dashboard-open-calendar {
+        width: min(620px, 100%) !important;
+        margin: 6px 0 2px !important;
+    }
+
+    #dashboard-open-calendar button,
+    button#dashboard-open-calendar {
+        min-height: 42px !important;
+        border-radius: 12px !important;
+        font-weight: 800 !important;
+    }
+
     #dashboard-actions {
         width: min(620px, 100%) !important;
         margin: 6px 0 0 !important;
@@ -99,45 +101,31 @@ def build_dashboard_page(workspace_name, visible=True):
         border-radius: 12px !important;
     }
 
-    #dashboard-tip-output {
-        margin-top: 6px !important;
-    }
+    #dashboard-tip-output { margin-top: 6px !important; }
 
     @media (max-width: 700px) {
         #dashboard-page .cc-dashboard-page-header {
             padding: 9px 11px;
             margin-bottom: 8px;
         }
-
-        #dashboard-page .cc-dashboard-page-title {
-            font-size: 1.08rem;
-        }
-
-        #dashboard-page .cc-dashboard-page-subtitle {
-            font-size: .80rem;
-        }
-
-        #dashboard-output .cc-dashboard-hero {
-            padding: 12px 14px !important;
-        }
-
-        #dashboard-output .cc-dashboard-hero h2 {
-            font-size: 1.35rem !important;
-        }
+        #dashboard-page .cc-dashboard-page-title { font-size: 1.08rem; }
+        #dashboard-page .cc-dashboard-page-subtitle { font-size: .80rem; }
+        #dashboard-output .cc-dashboard-hero { padding: 12px 14px !important; }
+        #dashboard-output .cc-dashboard-hero h2 { font-size: 1.35rem !important; }
     }
     """
 
-    with gr.Column(
-        visible=visible,
-        elem_id="dashboard-page",
-    ) as dashboard_page:
-        gr.HTML(f"<style>#dashboard-style {{ display: none !important; }}\n{css}</style>", elem_id="dashboard-style")
+    with gr.Column(visible=visible, elem_id="dashboard-page") as dashboard_page:
+        gr.HTML(
+            f"<style>#dashboard-style {{ display: none !important; }}\n{css}</style>",
+            elem_id="dashboard-style",
+        )
 
         gr.HTML(
             """
             <div class="cc-dashboard-page-header">
                 <div class="cc-dashboard-page-title">
-                    <span>\U0001F579\uFE0F</span>
+                    <span>🕹️</span>
                     <span>Creator Dashboard</span>
                 </div>
                 <div class="cc-dashboard-page-subtitle">
@@ -152,13 +140,16 @@ def build_dashboard_page(workspace_name, visible=True):
             elem_id="dashboard-output",
         )
 
+        # Native Gradio control. This is intentionally not an HTML/JavaScript click.
+        dashboard_open_calendar_button = gr.Button(
+            "📅 Open Next Creator Task in Calendar",
+            elem_id="dashboard-open-calendar",
+            variant="primary",
+        )
+
         with gr.Row(elem_id="dashboard-actions"):
-            dashboard_refresh_button = gr.Button(
-                "\U0001F504 Refresh Dashboard"
-            )
-            dashboard_tip_button = gr.Button(
-                "\u2728 Give Me One Tip"
-            )
+            dashboard_refresh_button = gr.Button("🔄 Refresh Dashboard")
+            dashboard_tip_button = gr.Button("✨ Give Me One Tip")
 
         dashboard_tip_output = gr.Textbox(
             label="Creator Tip",
@@ -179,7 +170,8 @@ def build_dashboard_page(workspace_name, visible=True):
             show_progress="full",
         )
 
-    return dashboard_page, dashboard_output
+    return dashboard_page, dashboard_output, dashboard_open_calendar_button
+
 
 
 
