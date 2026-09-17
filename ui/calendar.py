@@ -348,6 +348,36 @@ def _make_day_handler(cell_index):
     return open_day
 
 
+
+def _open_external_calendar_date(requested_date, workspace_name, current_month, current_year):
+    """Open a specific YYYY-MM-DD from another Gradio component."""
+    try:
+        chosen = datetime.strptime((requested_date or "").strip(), "%Y-%m-%d").date()
+    except (TypeError, ValueError):
+        return (
+            current_month, current_year, _month_heading(current_month, current_year),
+            *_button_updates(workspace_name, current_month, current_year),
+            "### Select a day",
+            '<div class="cc-day-empty">Choose a valid calendar date.</div>',
+            "", gr.update(visible=True), gr.update(visible=False),
+            "", "", gr.update(choices=[], value=None),
+        )
+
+    month, year = chosen.month, chosen.year
+    selected = chosen.isoformat()
+    return (
+        month, year, _month_heading(month, year),
+        *_button_updates(workspace_name, month, year),
+        f"### {chosen.strftime('%A, %B %d, %Y')}",
+        _day_details_html(workspace_name, selected),
+        selected,
+        gr.update(visible=False),
+        gr.update(visible=True),
+        "",
+        "",
+        gr.update(choices=_day_delete_choices(workspace_name, selected), value=None),
+    )
+
 def build_calendar_page(workspace_name, visible=False):
     today = date.today()
 
@@ -817,6 +847,19 @@ def build_calendar_page(workspace_name, visible=False):
                 show_progress="hidden",
             )
 
+        selected_date.change(
+            _open_external_calendar_date,
+            inputs=[selected_date, workspace_name, calendar_month, calendar_year],
+            outputs=[
+                calendar_month, calendar_year, month_heading,
+                *calendar_day_buttons,
+                day_view_heading, day_details_output, selected_date,
+                month_grid_container, selected_day_container,
+                save_day_status, task_title, delete_day_picker,
+            ],
+            show_progress="hidden",
+        )
+
         save_day_button.click(
             _save_day_item,
             inputs=[
@@ -873,10 +916,12 @@ def build_calendar_page(workspace_name, visible=False):
         calendar_output,
         upcoming_output,
         calendar_item_picker,
+        selected_date,
     )
 
 
 build_calendar_tab = build_calendar_page
+
 
 
 
