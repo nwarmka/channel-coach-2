@@ -721,7 +721,7 @@ def _planner_project_card(item, item_date=None, compact=False):
 
     topic_html = f'<div class="cc-planner-topic">{topic}</div>' if topic else ''
 
-    card_html = f"""
+    card_body = f"""
     <div class="cc-planner-project-card {css_class}{compact_class}" title="{notes}">
         <div class="cc-planner-card-top">
             <div>
@@ -737,7 +737,13 @@ def _planner_project_card(item, item_date=None, compact=False):
     </div>
     """
 
-    return card_html
+    # Cards with a real calendar date are clickable. app.py listens for
+    # this class and uses data-date to open the matching Calendar date.
+    if item_date:
+        safe_date = html.escape(item_date.isoformat(), quote=True)
+        return f'<a class="cc-dashboard-task-link" href="#cc-calendar-date-{safe_date}" data-date="{safe_date}" style="display:block;text-decoration:none;color:inherit;cursor:pointer;">{card_body}</a>'
+
+    return card_body
 
 
 def render_monthly_schedule_view(month=None, year=None, status_filter="All", type_filter="All", user_id="main"):
@@ -4438,4 +4444,5 @@ def render_getting_started_checklist(user_id="main"):
         {items_html}
     </div>
     '''
+
 
