@@ -352,7 +352,7 @@ def _make_day_handler(cell_index):
 def _open_external_calendar_date(requested_date, workspace_name, current_month, current_year):
     """Open a specific YYYY-MM-DD from another Gradio component."""
     try:
-        chosen = datetime.strptime((requested_date or "").strip(), "%Y-%m-%d").date()
+        chosen = date.fromisoformat((requested_date or "").strip())
     except (TypeError, ValueError):
         return (
             current_month, current_year, _month_heading(current_month, current_year),
@@ -694,6 +694,15 @@ def build_calendar_page(workspace_name, visible=False):
 
         selected_date = gr.Textbox(visible=False)
 
+        # Dedicated server-side bridge for opening a calendar date from Home/Dashboard.
+        # Keeping this separate from selected_date prevents a .change() event from
+        # writing back to the same component that triggered it.
+        calendar_open_request = gr.Textbox(
+            value="",
+            visible=False,
+            elem_id="calendar-open-request",
+        )
+
         with gr.Column(
             elem_classes=["cc-open-day-view"],
             visible=False,
@@ -847,9 +856,9 @@ def build_calendar_page(workspace_name, visible=False):
                 show_progress="hidden",
             )
 
-        selected_date.change(
+        calendar_open_request.change(
             _open_external_calendar_date,
-            inputs=[selected_date, workspace_name, calendar_month, calendar_year],
+            inputs=[calendar_open_request, workspace_name, calendar_month, calendar_year],
             outputs=[
                 calendar_month, calendar_year, month_heading,
                 *calendar_day_buttons,
@@ -916,7 +925,7 @@ def build_calendar_page(workspace_name, visible=False):
         calendar_output,
         upcoming_output,
         calendar_item_picker,
-        selected_date,
+        calendar_open_request,
     )
 
 
