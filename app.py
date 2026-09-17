@@ -736,6 +736,7 @@ with gr.Blocks(title="Channel Coach") as app:
             cc_calendar_output,
             cc_upcoming_output,
             cc_calendar_item_picker,
+            cc_calendar_selected_date,
         ) = build_calendar_page(
             workspace_name,
             visible=False,
@@ -875,7 +876,7 @@ with gr.Blocks(title="Channel Coach") as app:
     dashboard_task_nav.change(
         open_calendar_from_dashboard,
         inputs=[dashboard_task_nav, current_page],
-        outputs=[*page_outputs, dashboard_task_nav],
+        outputs=[*page_outputs, cc_calendar_selected_date],
         show_progress="hidden",
     )
 
