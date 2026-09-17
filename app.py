@@ -820,6 +820,18 @@ with gr.Blocks(title="Channel Coach") as app:
         previous_page,
     ]
 
+    def open_next_creator_task(current):
+        """Native Home-screen button: open the Content Calendar."""
+        return navigate_to("calendar", current)
+
+    dashboard_open_calendar_button.click(
+        open_next_creator_task,
+        inputs=[current_page],
+        outputs=page_outputs,
+        show_progress="hidden",
+    )
+
+
     # Dashboard task cards use hash links. This small browser-side bridge
     # copies the selected date into a hidden Gradio textbox, which lets
     # Python switch to the Calendar page reliably.
@@ -1147,7 +1159,6 @@ app.launch(
     head=custom_head,
     css=custom_css,
 )
-
 
 
 
