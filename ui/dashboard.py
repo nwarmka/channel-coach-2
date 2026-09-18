@@ -138,6 +138,23 @@ def build_dashboard_page(workspace_name, visible=True):
         dashboard_output = gr.HTML(
             value=render_creator_dashboard("main"),
             elem_id="dashboard-output",
+            js_on_load=r"""
+                // Event delegation means refreshed dashboard HTML keeps working.
+                element.addEventListener("click", (event) => {
+                    const card = event.target.closest("a.cc-dashboard-task-link");
+                    if (!card || !element.contains(card)) return;
+
+                    const dateValue = card.dataset.date || "";
+                    if (!dateValue) return;
+
+                    event.preventDefault();
+                    event.stopPropagation();
+
+                    // Send the clicked task's date to Python through a real
+                    // Gradio event instead of a <script> inside gr.HTML.
+                    trigger("submit", {date: dateValue});
+                });
+            """,
         )
 
         # Native Gradio control. This is intentionally not an HTML/JavaScript click.
@@ -171,6 +188,7 @@ def build_dashboard_page(workspace_name, visible=True):
         )
 
     return dashboard_page, dashboard_output, dashboard_open_calendar_button
+
 
 
 
