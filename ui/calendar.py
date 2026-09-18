@@ -312,6 +312,8 @@ def _save_progress_status(selected_item_id, new_status, selected_date, workspace
     return (
         message,
         _day_details_html(workspace_name, selected_date),
+        render_content_calendar(month, year, "All", "All", user_id=workspace_name),
+        render_upcoming_content(user_id=workspace_name),
         *_button_updates(workspace_name, month, year),
     )
 
@@ -1063,6 +1065,8 @@ def build_calendar_page(workspace_name, visible=False):
             outputs=[
                 progress_status,
                 day_details_output,
+                calendar_output,
+                upcoming_output,
                 *calendar_day_buttons,
             ],
             show_progress="hidden",
@@ -1106,6 +1110,7 @@ def build_calendar_page(workspace_name, visible=False):
 
 
 build_calendar_tab = build_calendar_page
+
 
 
 
