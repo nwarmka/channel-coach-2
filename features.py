@@ -286,7 +286,24 @@ def get_project_stage(item):
         return 40, "Recorded", "Finish editing to reach 60%."
     if script_ready:
         return 20, "Planned", "Record gameplay or voiceover to reach 40%."
-    return 0, "Getting started", "Mark Script written to reach 20%."
+
+    # Calendar progress can also be saved through the existing Supabase-backed
+    # status field. This makes progress persistent even for older projects that
+    # do not yet have a saved checklist column in the database.
+    status = str(item.get("status") or "Idea").strip().lower()
+    status_stages = {
+        "idea": (0, "Getting started", "Move the project to Planned when the idea/script is ready."),
+        "script": (20, "Planned", "Record gameplay or voiceover to reach 40%."),
+        "recording": (40, "Recorded", "Finish editing to reach 60%."),
+        "editing": (60, "Editing complete", "Finish the thumbnail or description to reach 80%."),
+        "thumbnail": (80, "Packaging", "Upload or schedule the finished content to reach 100%."),
+        "scheduled": (100, "Complete", "Project is uploaded or scheduled."),
+        "published": (100, "Complete", "Project is published."),
+    }
+    return status_stages.get(
+        status,
+        (0, "Getting started", "Move the project to Planned when work begins."),
+    )
 
 
 def calculate_item_progress(item):
@@ -4444,5 +4461,6 @@ def render_getting_started_checklist(user_id="main"):
         {items_html}
     </div>
     '''
+
 
 
