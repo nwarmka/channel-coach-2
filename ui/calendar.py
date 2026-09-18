@@ -227,11 +227,11 @@ def _day_delete_choices(workspace_name, selected_iso):
 
 
 PROGRESS_CHOICES = [
-    ("0% · Start", "Idea"),
+    ("0% · Started", "Idea"),
     ("20% · Planned", "Script"),
     ("40% · Recorded", "Recording"),
     ("60% · Edited", "Editing"),
-    ("80% · Packaged", "Thumbnail"),
+    ("80% · Ready to Upload", "Thumbnail"),
     ("100% · Complete", "Scheduled"),
 ]
 
@@ -875,8 +875,8 @@ def build_calendar_page(workspace_name, visible=False):
                 gr.HTML(
                     """
                     <div style="opacity:.78;font-size:.88rem;line-height:1.5;margin:-2px 0 10px;">
-                        Start 0% → Planned 20% → Recorded 40% → Edited 60% →
-                        Packaged 80% → Complete 100%
+                        Started 0% → Planned 20% → Recorded 40% → Edited 60% →
+                        Ready to Upload 80% → Complete 100%
                     </div>
                     """
                 )
