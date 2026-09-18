@@ -682,6 +682,26 @@ def build_calendar_page(workspace_name, visible=False):
                 margin-top: 8px !important;
             }
 
+
+            /* Project Progress: roomy 3-column x 2-row choice grid */
+            #calendar-page .cc-progress-radio .wrap,
+            #calendar-page .cc-progress-radio .container {
+                gap: 10px !important;
+            }
+
+            #calendar-page .cc-progress-radio .wrap > label,
+            #calendar-page .cc-progress-radio .container > label {
+                flex: 0 0 calc(33.333% - 8px) !important;
+                min-width: 0 !important;
+                margin: 0 !important;
+                white-space: nowrap !important;
+            }
+
+            #calendar-page .cc-progress-radio label span {
+                white-space: nowrap !important;
+                line-height: 1.2 !important;
+            }
+
             @media (max-width: 760px) {
                 #calendar-page {
                     padding-left: 4px !important;
@@ -698,6 +718,13 @@ def build_calendar_page(workspace_name, visible=False):
                 #calendar-page .cc-calendar-title {
                     font-size: 1.40rem;
                 }
+
+
+                #calendar-page .cc-progress-radio .wrap > label,
+                #calendar-page .cc-progress-radio .container > label {
+                    flex: 0 0 calc(50% - 6px) !important;
+                }
+
             }
             /* Keep Calendar day cells above Gradio/global card styling */
             #calendar-page .cc-month-grid .cc-day-button {
@@ -867,6 +894,7 @@ def build_calendar_page(workspace_name, visible=False):
                     choices=PROGRESS_CHOICES,
                     value="Idea",
                     label="Progress",
+                    elem_classes=["cc-progress-radio"],
                 )
 
                 save_progress_button = gr.Button(
@@ -1097,6 +1125,7 @@ def build_calendar_page(workspace_name, visible=False):
 
 
 build_calendar_tab = build_calendar_page
+
 
 
 
