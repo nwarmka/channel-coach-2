@@ -15,6 +15,7 @@ from features import (
     load_content_calendar,
     render_content_calendar,
     render_upcoming_content,
+    update_content_item,
 )
 
 
@@ -222,6 +223,100 @@ def _day_delete_choices(workspace_name, selected_iso):
         choices.append((label, str(item_id)))
 
     return choices
+
+
+
+PROGRESS_CHOICES = [
+    ("0% · Start", "Idea"),
+    ("20% · Planned", "Script"),
+    ("40% · Recorded", "Recording"),
+    ("60% · Edited", "Editing"),
+    ("80% · Packaged", "Thumbnail"),
+    ("100% · Complete", "Scheduled"),
+]
+
+
+def _day_progress_choices(workspace_name, selected_iso):
+    """Return existing items on this day for the progress editor."""
+    if not selected_iso:
+        return []
+    choices = []
+    for item in _filtered_items(workspace_name):
+        if item.get("publish_date") != selected_iso:
+            continue
+        item_id = item.get("id")
+        if item_id is None:
+            continue
+        title = (item.get("title") or "Untitled").strip()
+        choices.append((title, str(item_id)))
+    return choices
+
+
+def _load_progress_status(selected_item_id, workspace_name):
+    """Load the saved status for the selected existing calendar item."""
+    if not selected_item_id:
+        return gr.update(value="Idea"), ""
+    for item in _filtered_items(workspace_name):
+        if str(item.get("id")) == str(selected_item_id):
+            status = (item.get("status") or "Idea").strip()
+            valid = {value for _, value in PROGRESS_CHOICES}
+            if status == "Published":
+                status = "Scheduled"
+            if status not in valid:
+                status = "Idea"
+            return gr.update(value=status), ""
+    return gr.update(value="Idea"), "Could not find that scheduled item."
+
+
+def _save_progress_status(selected_item_id, new_status, selected_date, workspace_name, month, year):
+    """Persist progress by updating the existing calendar item's status."""
+    if not selected_item_id:
+        return (
+            "Choose a scheduled item first.",
+            _day_details_html(workspace_name, selected_date),
+            *_button_updates(workspace_name, month, year),
+        )
+
+    target = None
+    for item in _filtered_items(workspace_name):
+        if str(item.get("id")) == str(selected_item_id):
+            target = item
+            break
+
+    if target is None:
+        return (
+            "Could not find that scheduled item.",
+            _day_details_html(workspace_name, selected_date),
+            *_button_updates(workspace_name, month, year),
+        )
+
+    result = update_content_item(
+        selected_item_id,
+        target.get("title") or "Untitled",
+        target.get("platform") or "YouTube",
+        target.get("content_type") or "Long Video",
+        new_status or "Idea",
+        target.get("publish_date") or selected_date,
+        target.get("publish_time") or "",
+        target.get("priority") or "Medium",
+        target.get("notes") or "",
+        target.get("tags") or "",
+        month,
+        year,
+        "All",
+        "All",
+        workspace_name,
+    )
+
+    message = "Progress saved."
+    if isinstance(result, (tuple, list)) and len(result) > 3 and result[3]:
+        message = result[3]
+
+    return (
+        message,
+        _day_details_html(workspace_name, selected_date),
+        *_button_updates(workspace_name, month, year),
+    )
 
 
 def _delete_day_item(
@@ -759,6 +854,28 @@ def build_calendar_page(workspace_name, visible=False):
                 '</div>'
             )
 
+            with gr.Column(elem_classes=["cc-day-form"]):
+                gr.Markdown("### 📈 Project Progress")
+
+                progress_item_picker = gr.Dropdown(
+                    choices=[],
+                    label="Choose a scheduled item",
+                    value=None,
+                )
+
+                progress_stage = gr.Radio(
+                    choices=PROGRESS_CHOICES,
+                    value="Idea",
+                    label="Progress",
+                )
+
+                save_progress_button = gr.Button(
+                    "💾 Save Progress",
+                    variant="primary",
+                )
+
+                progress_status = gr.Markdown()
+
             with gr.Column(elem_classes=["cc-delete-day-form"]):
                 gr.Markdown("### 🗑️ Delete a scheduled item")
 
@@ -886,6 +1003,56 @@ def build_calendar_page(workspace_name, visible=False):
                 save_day_status,
                 task_title,
                 task_notes,
+                day_details_output,
+                *calendar_day_buttons,
+            ],
+            show_progress="hidden",
+        )
+
+        # Populate Project Progress whenever a calendar day is opened.
+        for cell_index, day_button in enumerate(calendar_day_buttons):
+            day_button.click(
+                lambda workspace, month, year, idx=cell_index: gr.update(
+                    choices=_day_progress_choices(
+                        workspace,
+                        _six_week_dates(month, year)[int(idx)].isoformat(),
+                    ),
+                    value=None,
+                ),
+                inputs=refresh_inputs,
+                outputs=[progress_item_picker],
+                show_progress="hidden",
+            )
+
+        calendar_open_request.change(
+            lambda requested, workspace: gr.update(
+                choices=_day_progress_choices(workspace, (requested or "").strip()),
+                value=None,
+            ),
+            inputs=[calendar_open_request, workspace_name],
+            outputs=[progress_item_picker],
+            show_progress="hidden",
+        )
+
+        progress_item_picker.change(
+            _load_progress_status,
+            inputs=[progress_item_picker, workspace_name],
+            outputs=[progress_stage, progress_status],
+            show_progress="hidden",
+        )
+
+        save_progress_button.click(
+            _save_progress_status,
+            inputs=[
+                progress_item_picker,
+                progress_stage,
+                selected_date,
+                workspace_name,
+                calendar_month,
+                calendar_year,
+            ],
+            outputs=[
+                progress_status,
                 day_details_output,
                 *calendar_day_buttons,
             ],
