@@ -217,12 +217,12 @@ CONTENT_TYPES = [
 ]
 
 STATUS_PROGRESS = {
-    "Idea": 10,
-    "Script": 25,
-    "Recording": 45,
-    "Editing": 65,
+    "Idea": 0,
+    "Script": 20,
+    "Recording": 40,
+    "Editing": 60,
     "Thumbnail": 80,
-    "Scheduled": 90,
+    "Scheduled": 100,
     "Published": 100
 }
 
@@ -259,52 +259,27 @@ def normalize_project_item(item):
 
 
 def get_project_stage(item):
-    """Return a clear 0/20/40/60/80/100 production stage and the next action.
+    """Return the project's persistent production stage from its calendar status.
 
-    The checklist still stores the detailed work, but progress now advances through
-    recognizable creator milestones instead of uneven percentages.
+    The calendar status is stored in Supabase, so changing Status in Calendar
+    immediately becomes the source of truth for Dashboard progress.
     """
-    checklist = PROJECT_CHECKLIST_TEMPLATE.copy()
-    if isinstance(item.get("checklist"), dict):
-        checklist.update({key: bool(value) for key, value in item["checklist"].items()})
+    status = str(item.get("status") or "Idea").strip()
 
-    # Milestones are intentionally cumulative. Optional supporting tasks can still
-    # be checked without preventing a project from reaching 100%.
-    script_ready = checklist.get("script_written", False)
-    recording_ready = checklist.get("gameplay_recorded", False) or checklist.get("voiceover_recorded", False)
-    edit_ready = checklist.get("editing_complete", False)
-    package_ready = checklist.get("thumbnail_finished", False) or checklist.get("description_done", False)
-    upload_ready = checklist.get("uploaded_scheduled", False)
-
-    if upload_ready:
-        return 100, "Complete", "Project is uploaded or scheduled."
-    if package_ready:
-        return 80, "Packaging", "Upload or schedule the finished content to reach 100%."
-    if edit_ready:
-        return 60, "Editing complete", "Finish the thumbnail or description to reach 80%."
-    if recording_ready:
-        return 40, "Recorded", "Finish editing to reach 60%."
-    if script_ready:
-        return 20, "Planned", "Record gameplay or voiceover to reach 40%."
-
-    # Calendar progress can also be saved through the existing Supabase-backed
-    # status field. This makes progress persistent even for older projects that
-    # do not yet have a saved checklist column in the database.
-    status = str(item.get("status") or "Idea").strip().lower()
     status_stages = {
-        "idea": (0, "Getting started", "Move the project to Planned when the idea/script is ready."),
-        "script": (20, "Planned", "Record gameplay or voiceover to reach 40%."),
-        "recording": (40, "Recorded", "Finish editing to reach 60%."),
-        "editing": (60, "Editing complete", "Finish the thumbnail or description to reach 80%."),
-        "thumbnail": (80, "Packaging", "Upload or schedule the finished content to reach 100%."),
-        "scheduled": (100, "Complete", "Project is uploaded or scheduled."),
-        "published": (100, "Complete", "Project is published."),
+        "Idea": (0, "Getting started", "Move the project to Script when planning is ready."),
+        "Script": (20, "Planned", "Move the project to Recording when recording begins."),
+        "Recording": (40, "Recorded", "Move the project to Editing when recording is finished."),
+        "Editing": (60, "Editing", "Move the project to Thumbnail when editing is finished."),
+        "Thumbnail": (80, "Packaged", "Move the project to Scheduled when it is uploaded or scheduled."),
+        "Scheduled": (100, "Complete", "Project is uploaded or scheduled."),
+        "Published": (100, "Complete", "Project is published."),
     }
+
     return status_stages.get(
         status,
-        (0, "Getting started", "Move the project to Planned when work begins."),
+        (0, "Getting started", "Choose a production status in Calendar."),
     )
-
 
 def calculate_item_progress(item):
     """Return project progress in clear 20% production stages."""
@@ -4461,6 +4436,7 @@ def render_getting_started_checklist(user_id="main"):
         {items_html}
     </div>
     '''
+
 
 
 
