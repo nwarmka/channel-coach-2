@@ -848,10 +848,16 @@ with gr.Blocks(title="Channel Coach") as app:
         show_progress="hidden",
     )
 
+    def open_home_and_refresh_dashboard(current, current_workspace):
+        """Open Home and re-render the dashboard from the latest saved data."""
+        nav = navigate_to("dashboard", current)
+        fresh_dashboard = render_creator_dashboard(current_workspace) if current_workspace else gr.update()
+        return (*nav, fresh_dashboard)
+
     home_nav.click(
-        lambda current: navigate_to("dashboard", current),
-        inputs=[current_page],
-        outputs=page_outputs,
+        open_home_and_refresh_dashboard,
+        inputs=[current_page, workspace_name],
+        outputs=[*page_outputs, dashboard_output],
         show_progress="hidden",
     )
     chat_nav.click(
