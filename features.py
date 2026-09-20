@@ -995,8 +995,19 @@ def render_upcoming_content(limit=6, user_id="main"):
         <p class="cc-empty">A simple view of what is coming next.</p>
     '''
 
-    for item_date, item in items[:limit]:
+    visible_items = items[:limit]
+
+    for item_date, item in visible_items:
         html_output += _planner_project_card(item, item_date=item_date, compact=True)
+
+    if len(items) > limit:
+        remaining = len(items) - limit
+        task_word = "task" if remaining == 1 else "tasks"
+        html_output += f"""
+        <div class="cc-upcoming-more">
+            +{remaining} more {task_word} in your Calendar
+        </div>
+        """
 
     html_output += "</div>"
     return html_output
@@ -1974,7 +1985,7 @@ def render_creator_dashboard(user_id="main"):
 
                 <div class="cc-dashboard-panel">
                     <div class="cc-small-label">Coming Up</div>
-                    {render_upcoming_content(user_id=user_id)}
+                    {render_upcoming_content(limit=4, user_id=user_id)}
                 </div>
             </div>
 
@@ -2391,6 +2402,18 @@ button[role='tab'][aria-selected='true'] {
 .cc-upcoming-meta, .cc-empty {
     color: var(--muted);
     font-size: 0.78rem;
+}
+
+.cc-upcoming-more {
+    margin-top: 10px;
+    padding: 11px 12px;
+    text-align: center;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 62, 165, .28);
+    background: rgba(255, 62, 165, .06);
+    color: var(--accent2);
+    font-size: .8rem;
+    font-weight: 800;
 }
 
 
