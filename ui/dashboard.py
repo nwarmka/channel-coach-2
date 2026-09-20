@@ -377,33 +377,3 @@ def build_dashboard_page(workspace_name, visible=True):
         )
 
     return dashboard_page, dashboard_output, dashboard_open_calendar_button
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
