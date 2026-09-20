@@ -56,36 +56,31 @@ def build_dashboard_page(workspace_name, visible=True):
     }
 
     #dashboard-output {
-        margin-top: 0 !important;
-        width: 100% !important;
-        border: none !important;
-        outline: none !important;
-        box-shadow: none !important;
-        background: transparent !important;
-        padding: 0 !important;
-    }
+    margin-top: 0 !important;
+    width: 100% !important;
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    padding: 0 !important;
+}
 
-    /* Remove the large outer Creator Dashboard wrapper/card.
-       Individual task cards keep their own borders. */
-    #dashboard-output .cc-dashboard-wrap {
-        border: none !important;
-        outline: none !important;
-        box-shadow: none !important;
-        background: transparent !important;
-        padding: 0 !important;
-    }
+/* Remove ONLY the rectangular outer dashboard container */
+#dashboard-output,
+#dashboard-output > div,
+#dashboard-output .cc-dashboard-wrap {
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+}
 
-    #dashboard-output .cc-dashboard-wrap {
-        gap: 14px !important;
-        width: 100% !important;
-    }
-
-    /* Keep the existing dashboard data, but make the task area the visual focus. */
-    #dashboard-output .cc-dashboard-hero {
-        padding: 15px 18px !important;
-        border-radius: 16px !important;
-    }
-
+/* Keep the dashboard layout exactly as-is */
+#dashboard-output .cc-dashboard-wrap {
+    padding: 0 !important;
+    gap: 14px !important;
+    width: 100% !important;
+}
     #dashboard-output .cc-dashboard-hero h2 {
         margin: .15rem 0 .12rem !important;
         font-size: 1.45rem !important;
