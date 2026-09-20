@@ -58,6 +58,21 @@ def build_dashboard_page(workspace_name, visible=True):
     #dashboard-output {
         margin-top: 0 !important;
         width: 100% !important;
+        border: none !important;
+        outline: none !important;
+        box-shadow: none !important;
+        background: transparent !important;
+        padding: 0 !important;
+    }
+
+    /* Remove the large outer Creator Dashboard wrapper/card.
+       Individual task cards keep their own borders. */
+    #dashboard-output .cc-dashboard-wrap {
+        border: none !important;
+        outline: none !important;
+        box-shadow: none !important;
+        background: transparent !important;
+        padding: 0 !important;
     }
 
     #dashboard-output .cc-dashboard-wrap {
