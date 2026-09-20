@@ -1,3 +1,4 @@
+```python
 import gradio as gr
 
 from features import (
@@ -15,16 +16,9 @@ def build_dashboard_page(workspace_name, visible=True):
         dashboard_page
         dashboard_output
         dashboard_open_calendar_button
-
-    The calendar button is kept as a hidden Gradio bridge because app.py
-    expects it, but it is no longer shown on the Home screen.
     """
 
     css = """
-    /* =========================================================
-       MAIN DASHBOARD PAGE
-       ========================================================= */
-
     #dashboard-page {
         padding-top: 0 !important;
         width: 100% !important;
@@ -34,11 +28,7 @@ def build_dashboard_page(workspace_name, visible=True):
         background: transparent !important;
     }
 
-    /* =========================================================
-       CREATOR DASHBOARD HEADER
-       Keep this rounded.
-       ========================================================= */
-
+    /* CREATOR DASHBOARD HEADER */
     #dashboard-page .cc-dashboard-page-header {
         width: 100%;
         margin: 0 0 14px 0;
@@ -72,15 +62,11 @@ def build_dashboard_page(workspace_name, visible=True):
         line-height: 1.4;
     }
 
-    /* =========================================================
-       REMOVE RECTANGULAR / 90-DEGREE OUTER WRAPPERS
-       ========================================================= */
-
+    /* REMOVE OUTER RECTANGULAR DASHBOARD BORDER */
     #dashboard-output {
         margin-top: 0 !important;
         width: 100% !important;
         padding: 0 !important;
-
         border: none !important;
         outline: none !important;
         box-shadow: none !important;
@@ -89,55 +75,20 @@ def build_dashboard_page(workspace_name, visible=True):
 
     #dashboard-output > div,
     #dashboard-output > div > div,
-    #dashboard-output .cc-dashboard-wrap,
-    #dashboard-output .cc-dashboard-hero,
-    #dashboard-output .cc-upcoming-box {
+    #dashboard-output .cc-dashboard-wrap {
         border: none !important;
         outline: none !important;
         box-shadow: none !important;
         background: transparent !important;
     }
 
-    /*
-       Remove Gradio component shells that can create
-       square/rectangular borders around the dashboard.
-    */
-    #dashboard-page .gradio-container,
-    #dashboard-page .block,
-    #dashboard-page .form,
-    #dashboard-page .wrap,
-    #dashboard-output.block,
-    #dashboard-output .block {
-        border: none !important;
-        outline: none !important;
-        box-shadow: none !important;
-    }
-
-    /*
-       Do not allow Gradio's outer HTML component to create
-       its own rectangular card/background.
-    */
-    #dashboard-output,
-    #dashboard-output.block,
-    #dashboard-output.form {
-        border: 0 !important;
-        outline: 0 !important;
-        box-shadow: none !important;
-        background: transparent !important;
-    }
-
-    /* Main dashboard content wrapper */
     #dashboard-output .cc-dashboard-wrap {
         width: 100% !important;
         padding: 0 !important;
         gap: 14px !important;
     }
 
-    /* =========================================================
-       DASHBOARD HERO CONTENT
-       No outer rectangular card.
-       ========================================================= */
-
+    /* REMOVE SQUARE HERO WRAPPER */
     #dashboard-output .cc-dashboard-hero {
         padding: 15px 18px !important;
         border: none !important;
@@ -161,16 +112,12 @@ def build_dashboard_page(workspace_name, visible=True):
         letter-spacing: .11em !important;
     }
 
-    /* =========================================================
-       NEXT CREATOR TASKS
-       ========================================================= */
-
+    /* NEXT CREATOR TASKS */
     #dashboard-output .cc-upcoming-box {
         width: 100% !important;
         box-sizing: border-box !important;
         padding: 4px 0 0 !important;
         margin: 0 !important;
-
         background: transparent !important;
         border: none !important;
         outline: none !important;
@@ -191,37 +138,189 @@ def build_dashboard_page(workspace_name, visible=True):
         font-size: .9rem !important;
     }
 
-    /* =========================================================
-       CLICKABLE TASK LINKS
-       ========================================================= */
-
+    /* CLICKABLE TASK LINKS */
     #dashboard-output a.cc-dashboard-task-link {
         display: block !important;
         width: 100% !important;
         margin: 0 0 10px !important;
         text-decoration: none !important;
         color: inherit !important;
-
         border: none !important;
         outline: none !important;
         box-shadow: none !important;
         background: transparent !important;
     }
 
-    /* =========================================================
-       INDIVIDUAL TASK CARDS
-       KEEP THESE ROUNDED BORDERS.
-       ========================================================= */
-
+    /* KEEP INDIVIDUAL TASK CARDS ROUNDED */
     #dashboard-output .cc-planner-project-card {
         position: relative !important;
         width: 100% !important;
         min-height: 82px !important;
         box-sizing: border-box !important;
-
         margin: 0 !important;
         padding: 15px 54px 15px 18px !important;
-
         border: 2px solid #253044 !important;
         border-radius: 16px !important;
+        background: linear-gradient(
+            180deg,
+            #0b101a,
+            #070b13
+        ) !important;
+        box-shadow: none !important;
+        transition:
+            border-color .16s ease,
+            transform .16s ease,
+            box-shadow .16s ease !important;
+    }
+
+    #dashboard-output a.cc-dashboard-task-link:hover .cc-planner-project-card {
+        transform: translateY(-1px) !important;
+        border-color: rgba(255, 62, 165, .72) !important;
+        box-shadow: 0 0 20px rgba(255, 62, 165, .09) !important;
+    }
+
+    #dashboard-output .cc-planner-project-card::after {
+        content: "›";
+        position: absolute;
+        right: 19px;
+        top: 50%;
+        transform: translateY(-54%);
+        color: #ff3ea5;
+        font-size: 2.15rem;
+        font-weight: 300;
+        line-height: 1;
+    }
+
+    #dashboard-output .cc-planner-card-top {
+        display: grid !important;
+        grid-template-columns: minmax(0, 1fr) auto !important;
+        align-items: center !important;
+        gap: 16px !important;
+        width: 100% !important;
+    }
+
+    #dashboard-output .cc-planner-title {
+        color: #f8f9fc !important;
+        font-size: 1rem !important;
+        font-weight: 850 !important;
+        line-height: 1.25 !important;
+    }
+
+    #dashboard-output .cc-planner-meta {
+        margin-top: 5px !important;
+        color: #8fa0b8 !important;
+        font-size: .8rem !important;
+        line-height: 1.3 !important;
+    }
+
+    #dashboard-output .cc-planner-topic {
+        display: none !important;
+    }
+
+    #dashboard-output .cc-planner-pill {
+        min-width: 48px !important;
+        padding: 0 !important;
+        border: none !important;
+        background: transparent !important;
+        color: #a9bce0 !important;
+        font-size: 1.05rem !important;
+        font-weight: 850 !important;
+        text-align: right !important;
+        box-shadow: none !important;
+    }
+
+    /* PROGRESS BAR */
+    #dashboard-output .cc-progress-wrap {
+        display: block !important;
+        width: 100% !important;
+        height: 10px !important;
+        margin-top: 12px !important;
+        overflow: hidden !important;
+        border: none !important;
+        border-radius: 999px !important;
+        background: #263246 !important;
+        box-shadow: inset 0 1px 2px rgba(0, 0, 0, .45) !important;
+    }
+
+    #dashboard-output .cc-progress-fill {
+        display: block !important;
+        height: 100% !important;
+        min-width: 0 !important;
+        border-radius: 999px !important;
+        background: linear-gradient(
+            90deg,
+            #ff1493,
+            #ff4fb8
+        ) !important;
+        box-shadow: 0 0 10px rgba(255, 20, 147, .24) !important;
+    }
+
+    /* HIDDEN CALENDAR BRIDGE */
+    #dashboard-open-calendar {
+        position: fixed !important;
+        left: -10000px !important;
+        top: -10000px !important;
+        width: 1px !important;
+        height: 1px !important;
+        min-height: 0 !important;
+        overflow: hidden !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        border: none !important;
+    }
+
+    /* DASHBOARD ACTIONS */
+    #dashboard-actions {
+        width: min(620px, 100%) !important;
+        margin: 8px 0 0 !important;
+        gap: 8px !important;
+        border: none !important;
+        outline: none !important;
+        box-shadow: none !important;
+        background: transparent !important;
+    }
+
+    #dashboard-actions button {
+        min-height: 38px !important;
+        padding-top: 6px !important;
+        padding-bottom: 6px !important;
+        border-radius: 12px !important;
+    }
+
+    #dashboard-tip-output {
+        margin-top: 6px !important;
+    }
+
+    @media (max-width: 700px) {
+        #dashboard-page .cc-dashboard-page-header {
+            padding: 14px 15px;
+            margin-bottom: 10px;
+        }
+
+        #dashboard-page .cc-dashboard-page-title {
+            font-size: 1.28rem;
+        }
+
+        #dashboard-page .cc-dashboard-page-subtitle {
+            font-size: .82rem;
+        }
+
+        #dashboard-output .cc-planner-project-card {
+            min-height: 76px !important;
+            padding: 13px 42px 13px 14px !important;
+        }
+
+        #dashboard-output .cc-planner-title {
+            font-size: .92rem !important;
+        }
+
+        #dashboard-output .cc-planner-meta {
+            font-size: .72rem !important;
+        }
+
+        #dashboard-output .cc-planner-pill {
+            font-size: .92rem !important;
+            min-width: 42px !
 ```
