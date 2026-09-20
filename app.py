@@ -860,6 +860,19 @@ with gr.Blocks(title="Channel Coach") as app:
         outputs=[*page_outputs, dashboard_output],
         show_progress="hidden",
     )
+
+    # Calendar Save Progress refreshes cc_calendar_output.
+    # Re-render Home immediately from the newly saved Supabase status.
+    cc_calendar_output.change(
+        lambda current_workspace: (
+            render_creator_dashboard(current_workspace)
+            if current_workspace
+            else gr.update()
+        ),
+        inputs=[workspace_name],
+        outputs=[dashboard_output],
+        show_progress="hidden",
+    )
     chat_nav.click(
         lambda current: navigate_to("chat", current),
         inputs=[current_page],
