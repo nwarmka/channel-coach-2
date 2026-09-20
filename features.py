@@ -1275,7 +1275,7 @@ def get_dashboard_stats(user_id="main"):
 
 
 
-def render_needs_attention(user_id="main"):
+def render_needs_attention(user_id="main", compact=False):
     """
     Creator Health is a smarter dashboard summary.
     It scores the workspace, hides unnecessary warnings, and recommends
@@ -1594,6 +1594,26 @@ def render_needs_attention(user_id="main"):
         health_label = "Needs setup"
         health_icon = "🔴"
 
+    # Compact Home-screen version: keep only the score and the single best action.
+    if compact:
+        return f"""
+        <div class="cc-home-health-card">
+            <div class="cc-home-health-header">
+                <div class="cc-home-health-title">{health_icon} Creator Health</div>
+                <div class="cc-home-health-score">{workspace_score}% · {health_label}</div>
+            </div>
+
+            <div class="cc-home-health-progress">
+                <div class="cc-home-health-progress-fill" style="width:{workspace_score}%"></div>
+            </div>
+
+            <div class="cc-home-health-action">
+                <div class="cc-small-label">Next best action</div>
+                <strong>{html.escape(next_action)}</strong>
+            </div>
+        </div>
+        """
+
     # Show the most important rows first, but keep successful context too.
     priority_order = {"danger": 0, "warning": 1, "info": 2, "success": 3}
     rows = sorted(rows, key=lambda row: priority_order.get(row["level"], 4))[:6]
@@ -1850,6 +1870,62 @@ def render_creator_dashboard(user_id="main"):
           opacity:.72;
       }}
 
+      .cc-home-health-card {{
+          width:100%;
+          box-sizing:border-box;
+          padding:18px;
+          border:1px solid rgba(139,92,246,.28);
+          border-radius:16px;
+          background:linear-gradient(180deg, rgba(13,17,29,.96), rgba(7,10,18,.98));
+      }}
+
+      .cc-home-health-header {{
+          display:flex;
+          align-items:center;
+          justify-content:space-between;
+          gap:12px;
+          margin-bottom:14px;
+      }}
+
+      .cc-home-health-title {{
+          font-size:1rem;
+          font-weight:800;
+      }}
+
+      .cc-home-health-score {{
+          font-size:.9rem;
+          color:#9db7ff;
+          white-space:nowrap;
+      }}
+
+      .cc-home-health-progress {{
+          width:100%;
+          height:8px;
+          overflow:hidden;
+          border-radius:999px;
+          background:rgba(255,255,255,.08);
+          margin-bottom:16px;
+      }}
+
+      .cc-home-health-progress-fill {{
+          height:100%;
+          border-radius:999px;
+          background:linear-gradient(90deg,#ff3ea5,#8b5cf6,#16d9ff);
+      }}
+
+      .cc-home-health-action {{
+          padding:14px;
+          border-radius:14px;
+          border:1px solid rgba(47,124,255,.28);
+          background:rgba(47,124,255,.08);
+      }}
+
+      .cc-home-health-action strong {{
+          display:block;
+          margin-top:5px;
+          line-height:1.45;
+      }}
+
       /* Desktop: remove the small leftover gap below the dashboard cards. */
       @media(min-width:901px) {{
           .cc-dashboard-wrap {{
@@ -1902,10 +1978,7 @@ def render_creator_dashboard(user_id="main"):
                 </div>
             </div>
 
-            <div class="cc-dashboard-panel">
-                <div class="cc-small-label">Creator Health</div>
-                {render_needs_attention(user_id)}
-            </div>
+            {render_needs_attention(user_id, compact=True)}
         </div>
     </div>
     """
