@@ -24,10 +24,6 @@ def build_dashboard_page(workspace_name, visible=True):
     #dashboard-page {
         padding-top: 0 !important;
         width: 100% !important;
-        border: none !important;
-        outline: none !important;
-        box-shadow: none !important;
-        background: transparent !important;
     }
 
     #dashboard-page .cc-dashboard-page-header {
@@ -381,3 +377,4 @@ def build_dashboard_page(workspace_name, visible=True):
         )
 
     return dashboard_page, dashboard_output, dashboard_open_calendar_button
+
