@@ -519,8 +519,7 @@ with gr.Blocks(title="Channel Coach") as app:
     #channel-coach-app .form,
     #channel-coach-app .cc-card,
     #channel-coach-app .cc-toolbar,
-    #channel-coach-app #dashboard-page .cc-dashboard-page-header,
-    #channel-coach-app #dashboard-page {
+    #channel-coach-app #dashboard-page .cc-dashboard-page-header {
       border-width: 2px !important;
       border-style: solid !important;
       border-color: rgba(125, 24, 91, 0.88) !important;
@@ -536,6 +535,15 @@ with gr.Blocks(title="Channel Coach") as app:
       border-width: 2px !important;
       border-style: solid !important;
       border-color: rgba(125, 24, 91, 0.88) !important;
+    }
+
+    /* Dashboard's outer Gradio column: no surrounding border/card.
+       Leave its inner section panels and task cards unchanged. */
+    #channel-coach-app #dashboard-page {
+      border: 0 !important;
+      outline: 0 !important;
+      box-shadow: none !important;
+      background: transparent !important;
     }
 
     </style>
@@ -1127,7 +1135,6 @@ app.launch(
     head=custom_head,
     css=custom_css,
 )
-
 
 
 
