@@ -1976,16 +1976,6 @@ def render_creator_dashboard(user_id="main"):
     </style>
 
     <div class="cc-dashboard-wrap">
-        <div class="cc-dashboard-hero">
-            <div class="cc-small-label">Welcome back</div>
-            <h2>{html.escape(creator_name)} 🎬</h2>
-            <p>{html.escape(channel_name)} · Your creator workspace</p>
-        </div>
-
-        {warning}
-
-        {stats_html}
-
         <div class="cc-home-dashboard-grid">
             {next_item_html}
             {render_needs_attention(user_id, compact=True)}
@@ -4536,6 +4526,7 @@ def render_getting_started_checklist(user_id="main"):
         {items_html}
     </div>
     '''
+
 
 
 
