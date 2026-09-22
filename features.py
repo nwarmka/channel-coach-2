@@ -997,8 +997,11 @@ def render_upcoming_content(limit=6, user_id="main"):
 
     visible_items = items[:limit]
 
+    # Keep Home compact while allowing up to six clickable task cards.
+    html_output += '<div class="cc-upcoming-task-list" style="max-height:410px;overflow-y:auto;overflow-x:hidden;padding-right:6px;">'
     for item_date, item in visible_items:
         html_output += _planner_project_card(item, item_date=item_date, compact=True)
+    html_output += '</div>'
 
     if len(items) > limit:
         remaining = len(items) - limit
@@ -1985,7 +1988,7 @@ def render_creator_dashboard(user_id="main"):
 
                 <div class="cc-dashboard-panel">
                     <div class="cc-small-label">Coming Up</div>
-                    {render_upcoming_content(limit=4, user_id=user_id)}
+                    {render_upcoming_content(limit=6, user_id=user_id)}
                 </div>
             </div>
 
@@ -4532,6 +4535,7 @@ def render_getting_started_checklist(user_id="main"):
         {items_html}
     </div>
     '''
+
 
 
 
