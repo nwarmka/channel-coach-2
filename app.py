@@ -546,6 +546,70 @@ with gr.Blocks(title="Channel Coach") as app:
       background: transparent !important;
     }
 
+
+    /* Compact, unified app header; keep the borderless Dashboard unchanged. */
+    #channel-coach-app #cc-top-header {
+      display: flex !important;
+      flex-wrap: nowrap !important;
+      align-items: center !important;
+      gap: 14px !important;
+      padding: 14px 20px !important;
+      background: #0d101a !important;
+      border: 1px solid rgba(255,62,165,.45) !important;
+      border-radius: 18px !important;
+      box-shadow: 0 8px 28px rgba(0,0,0,.25) !important;
+    }
+    #channel-coach-app #cc-header-brand {
+      flex: 1 1 auto !important;
+      min-width: 0 !important;
+      width: auto !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      background: transparent !important;
+      border: 0 !important;
+      box-shadow: none !important;
+    }
+    #channel-coach-app #cc-header-brand p {
+      margin: 0 !important;
+      color: #fff !important;
+      font-size: 1.4rem !important;
+      font-weight: 900 !important;
+      letter-spacing: .05em !important;
+      white-space: nowrap;
+    }
+    #channel-coach-app #credit-balance {
+      flex: 0 0 auto !important;
+      width: auto !important;
+      min-width: 0 !important;
+      margin: 0 !important;
+      padding: 9px 16px !important;
+      background: rgba(255,62,165,.09) !important;
+      border: 1px solid rgba(255,62,165,.5) !important;
+      border-radius: 999px !important;
+      box-shadow: none !important;
+    }
+    #channel-coach-app #credit-balance p {
+      margin: 0 !important;
+      color: #fff !important;
+      font-size: .95rem !important;
+      white-space: nowrap;
+    }
+    #channel-coach-app #cc-header-menu {
+      flex: 0 0 48px !important;
+      width: 48px !important;
+      min-width: 48px !important;
+      height: 44px !important;
+      font-size: 1.4rem !important;
+      border-radius: 12px !important;
+    }
+    @media (max-width: 600px) {
+      #channel-coach-app #cc-top-header { padding: 12px !important; gap: 8px !important; }
+      #channel-coach-app #cc-header-brand p { font-size: 1rem !important; letter-spacing: 0 !important; }
+      #channel-coach-app #credit-balance { padding: 8px !important; }
+      #channel-coach-app #credit-balance p { font-size: .8rem !important; }
+      #channel-coach-app #cc-header-menu { flex-basis: 42px !important; width: 42px !important; min-width: 42px !important; }
+    }
+
     </style>
     """)
 
@@ -623,10 +687,10 @@ with gr.Blocks(title="Channel Coach") as app:
         # =========================
         # APP SHELL / NAVIGATION
         # =========================
-        with gr.Row():
-            gr.Markdown("## \u2726 CHANNEL COACH")
-            credit_balance = gr.Markdown("**Credits: \u2014**", elem_id="credit-balance")
-            menu_button = gr.Button("\u2630", scale=0, min_width=52)
+        with gr.Row(elem_id="cc-top-header"):
+            gr.Markdown("✦ CHANNEL COACH", elem_id="cc-header-brand")
+            credit_balance = gr.Markdown("**Credits: —**", elem_id="credit-balance")
+            menu_button = gr.Button("☰", elem_id="cc-header-menu", scale=0, min_width=52)
 
         with gr.Column(visible=False, elem_id="channel-coach-menu") as menu_panel:
             home_nav = gr.Button("\U0001F3E0 Home")
@@ -1135,7 +1199,6 @@ app.launch(
     head=custom_head,
     css=custom_css,
 )
-
 
 
 
