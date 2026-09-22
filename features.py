@@ -1839,6 +1839,10 @@ def render_creator_dashboard(user_id="main"):
           width:100%;
           align-items:start;
       }}
+      .cc-home-tasks-full {{
+          grid-column:1 / -1;
+          min-width:0;
+      }}
 
       .cc-home-dashboard-left {{
           display:flex;
@@ -1983,16 +1987,13 @@ def render_creator_dashboard(user_id="main"):
         {stats_html}
 
         <div class="cc-home-dashboard-grid">
-            <div class="cc-home-dashboard-left">
-                {next_item_html}
-
-                <div class="cc-dashboard-panel">
-                    <div class="cc-small-label">Coming Up</div>
-                    {render_upcoming_content(limit=6, user_id=user_id)}
-                </div>
-            </div>
-
+            {next_item_html}
             {render_needs_attention(user_id, compact=True)}
+
+            <div class="cc-dashboard-panel cc-home-tasks-full">
+                <div class="cc-small-label">Coming Up</div>
+                {render_upcoming_content(limit=6, user_id=user_id)}
+            </div>
         </div>
     </div>
     """
@@ -4535,6 +4536,7 @@ def render_getting_started_checklist(user_id="main"):
         {items_html}
     </div>
     '''
+
 
 
 
