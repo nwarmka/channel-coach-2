@@ -610,6 +610,26 @@ with gr.Blocks(title="Channel Coach") as app:
       #channel-coach-app #cc-header-menu { flex-basis: 42px !important; width: 42px !important; min-width: 42px !important; }
     }
 
+
+    /* Dashboard layout containers: remove only the redundant outer frames.
+       Keep the borders on the actual scheduled item, health and task cards. */
+    #channel-coach-app #dashboard-page,
+    #channel-coach-app #dashboard-output,
+    #channel-coach-app #dashboard-output .cc-dashboard-wrap,
+    #channel-coach-app #dashboard-output .cc-dashboard-grid,
+    #channel-coach-app #dashboard-output .cc-dashboard-two-col,
+    #channel-coach-app #dashboard-output .cc-dashboard-full-stack {
+      border: none !important;
+      outline: none !important;
+      box-shadow: none !important;
+    }
+
+    /* Remove the redundant frame on the Dashboard title banner. */
+    #channel-coach-app #dashboard-page .cc-dashboard-page-header {
+      border: none !important;
+      box-shadow: none !important;
+    }
+
     </style>
     """)
 
@@ -1199,7 +1219,6 @@ app.launch(
     head=custom_head,
     css=custom_css,
 )
-
 
 
 
