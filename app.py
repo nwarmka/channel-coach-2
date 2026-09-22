@@ -611,6 +611,73 @@ with gr.Blocks(title="Channel Coach") as app:
     }
 
 
+    /* Gaming-inspired brand lockup: isolated to the app header. */
+    #channel-coach-app #cc-top-header {
+      position: relative !important;
+      overflow: hidden !important;
+      padding-bottom: 18px !important;
+    }
+    #channel-coach-app #cc-top-header::after {
+      content: "";
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, #ff3ea5, #8b5cf6 55%, #16d9ff);
+    }
+    #channel-coach-app #cc-header-brand {
+      flex: 1 1 auto !important;
+      min-width: 0 !important;
+      background: transparent !important;
+      border: 0 !important;
+      box-shadow: none !important;
+    }
+    #channel-coach-app .cc-brand-lockup {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      min-width: 0;
+    }
+    #channel-coach-app .cc-brand-icon {
+      width: 52px;
+      height: 52px;
+      flex: 0 0 52px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 14px;
+      color: #fff;
+      background: linear-gradient(135deg, #ff3ea5, #8b5cf6);
+      box-shadow: 0 0 20px rgba(255,62,165,.22);
+    }
+    #channel-coach-app .cc-brand-icon svg { width: 31px; height: 31px; }
+    #channel-coach-app .cc-brand-copy { min-width: 0; }
+    #channel-coach-app .cc-brand-name {
+      color: #fff;
+      font-size: 1.45rem;
+      font-weight: 900;
+      line-height: 1.2;
+      letter-spacing: .035em;
+      white-space: nowrap;
+    }
+    #channel-coach-app .cc-brand-name span { color: #ff3ea5; }
+    #channel-coach-app .cc-brand-tagline {
+      margin-top: 4px;
+      color: #a6adc0;
+      font-size: .72rem;
+      font-weight: 700;
+      letter-spacing: .15em;
+      white-space: nowrap;
+    }
+    @media (max-width: 600px) {
+      #channel-coach-app .cc-brand-lockup { gap: 8px; }
+      #channel-coach-app .cc-brand-icon { width: 36px; height: 36px; flex-basis: 36px; border-radius: 10px; }
+      #channel-coach-app .cc-brand-icon svg { width: 24px; height: 24px; }
+      #channel-coach-app .cc-brand-name { font-size: .92rem; letter-spacing: 0; }
+      #channel-coach-app .cc-brand-tagline { font-size: .52rem; letter-spacing: .035em; }
+    }
+
     /* Dashboard layout containers: remove only the redundant outer frames.
        Keep the borders on the actual scheduled item, health and task cards. */
     #channel-coach-app #dashboard-page,
@@ -720,7 +787,21 @@ with gr.Blocks(title="Channel Coach") as app:
         # APP SHELL / NAVIGATION
         # =========================
         with gr.Row(elem_id="cc-top-header"):
-            gr.Markdown("✦ CHANNEL COACH", elem_id="cc-header-brand")
+            gr.HTML(
+                """<div class="cc-brand-lockup">
+                    <div class="cc-brand-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M6.5 8h11a4 4 0 0 1 3.9 3.1l1 5.2a2 2 0 0 1-3.1 2l-3.2-2.4H7.9l-3.2 2.4a2 2 0 0 1-3.1-2l1-5.2A4 4 0 0 1 6.5 8Z"/>
+                        <path d="M7 11v4m-2-2h4"/><circle cx="16" cy="11.5" r=".75" fill="currentColor" stroke="none"/><circle cx="18.5" cy="14" r=".75" fill="currentColor" stroke="none"/>
+                      </svg>
+                    </div>
+                    <div class="cc-brand-copy">
+                      <div class="cc-brand-name">CHANNEL <span>COACH</span></div>
+                      <div class="cc-brand-tagline">CREATE · LEVEL UP · GROW</div>
+                    </div>
+                  </div>""",
+                elem_id="cc-header-brand",
+            )
             credit_balance = gr.Markdown("**Credits: —**", elem_id="credit-balance")
             menu_button = gr.Button("☰", elem_id="cc-header-menu", scale=0, min_width=52)
 
