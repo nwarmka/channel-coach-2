@@ -709,6 +709,63 @@ with gr.Blocks(title="Channel Coach") as app:
       background-image: none !important;
     }
 
+
+    /* Compact neon navigation: reduce empty vertical space without touching Dashboard. */
+    #channel-coach-app #cc-top-header {
+      min-height: 0 !important;
+      padding: 8px 16px 11px !important;
+      gap: 12px !important;
+      align-items: center !important;
+    }
+    #channel-coach-app #cc-top-header::after { height: 2px; }
+    #channel-coach-app #cc-header-brand {
+      min-height: 0 !important;
+      align-self: center !important;
+    }
+    #channel-coach-app #cc-header-brand .html-container,
+    #channel-coach-app #cc-header-brand .prose {
+      padding: 0 !important;
+      margin: 0 !important;
+      min-height: 0 !important;
+    }
+    #channel-coach-app .cc-brand-lockup { gap: 11px; }
+    #channel-coach-app .cc-brand-icon {
+      width: 42px;
+      height: 42px;
+      flex-basis: 42px;
+      border-radius: 12px;
+    }
+    #channel-coach-app .cc-brand-icon svg { width: 26px; height: 26px; }
+    #channel-coach-app .cc-brand-name { font-size: 1.25rem; line-height: 1.12; }
+    #channel-coach-app .cc-brand-tagline {
+      margin-top: 2px;
+      font-size: .62rem;
+      letter-spacing: .12em;
+    }
+    #channel-coach-app #credit-balance { padding: 7px 13px !important; }
+    #channel-coach-app #cc-header-menu {
+      height: 40px !important;
+      min-height: 40px !important;
+      width: 44px !important;
+      min-width: 44px !important;
+      flex-basis: 44px !important;
+    }
+    @media (max-width: 600px) {
+      #channel-coach-app #cc-top-header { padding: 8px 10px 10px !important; gap: 7px !important; }
+      #channel-coach-app .cc-brand-icon { width: 34px; height: 34px; flex-basis: 34px; }
+      #channel-coach-app .cc-brand-icon svg { width: 22px; height: 22px; }
+      #channel-coach-app .cc-brand-name { font-size: .9rem; }
+      #channel-coach-app .cc-brand-tagline { font-size: .5rem; letter-spacing: .025em; }
+      #channel-coach-app #credit-balance { padding: 6px 8px !important; }
+      #channel-coach-app #cc-header-menu {
+        width: 38px !important;
+        min-width: 38px !important;
+        flex-basis: 38px !important;
+        height: 36px !important;
+        min-height: 36px !important;
+      }
+    }
+
     </style>
     """)
 
