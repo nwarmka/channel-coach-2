@@ -21,9 +21,15 @@ def build_dashboard_page(workspace_name, visible=True):
     """
 
     css = """
+    /* The page itself is the large outer Gradio column. Keep inner cards intact. */
     #dashboard-page {
-        padding-top: 0 !important;
+        padding: 0 !important;
         width: 100% !important;
+        border: 0 !important;
+        outline: 0 !important;
+        box-shadow: none !important;
+        background: transparent !important;
+        border-radius: 0 !important;
     }
 
     #dashboard-page .cc-dashboard-page-header {
