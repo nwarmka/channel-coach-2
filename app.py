@@ -630,6 +630,18 @@ with gr.Blocks(title="Channel Coach") as app:
       box-shadow: none !important;
     }
 
+    /* Match the Dashboard's layout background to the true-black page.
+       Keep the title banner and individual cards dark navy. */
+    #channel-coach-app #dashboard-page,
+    #channel-coach-app #dashboard-output,
+    #channel-coach-app #dashboard-output .cc-dashboard-wrap,
+    #channel-coach-app #dashboard-output .cc-dashboard-grid,
+    #channel-coach-app #dashboard-output .cc-dashboard-two-col,
+    #channel-coach-app #dashboard-output .cc-dashboard-full-stack {
+      background: #000000 !important;
+      background-image: none !important;
+    }
+
     </style>
     """)
 
