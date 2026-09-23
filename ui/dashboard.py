@@ -361,6 +361,26 @@ def build_dashboard_page(workspace_name, visible=True):
             font-size: 1.2rem !important;
         }
     }
+    /* Only the Gradio HTML component surrounding the title is redundant.
+       Keep the inner .cc-dashboard-page-header as the single outlined card. */
+    #channel-coach-app #dashboard-page #dashboard-header-html {
+        border: 0 !important;
+        outline: 0 !important;
+        box-shadow: none !important;
+        background: transparent !important;
+        background-image: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        border-radius: 0 !important;
+    }
+    #channel-coach-app #dashboard-page #dashboard-header-html .html-container,
+    #channel-coach-app #dashboard-page #dashboard-header-html .prose {
+        border: 0 !important;
+        box-shadow: none !important;
+        background: transparent !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
     """
 
     with gr.Column(visible=visible, elem_id="dashboard-page") as dashboard_page:
@@ -378,7 +398,8 @@ def build_dashboard_page(workspace_name, visible=True):
                     <p>Your content, schedule, and creator progress in one place.</p>
                 </div>
             </div>
-            """
+            """,
+            elem_id="dashboard-header-html",
         )
 
         dashboard_output = gr.HTML(
