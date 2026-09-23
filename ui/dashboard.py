@@ -309,6 +309,58 @@ def build_dashboard_page(workspace_name, visible=True):
             font-size: 1.8rem;
         }
     }
+    /* Compact dashboard heading; preserve all task and health cards. */
+    #channel-coach-app #dashboard-page .cc-dashboard-page-header {
+        display: flex !important;
+        align-items: center !important;
+        gap: 16px !important;
+        padding: 16px 20px !important;
+        margin: 0 0 14px !important;
+        background: linear-gradient(120deg, #11141e, #090c14) !important;
+        border: 1px solid rgba(255,62,165,.55) !important;
+        border-radius: 18px !important;
+        box-shadow: none !important;
+        box-sizing: border-box !important;
+    }
+    #dashboard-page .cc-dashboard-header-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        width: 50px;
+        height: 50px;
+        font-size: 27px;
+        background: linear-gradient(135deg, #ff3ea5, #8b5cf6);
+        border-radius: 14px;
+    }
+    #dashboard-page .cc-dashboard-header-content { min-width: 0; }
+    #dashboard-page .cc-dashboard-header-content h1 {
+        margin: 0 !important;
+        color: #ffffff !important;
+        font-size: 1.55rem !important;
+        font-weight: 850 !important;
+        line-height: 1.2;
+    }
+    #dashboard-page .cc-dashboard-header-content p {
+        margin: 5px 0 0 !important;
+        color: #a9b6ce !important;
+        font-size: .9rem !important;
+        line-height: 1.4;
+    }
+    @media (max-width: 600px) {
+        #channel-coach-app #dashboard-page .cc-dashboard-page-header {
+            padding: 13px !important;
+            gap: 11px !important;
+        }
+        #dashboard-page .cc-dashboard-header-icon {
+            width: 42px;
+            height: 42px;
+            font-size: 23px;
+        }
+        #dashboard-page .cc-dashboard-header-content h1 {
+            font-size: 1.2rem !important;
+        }
+    }
     """
 
     with gr.Column(visible=visible, elem_id="dashboard-page") as dashboard_page:
@@ -319,13 +371,11 @@ def build_dashboard_page(workspace_name, visible=True):
 
         gr.HTML(
             """
-            <div class="cc-dashboard-page-header">
-                <div class="cc-dashboard-page-title">
-                    <span>🎮</span>
-                    <span>Creator Dashboard</span>
-                </div>
-                <div class="cc-dashboard-page-subtitle">
-                    Your home base for upcoming content, overdue projects, and quick creator guidance.
+            <div class="cc-dashboard-page-header" style="border: 1px solid rgba(255,62,165,.55) !important; box-shadow: none !important;">
+                <div class="cc-dashboard-header-icon" aria-hidden="true">🎮</div>
+                <div class="cc-dashboard-header-content">
+                    <h1>Creator Dashboard</h1>
+                    <p>Your content, schedule, and creator progress in one place.</p>
                 </div>
             </div>
             """
