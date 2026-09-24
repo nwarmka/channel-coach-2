@@ -120,6 +120,56 @@ DEFAULT_PROFILE = {
 }
 
 
+# Creator niche icons use inline SVG so no external image files or API calls are needed.
+# An optional profile["icon_override"] can select any supported icon.
+NICHE_ICON_PATHS = {
+    "gaming": '<path d="M6.5 8h11a4 4 0 0 1 3.9 3.1l1 5.2a2 2 0 0 1-3.1 2l-3.2-2.4H7.9l-3.2 2.4a2 2 0 0 1-3.1-2l1-5.2A4 4 0 0 1 6.5 8Z"/><path d="M7 11v4m-2-2h4"/><circle cx="16" cy="11.5" r=".75" fill="currentColor" stroke="none"/><circle cx="18.5" cy="14" r=".75" fill="currentColor" stroke="none"/>',
+    "cooking": '<path d="M6 13a4 4 0 0 1 0-8 5 5 0 0 1 9-1 4 4 0 0 1 3 7v8H6z"/><path d="M6 17h12M8 21h8"/>',
+    "travel": '<path d="m3 21 8-8m2-2 8-8M2 10l8 2 2-8 3-2 1 9 6 1-2 3-6 1 1 6-3-2-2-6-8-2z"/>',
+    "beauty": '<path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5z"/>',
+    "fitness": '<path d="M3 9v6m3-9v12m12-12v12m3-9v6M6 12h12"/>',
+    "music": '<path d="M9 18V5l12-2v13M9 8l12-2"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>',
+    "tech": '<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h6v6H9zM9 1v3m6-3v3M9 20v3m6-3v3M1 9h3m-3 6h3m16-6h3m-3 6h3"/>',
+    "education": '<path d="m2 9 10-5 10 5-10 5zM6 11v6c4 3 8 3 12 0v-6M22 9v8"/>',
+    "art": '<path d="M12 3a9 9 0 1 0 0 18h2a2 2 0 0 0 2-2c0-1-.5-1.5-.5-2.5S16 15 18 15h1a3 3 0 0 0 3-3 9 9 0 0 0-10-9z"/><circle cx="7" cy="12" r="1"/><circle cx="10" cy="7" r="1"/><circle cx="16" cy="8" r="1"/>',
+    "lifestyle": '<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8z"/>',
+}
+NICHE_KEYWORDS = {
+    "gaming": ("gaming", "gamer", "video game", "stream", "twitch", "esports", "let's play"),
+    "cooking": ("cook", "food", "recipe", "baking", "chef", "kitchen"),
+    "travel": ("travel", "adventure", "tourism", "vacation", "explor"),
+    "beauty": ("beauty", "makeup", "skincare", "fashion"),
+    "fitness": ("fitness", "workout", "gym", "exercise", "health"),
+    "music": ("music", "sing", "song", "instrument", "dj"),
+    "tech": ("tech", "software", "coding", "programming", "computer", "gadget"),
+    "education": ("education", "teach", "learning", "tutorial", "science"),
+    "art": ("art", "draw", "paint", "craft", "design", "photograph"),
+    "lifestyle": ("lifestyle", "vlog", "family", "personal", "wellness"),
+}
+
+def creator_niche_icon(profile):
+    """Return (icon name, safe inline SVG); unknown niches get the gaming default."""
+    override = str((profile or {}).get("icon_override") or "").strip().lower()
+    niche = str((profile or {}).get("niche") or "").lower()
+    icon = override if override in NICHE_ICON_PATHS else next(
+        (name for name, words in NICHE_KEYWORDS.items() if any(word in niche for word in words)),
+        "gaming",
+    )
+    svg = ('<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+           'stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" '
+           'aria-hidden="true">' + NICHE_ICON_PATHS[icon] + '</svg>')
+    return icon, svg
+
+
+def creator_brand_html(niche="", icon_override=""):
+    icon, svg = creator_niche_icon({"niche": niche, "icon_override": icon_override})
+    return (f'<div class="cc-brand-lockup"><div class="cc-brand-icon" '
+            f'aria-label="{icon.title()} creator icon">{svg}</div>'
+            '<div class="cc-brand-copy"><div class="cc-brand-name">CHANNEL '
+            '<span>COACH</span></div><div class="cc-brand-tagline">'
+            'CREATE · LEVEL UP · GROW</div></div></div>')
+
+
 def load_creator_profile(user_id="main"):
     return load_creator_profile_record(DEFAULT_PROFILE, PROFILE_FILE, user_id=workspace_id(user_id))
 
@@ -1698,6 +1748,7 @@ def render_creator_dashboard(user_id="main"):
 
     creator_name = profile.get("creator_name") or "Creator"
     channel_name = profile.get("channel_name") or "Your Brand"
+    niche_icon_name, niche_icon_svg = creator_niche_icon(profile)
 
     planned_this_week = int(stats.get("planned_this_week", 0) or 0)
     shorts_this_week = int(stats.get("shorts_this_week", 0) or 0)
@@ -1993,6 +2044,10 @@ def render_creator_dashboard(user_id="main"):
     </style>
 
     <div class="cc-dashboard-wrap">
+        <div class="cc-niche-identity" style="display:flex;align-items:center;gap:12px;margin:0 0 14px;padding:12px 16px;background:#0d101a;border:1px solid rgba(255,62,165,.38);border-radius:16px;">
+            <div style="display:flex;align-items:center;justify-content:center;width:42px;height:42px;flex:0 0 42px;border-radius:12px;color:white;background:linear-gradient(135deg,#ff3ea5,#8b5cf6);" aria-label="{niche_icon_name.title()} creator icon">{niche_icon_svg}</div>
+            <div><div style="font-weight:800;color:white;">{html.escape(str(channel_name))}</div><div style="font-size:.8rem;color:#a6adc0;">{html.escape(str(profile.get('niche') or 'Creator'))}</div></div>
+        </div>
         <div class="cc-home-dashboard-grid">
             {next_item_html}
             {render_needs_attention(user_id, compact=True)}
