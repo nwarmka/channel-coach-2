@@ -1237,8 +1237,9 @@ def cancel_delete_content_item():
         gr.update(visible=False),
     )
 
-def get_dashboard_stats(user_id="main"):
-    items = load_content_calendar(user_id)
+def get_dashboard_stats(user_id="main", items=None):
+    if items is None:
+        items = load_content_calendar(user_id)
     today = date.today()
     month_start = today.replace(day=1)
 
@@ -1989,27 +1990,38 @@ def render_creator_dashboard(user_id="main"):
     """
 
 def dashboard_ai_tip(user_id="main"):
-    stats = get_dashboard_stats(user_id)
+    """Generate one focused tip with one calendar fetch and a compact AI prompt."""
     items = load_content_calendar(user_id)
-
     if not items:
         return "Add your first few content projects to the Content Calendar, then I can give you a smarter dashboard tip."
 
-    prompt = f"""
-You are Channel Coach.
-
-{creator_profile_context(user_id)}
-
-Here are this creator's dashboard stats:
-{json.dumps(stats, default=str, indent=2)}
-
-Here are their calendar items:
-{json.dumps(items[:20], indent=2)}
-
-Give one short, useful creator tip for what they should focus on next.
-Keep it under 120 words.
-"""
-    return ask_channel_coach(prompt, use_profile=False, user_id=user_id)
+    # Reuse the same calendar records instead of fetching them twice from Supabase.
+    stats = get_dashboard_stats(user_id, items=items)
+    # Send only the fields relevant to coaching, rather than entire project records.
+    compact_items = _summarize_calendar_for_coach(items, limit=8)
+    compact_stats = {
+        key: stats[key] for key in (
+            "planned_this_week", "shorts_this_week", "long_videos_this_week",
+            "overdue", "published_this_month", "total_items"
+        )
+    }
+    prompt = (
+        "You are Channel Coach. Give exactly one specific, actionable tip "
+        "for this creator's next step, in no more than 55 words. "
+        "Prioritize overdue work and upcoming deadlines.\n\n"
+        + creator_profile_context(user_id)
+        + "\nStats: " + json.dumps(compact_stats, default=str)
+        + "\nUpcoming/relevant projects: " + json.dumps(compact_items, default=str)
+    )
+    # A smaller response budget reduces generation time without changing chat behavior.
+    if not os.getenv("OPENAI_API_KEY"):
+        return "Missing OPENAI_API_KEY. Add your OpenAI API key to your environment variables."
+    response = client.responses.create(
+        model="gpt-4.1-mini",
+        input=prompt,
+        max_output_tokens=120,
+    )
+    return response.output_text
 
 
 def refresh_creator_dashboard(user_id="main"):
@@ -4526,6 +4538,7 @@ def render_getting_started_checklist(user_id="main"):
         {items_html}
     </div>
     '''
+
 
 
 
