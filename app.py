@@ -844,21 +844,7 @@ with gr.Blocks(title="Channel Coach") as app:
         # APP SHELL / NAVIGATION
         # =========================
         with gr.Row(elem_id="cc-top-header"):
-            gr.HTML(
-                """<div class="cc-brand-lockup">
-                    <div class="cc-brand-icon" aria-hidden="true">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M6.5 8h11a4 4 0 0 1 3.9 3.1l1 5.2a2 2 0 0 1-3.1 2l-3.2-2.4H7.9l-3.2 2.4a2 2 0 0 1-3.1-2l1-5.2A4 4 0 0 1 6.5 8Z"/>
-                        <path d="M7 11v4m-2-2h4"/><circle cx="16" cy="11.5" r=".75" fill="currentColor" stroke="none"/><circle cx="18.5" cy="14" r=".75" fill="currentColor" stroke="none"/>
-                      </svg>
-                    </div>
-                    <div class="cc-brand-copy">
-                      <div class="cc-brand-name">CHANNEL <span>COACH</span></div>
-                      <div class="cc-brand-tagline">CREATE · LEVEL UP · GROW</div>
-                    </div>
-                  </div>""",
-                elem_id="cc-header-brand",
-            )
+            header_brand = gr.HTML(creator_brand_html(), elem_id="cc-header-brand")
             credit_balance = gr.Markdown("**Credits: —**", elem_id="credit-balance")
             menu_button = gr.Button("☰", elem_id="cc-header-menu", scale=0, min_width=52)
 
@@ -1012,6 +998,14 @@ with gr.Blocks(title="Channel Coach") as app:
         profile_goals = settings_components["profile_goals"]
         profile_preferred_tone = settings_components["profile_preferred_tone"]
         profile_things_to_avoid = settings_components["profile_things_to_avoid"]
+
+        # Profile loads and niche edits update the navbar icon immediately.
+        profile_niche.change(
+            lambda niche: creator_brand_html(niche),
+            inputs=[profile_niche],
+            outputs=[header_brand],
+            show_progress="hidden",
+        )
 
     # =========================
     # PAGE NAVIGATION
