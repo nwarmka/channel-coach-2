@@ -61,6 +61,22 @@ def workspace_status_message(user_id=None):
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
+# Friendly messages shown to creators; technical details stay in Render logs.
+AI_UNAVAILABLE_MESSAGE = (
+    "Your AI coach is temporarily unavailable. Please try again in a moment."
+)
+
+def safe_ai_response(**kwargs):
+    """Return a normal OpenAI response, or a friendly text-compatible fallback."""
+    if not os.getenv("OPENAI_API_KEY"):
+        print("AI request skipped: OPENAI_API_KEY is not configured.")
+        return type("FriendlyAIResponse", (), {"output_text": AI_UNAVAILABLE_MESSAGE})()
+    try:
+        return client.responses.create(**kwargs)
+    except Exception as exc:
+        print(f"AI request failed ({type(exc).__name__}): {exc}")
+        return type("FriendlyAIResponse", (), {"output_text": AI_UNAVAILABLE_MESSAGE})()
+
 # =========================
 # EMBEDDED LOGO
 # =========================
@@ -2015,8 +2031,8 @@ def dashboard_ai_tip(user_id="main"):
     )
     # A smaller response budget reduces generation time without changing chat behavior.
     if not os.getenv("OPENAI_API_KEY"):
-        return "Missing OPENAI_API_KEY. Add your OpenAI API key to your environment variables."
-    response = client.responses.create(
+        return AI_UNAVAILABLE_MESSAGE
+    response = safe_ai_response(
         model="gpt-4.1-mini",
         input=prompt,
         max_output_tokens=120,
@@ -3446,12 +3462,12 @@ textarea[aria-label*="Description"] {
 
 def ask_channel_coach(prompt, use_profile=True, user_id="main"):
     if not os.getenv("OPENAI_API_KEY"):
-        return "Missing OPENAI_API_KEY. Add your OpenAI API key to your environment variables."
+        return AI_UNAVAILABLE_MESSAGE
 
     if use_profile:
         prompt = creator_profile_context(user_id) + "\n\nUser request:\n" + prompt
 
-    response = client.responses.create(
+    response = safe_ai_response(
         model="gpt-4.1-mini",
         input=prompt
     )
@@ -3686,8 +3702,7 @@ def stream_creator_coach(user_question, user_id="main"):
 
     if not os.getenv("OPENAI_API_KEY"):
         yield (
-            "Missing OPENAI_API_KEY. "
-            "Add your OpenAI API key to your Render environment variables."
+            AI_UNAVAILABLE_MESSAGE
         )
         return
 
@@ -3781,7 +3796,7 @@ def stream_creator_coach(user_question, user_id="main"):
             flush=True,
         )
 
-        yield f"Coach Chat error: {e}"
+        yield AI_UNAVAILABLE_MESSAGE
 
 
 def ask_creator_coach(user_question, user_id="main"):
@@ -3891,7 +3906,7 @@ Give detailed creator feedback:
                 }
             )
 
-    response = client.responses.create(
+    response = safe_ai_response(
         model="gpt-4.1-mini",
         input=[
             {
@@ -4266,7 +4281,7 @@ def analyze_thumbnail(image, user_id="main"):
 
     base64_image = encode_image_file(image)
 
-    response = client.responses.create(
+    response = safe_ai_response(
         model="gpt-4.1-mini",
         input=[
             {
@@ -4538,7 +4553,6 @@ def render_getting_started_checklist(user_id="main"):
         {items_html}
     </div>
     '''
-
 
 
 
