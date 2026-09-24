@@ -918,7 +918,8 @@ with gr.Blocks(title="Channel Coach") as app:
                 return f"**Credits: {balance}**"
             except Exception as exc:
                 print(f"Credit balance load failed: {exc}")
-                return "**Credits: \u2014**"
+                gr.Warning("Credits are temporarily unavailable. Please try again shortly.")
+                return "**Credits: unavailable**"
 
         def load_workspace_ui(current_workspace):
             # Never load the shared/default workspace for a logged-out visitor.
