@@ -62,6 +62,14 @@ def supabase_is_ready():
     return supabase is not None
 
 
+SUPABASE_UNAVAILABLE_MESSAGE = (
+    "We're having trouble connecting to your saved projects right now. "
+    "Please try again in a moment."
+)
+SUPABASE_SAVE_MESSAGE = (
+    "We couldn't save that change right now. Please try again shortly."
+)
+
 def supabase_status():
     """
     Returns a safe diagnostic string without exposing secrets.
@@ -284,11 +292,13 @@ def save_creator_profile_record(
         return (
             "✅ Creator profile saved locally for workspace: "
             f"{safe_user_id}. "
-            f"Supabase fallback note: {supabase_error}"
+            "This copy is temporary and may be lost after an app restart. "
+            "Please try saving again when the connection returns."
         )
 
     except Exception as e:
-        return f"❌ Could not save creator profile: {e}"
+        print(f"Creator profile fallback save failed: {e}")
+        return SUPABASE_SAVE_MESSAGE
 
 
 # =========================
@@ -310,8 +320,7 @@ def add_calendar_item(
 
     if not supabase_is_ready():
         return (
-            "❌ Supabase is not configured. "
-            f"Calendar item was not saved. {supabase_status()}"
+            SUPABASE_SAVE_MESSAGE
         )
 
     try:
@@ -345,14 +354,14 @@ def add_calendar_item(
             f"Supabase calendar insert failed "
             f"for {safe_user_id}: {e}"
         )
-        return f"❌ Could not save calendar item: {e}"
+        return SUPABASE_SAVE_MESSAGE
 
 
 def get_calendar_items(user_id="main"):
     safe_user_id = clean_user_id(user_id)
 
     if not supabase_is_ready():
-        return []
+        raise ConnectionError(SUPABASE_UNAVAILABLE_MESSAGE)
 
     try:
         result = (
@@ -371,7 +380,7 @@ def get_calendar_items(user_id="main"):
             f"Supabase calendar load failed "
             f"for {safe_user_id}: {e}"
         )
-        return []
+        raise ConnectionError(SUPABASE_UNAVAILABLE_MESSAGE) from e
 
 
 def update_calendar_item(
@@ -391,8 +400,7 @@ def update_calendar_item(
 
     if not supabase_is_ready():
         return (
-            "❌ Supabase is not configured. "
-            f"Calendar item was not updated. {supabase_status()}"
+            SUPABASE_SAVE_MESSAGE
         )
 
     try:
@@ -424,7 +432,7 @@ def update_calendar_item(
             f"Supabase calendar update failed "
             f"for {safe_user_id}: {e}"
         )
-        return f"❌ Could not update calendar item: {e}"
+        return SUPABASE_SAVE_MESSAGE
 
 
 def delete_calendar_item(
@@ -435,8 +443,7 @@ def delete_calendar_item(
 
     if not supabase_is_ready():
         return (
-            "❌ Supabase is not configured. "
-            f"Calendar item was not deleted. {supabase_status()}"
+            "We couldn't delete that item right now. Please try again shortly."
         )
 
     try:
@@ -456,5 +463,5 @@ def delete_calendar_item(
             f"Supabase calendar delete failed "
             f"for {safe_user_id}: {e}"
         )
-        return f"❌ Could not delete calendar item: {e}"
+        return "We couldn't delete that item right now. Please try again shortly."
 
