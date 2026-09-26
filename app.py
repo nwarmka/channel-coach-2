@@ -1357,12 +1357,14 @@ async def serve_service_worker():
 
 port = int(os.environ.get("PORT", 7860))
 
+
 app.launch(
     server_name="0.0.0.0",
     server_port=port,
     share=False,
     head=custom_head,
     css=custom_css,
+    favicon_path="static/channel-coach-icon.png",
 )
 
 
