@@ -766,6 +766,64 @@ with gr.Blocks(title="Channel Coach") as app:
       }
     }
 
+    /* Mobile viewport containment: keep the page stationary horizontally.
+       Wide calendars/tables can still scroll inside their own containers. */
+    html, body, .gradio-container {
+      width: 100% !important;
+      max-width: 100% !important;
+      overflow-x: clip !important;
+    }
+    #channel-coach-app,
+    #dashboard-page,
+    #dashboard-output,
+    #dashboard-output .cc-dashboard-wrap,
+    #dashboard-output .cc-dashboard-grid,
+    #dashboard-output .cc-dashboard-two-col,
+    #dashboard-output .cc-dashboard-full-stack {
+      box-sizing: border-box !important;
+      max-width: 100% !important;
+      min-width: 0 !important;
+    }
+    #channel-coach-app *, #channel-coach-app *::before,
+    #channel-coach-app *::after { box-sizing: border-box; }
+    @media (max-width: 600px) {
+      #channel-coach-app { width: 100% !important; padding: 10px !important; }
+      #channel-coach-app .gradio-row,
+      #channel-coach-app .gradio-column,
+      #channel-coach-app .gradio-group,
+      #dashboard-page, #dashboard-output,
+      #dashboard-output .cc-dashboard-wrap,
+      #dashboard-output .cc-dashboard-hero,
+      #dashboard-output .cc-dashboard-stat,
+      #dashboard-output .cc-dashboard-panel,
+      #dashboard-output .cc-dashboard-grid,
+      #dashboard-output .cc-dashboard-two-col,
+      #dashboard-output .cc-dashboard-full-stack,
+      #dashboard-output .cc-planner-wrap {
+        min-width: 0 !important;
+        max-width: 100% !important;
+      }
+      #dashboard-output .cc-dashboard-grid,
+      #dashboard-output .cc-dashboard-two-col {
+        grid-template-columns: minmax(0, 1fr) !important;
+      }
+      #dashboard-output img, #dashboard-output video,
+      #dashboard-output svg { max-width: 100%; }
+      #dashboard-output p, #dashboard-output h1,
+      #dashboard-output h2, #dashboard-output h3 {
+        overflow-wrap: anywhere;
+      }
+      #dashboard-output table,
+      #calendar-page table { display: block; max-width: 100%; overflow-x: auto; }
+      #channel-coach-app #cc-top-header { min-width: 0 !important; }
+      #channel-coach-app #cc-header-brand { min-width: 0 !important; overflow: hidden; }
+      #channel-coach-app .cc-brand-copy { min-width: 0 !important; overflow: hidden; }
+      #channel-coach-app .cc-brand-name,
+      #channel-coach-app .cc-brand-tagline {
+        overflow: hidden; text-overflow: ellipsis;
+      }
+    }
+
     </style>
     """)
 
