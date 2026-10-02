@@ -4,6 +4,15 @@ import time
 import gradio as gr
 
 from features import stream_creator_coach
+from database import (
+    create_coach_chat,
+    delete_coach_chat,
+    get_coach_chat,
+    get_coach_chats,
+    rename_coach_chat,
+    save_coach_chat,
+    set_coach_chat_pinned,
+)
 
 
 def _format_message(text):
@@ -109,91 +118,127 @@ def _render_chat(history):
     return "".join(output)
 
 
-def _respond(message, history, workspace_name):
-    """
-    Generator callback.
+def _auto_chat_title(message):
+    words = str(message or "").strip().replace("\n", " ").split()
+    title = " ".join(words[:7]).strip()
+    if len(title) > 56:
+        title = title[:53].rstrip() + "..."
+    return title or "New Chat"
 
-    It immediately shows the user's message and a thinking indicator,
-    then updates the assistant response live as OpenAI streams text.
-    """
+
+def _chat_choices(user_id):
+    chats = get_coach_chats(user_id)
+    choices = []
+    for chat in chats:
+        prefix = "📌 " if chat.get("is_pinned") else "🕘 "
+        choices.append((prefix + (chat.get("title") or "New Chat"), chat.get("id")))
+    return choices
+
+
+def _refresh_chat_picker(workspace_name, selected=None):
+    user_id = (workspace_name or "main").strip() or "main"
+    choices = _chat_choices(user_id)
+    values = [value for _, value in choices]
+    value = selected if selected in values else (values[0] if values else None)
+    return gr.update(choices=choices, value=value)
+
+
+def _new_chat(workspace_name):
+    return [], None, _render_chat([]), "", _refresh_chat_picker(workspace_name, None), ""
+
+
+def _load_chat(chat_id, workspace_name):
+    if not chat_id:
+        return [], None, _render_chat([]), ""
+    user_id = (workspace_name or "main").strip() or "main"
+    chat = get_coach_chat(chat_id, user_id)
+    if not chat:
+        return [], None, _render_chat([]), ""
+    history = list(chat.get("messages") or [])
+    return history, chat_id, _render_chat(history), chat.get("title") or "New Chat"
+
+
+def _rename_selected(chat_id, title, workspace_name):
+    user_id = (workspace_name or "main").strip() or "main"
+    if chat_id and str(title or "").strip():
+        rename_coach_chat(chat_id, title, user_id)
+    return _refresh_chat_picker(user_id, chat_id)
+
+
+def _toggle_pin(chat_id, workspace_name):
+    user_id = (workspace_name or "main").strip() or "main"
+    if chat_id:
+        chat = get_coach_chat(chat_id, user_id)
+        if chat:
+            set_coach_chat_pinned(chat_id, not bool(chat.get("is_pinned")), user_id)
+    return _refresh_chat_picker(user_id, chat_id)
+
+
+def _delete_selected(chat_id, workspace_name):
+    user_id = (workspace_name or "main").strip() or "main"
+    if chat_id:
+        delete_coach_chat(chat_id, user_id)
+    return [], None, _render_chat([]), "", _refresh_chat_picker(user_id, None)
+
+
+def _respond(message, history, chat_id, workspace_name):
     message = (message or "").strip()
     history = list(history or [])
-
-    if not message:
-        yield "", history, _render_chat(history)
-        return
-
     user_id = (workspace_name or "main").strip() or "main"
 
-    # Show the user's message instantly.
-    working_history = history + [
-        {
-            "role": "user",
-            "content": message,
-        },
-        {
-            "role": "assistant",
-            "content": "",
-            "thinking": True,
-        },
+    if not message:
+        yield "", history, chat_id, _render_chat(history), _refresh_chat_picker(user_id, chat_id), gr.update()
+        return
+
+    prior_history = [dict(item) for item in history if not item.get("thinking")]
+    working_history = prior_history + [
+        {"role": "user", "content": message},
+        {"role": "assistant", "content": "", "thinking": True},
     ]
 
-    yield "", working_history, _render_chat(working_history)
+    yield "", working_history, chat_id, _render_chat(working_history), gr.update(), gr.update()
 
     partial_reply = ""
     last_ui_update = 0.0
-
     try:
         for delta in stream_creator_coach(
-            message,
-            user_id=user_id,
+            message, user_id=user_id, conversation_history=prior_history
         ):
             partial_reply += delta
-
-            # Once the first text arrives, remove the thinking indicator.
             working_history[-1] = {
-                "role": "assistant",
-                "content": partial_reply,
-                "thinking": False,
+                "role": "assistant", "content": partial_reply, "thinking": False
             }
-
-            # Throttle UI redraws slightly so Gradio does not re-render
-            # the full HTML tree for every tiny token fragment.
             now = time.monotonic()
-
             if now - last_ui_update >= 0.05:
-                yield (
-                    "",
-                    working_history,
-                    _render_chat(working_history),
-                )
+                yield "", working_history, chat_id, _render_chat(working_history), gr.update(), gr.update()
                 last_ui_update = now
 
-        # Guarantee the final complete response is rendered.
         working_history[-1] = {
             "role": "assistant",
             "content": partial_reply or "I couldn't generate a response.",
             "thinking": False,
         }
+        final_history = [dict(item) for item in working_history if not item.get("thinking")]
+
+        current_chat_id = chat_id
+        title = None
+        if current_chat_id:
+            save_coach_chat(current_chat_id, final_history, user_id)
+            chat = get_coach_chat(current_chat_id, user_id)
+            title = (chat or {}).get("title") or "New Chat"
+        else:
+            title = _auto_chat_title(message)
+            current_chat_id = create_coach_chat(title, final_history, user_id)
 
         yield (
-            "",
-            working_history,
-            _render_chat(working_history),
+            "", final_history, current_chat_id, _render_chat(final_history),
+            _refresh_chat_picker(user_id, current_chat_id), gr.update(value=title or "")
         )
-
     except Exception as exc:
         working_history[-1] = {
-            "role": "assistant",
-            "content": f"Coach Chat error: {exc}",
-            "thinking": False,
+            "role": "assistant", "content": f"Coach Chat error: {exc}", "thinking": False
         }
-
-        yield (
-            "",
-            working_history,
-            _render_chat(working_history),
-        )
+        yield "", working_history, chat_id, _render_chat(working_history), gr.update(), gr.update()
 
 
 def build_chat_page(
@@ -201,502 +246,79 @@ def build_chat_page(
     credit_balance=None,
     visible=False,
 ):
-    """
-    Full-page Coach Chat with custom rendering and live streaming.
-    """
+    """Full-page Coach Chat with persistent conversation history."""
 
     css = """
-    /* =========================
-       PAGE
-       ========================= */
-
-    #chat-page {
-        min-height: 78vh !important;
-        background: transparent !important;
-        border: none !important;
-        box-shadow: none !important;
-        padding-top: 0 !important;
-    }
-
-
-    /* =========================
-       HEADER
-       ========================= */
-
-    #coach-chat-header {
-        width: min(900px, 96%) !important;
-        margin: 0 auto 30px !important;
-        padding: 10px 14px !important;
-        border-radius: 16px !important;
-
-        background:
-            linear-gradient(
-                180deg,
-                rgba(17, 22, 40, .98),
-                rgba(10, 14, 29, .98)
-            ) !important;
-
-        border:
-            1px solid rgba(168, 85, 247, .58) !important;
-
-        box-shadow:
-            0 0 18px rgba(139, 92, 246, .10) !important;
-
-        align-items: center !important;
-    }
-
-    .cc-chat-header-inner {
-        display: flex;
-        align-items: center;
-        gap: 9px;
-        width: 100%;
-    }
-
-    .cc-chat-orb {
-        color: #22d3ee;
-        font-size: 15px;
-
-        text-shadow:
-            0 0 10px rgba(34, 211, 238, .60);
-    }
-
-    .cc-chat-title {
-        color: #f7f7ff;
-        font-size: .92rem;
-        font-weight: 800;
-        letter-spacing: .04em;
-    }
-
-
-    /* =========================
-       CHAT WINDOW
-       ========================= */
-
-    #coach-chat-window {
-        width: min(900px, 96%) !important;
-        height: 320px !important;
-        margin: 0 auto 30px !important;
-        padding: 22px 24px !important;
-
-        background:
-            radial-gradient(
-                circle at 18% 0%,
-                rgba(139, 92, 246, .16),
-                transparent 38%
-            ),
-            linear-gradient(
-                180deg,
-                #12172a 0%,
-                #0d1222 100%
-            ) !important;
-
-        border:
-            1px solid rgba(168, 85, 247, .72) !important;
-
-        border-radius: 20px !important;
-
-        box-shadow:
-            inset 0 0 32px rgba(139, 92, 246, .06),
-            0 14px 30px rgba(0, 0, 0, .30) !important;
-
-        overflow-y: auto !important;
-        box-sizing: border-box !important;
-    }
-
-    #coach-chat-window,
-    #coach-chat-window > div {
-        background-color: transparent !important;
-    }
-
-    #coach-chat-window > div {
-        border: none !important;
-        box-shadow: none !important;
-        padding: 0 !important;
-    }
-
-
-    /* =========================
-       MESSAGE ROWS
-       ========================= */
-
-    .cc-message-row {
-        width: 100%;
-        box-sizing: border-box;
-        margin-bottom: 26px;
-    }
-
-    .cc-message-row:last-child {
-        margin-bottom: 0;
-    }
-
-
-    /* =========================
-       COACH
-       ========================= */
-
-    .cc-assistant-row {
-        display: block;
-    }
-
-    .cc-coach-label {
-        margin-bottom: 10px;
-        color: rgba(34, 211, 238, .82);
-        font-size: 11px;
-        font-weight: 800;
-        letter-spacing: .08em;
-        text-transform: uppercase;
-    }
-
-    .cc-assistant-message {
-        width: 100%;
-        color: #eef2ff;
-        font-size: 16px;
-        line-height: 1.72;
-
-        background:
-            rgba(255, 255, 255, .015);
-
-        border-left:
-            2px solid rgba(34, 211, 238, .40);
-
-        padding: 3px 0 3px 18px;
-        margin: 0;
-        box-sizing: border-box;
-    }
-
-    .cc-assistant-message .cc-line {
-        margin-bottom: 12px;
-    }
-
-    .cc-assistant-message .cc-bullet {
-        margin: 7px 0 7px 14px;
-    }
-
-
-    /* =========================
-       THINKING INDICATOR
-       ========================= */
-
-    .cc-thinking {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-
-        color: rgba(226, 232, 240, .70);
-
-        border-left:
-            2px solid rgba(34, 211, 238, .40);
-
-        padding: 8px 0 8px 18px;
-        min-height: 28px;
-    }
-
-    .cc-thinking-dot {
-        width: 6px;
-        height: 6px;
-        border-radius: 999px;
-        background: #22d3ee;
-        opacity: .35;
-        animation: cc-thinking-pulse 1.15s infinite ease-in-out;
-    }
-
-    .cc-thinking-dot:nth-child(2) {
-        animation-delay: .15s;
-    }
-
-    .cc-thinking-dot:nth-child(3) {
-        animation-delay: .30s;
-    }
-
-    .cc-thinking-text {
-        margin-left: 6px;
-        font-size: 14px;
-        letter-spacing: .01em;
-    }
-
-    @keyframes cc-thinking-pulse {
-        0%, 80%, 100% {
-            opacity: .25;
-            transform: translateY(0);
-        }
-
-        40% {
-            opacity: 1;
-            transform: translateY(-3px);
-        }
-    }
-
-
-    /* =========================
-       USER MESSAGE
-       ========================= */
-
-    .cc-user-row {
-        display: flex;
-        justify-content: flex-end;
-    }
-
-    .cc-user-message {
-        width: auto;
-        max-width: 72%;
-        padding: 11px 16px;
-        color: white;
-        font-size: 15px;
-        line-height: 1.55;
-
-        background:
-            linear-gradient(
-                135deg,
-                rgba(124, 58, 237, .95),
-                rgba(190, 24, 93, .82)
-            );
-
-        border:
-            1px solid rgba(244, 114, 182, .50);
-
-        border-radius: 16px;
-
-        box-shadow:
-            0 7px 18px rgba(0, 0, 0, .22);
-    }
-
-    .cc-user-message .cc-line {
-        margin-bottom: 5px;
-    }
-
-
-    /* =========================
-       SPACING / EMPTY
-       ========================= */
-
-    .cc-space {
-        height: 10px;
-    }
-
-    .cc-line:last-child {
-        margin-bottom: 0;
-    }
-
-    .cc-empty {
-        width: 100%;
-        padding-top: 12px;
-        color: rgba(226, 232, 240, .46);
-        font-size: 15px;
-        text-align: center;
-    }
-
-
-    /* =========================
-       SCROLLBAR
-       ========================= */
-
-    #coach-chat-window::-webkit-scrollbar {
-        width: 8px;
-    }
-
-    #coach-chat-window::-webkit-scrollbar-track {
-        background: rgba(255, 255, 255, .02);
-    }
-
-    #coach-chat-window::-webkit-scrollbar-thumb {
-        background:
-            linear-gradient(
-                180deg,
-                #7c3aed,
-                #9333ea
-            );
-
-        border-radius: 10px;
-    }
-
-
-    /* =========================
-       COMPOSER
-       ========================= */
-
-    #coach-chat-composer {
-        width: min(900px, 96%) !important;
-        margin: 0 auto !important;
-        padding: 8px 9px 8px 13px !important;
-
-        border-radius: 18px !important;
-
-        background:
-            linear-gradient(
-                180deg,
-                rgba(18, 23, 42, .99),
-                rgba(10, 13, 26, .99)
-            ) !important;
-
-        border:
-            1px solid rgba(168, 85, 247, .72) !important;
-
-        box-shadow:
-            0 10px 28px rgba(0, 0, 0, .35),
-            0 0 18px rgba(139, 92, 246, .10) !important;
-
-        align-items: center !important;
-    }
-
-    #coach-chat-input,
-    #coach-chat-input > div {
-        background: transparent !important;
-        border: none !important;
-        box-shadow: none !important;
-    }
-
-    #coach-chat-input textarea {
-        background: transparent !important;
-        border: none !important;
-        box-shadow: none !important;
-        color: white !important;
-        font-size: 15px !important;
-        padding: 9px 7px !important;
-    }
-
-    #coach-chat-input textarea::placeholder {
-        color: rgba(226, 232, 240, .45) !important;
-    }
-
-    #coach-chat-input textarea:focus {
-        outline: none !important;
-        box-shadow: none !important;
-    }
-
-
-    /* =========================
-       SEND BUTTON
-       ========================= */
-
-    #coach-chat-send {
-        min-width: 42px !important;
-        width: 42px !important;
-        height: 42px !important;
-        padding: 0 !important;
-        border-radius: 13px !important;
-        font-size: 17px !important;
-        color: white !important;
-
-        background:
-            linear-gradient(
-                135deg,
-                #7c3aed,
-                #ec4899
-            ) !important;
-
-        border: none !important;
-
-        box-shadow:
-            0 0 17px rgba(236, 72, 153, .34) !important;
-    }
-
-    #coach-chat-send:hover {
-        transform: translateY(-1px) !important;
-    }
-
-
-    /* =========================
-       MOBILE
-       ========================= */
-
-    @media (max-width: 700px) {
-        #coach-chat-header,
-        #coach-chat-window,
-        #coach-chat-composer {
-            width: 100% !important;
-        }
-
-        #coach-chat-window {
-            height: 54vh !important;
-            padding: 17px !important;
-        }
-
-        .cc-user-message {
-            max-width: 88%;
-        }
-
-        .cc-assistant-message,
-        .cc-thinking {
-            padding-left: 14px;
-        }
-    }
+    #chat-page { min-height: 78vh !important; background: transparent !important; border: none !important; box-shadow: none !important; }
+    #coach-chat-header, #coach-chat-composer { width: min(900px, 96%) !important; margin-left:auto !important; margin-right:auto !important; }
+    #coach-chat-header { margin-bottom: 18px !important; padding: 10px 14px !important; border-radius:16px !important; background:#0d1222 !important; border:1px solid rgba(168,85,247,.58) !important; }
+    .cc-chat-header-inner { display:flex; align-items:center; gap:9px; }
+    .cc-chat-orb { color:#22d3ee; } .cc-chat-title { color:#f7f7ff; font-weight:800; }
+    #coach-chat-history-panel { width:min(900px,96%) !important; margin:0 auto 16px !important; }
+    #coach-chat-history-panel .wrap { background:#0d1222 !important; border:1px solid rgba(168,85,247,.35) !important; border-radius:16px !important; }
+    #coach-chat-window { width:min(900px,96%) !important; height:320px !important; overflow-y:auto !important; margin:0 auto 20px !important; padding:22px 24px !important; background:#0d1222 !important; border:1px solid rgba(168,85,247,.72) !important; border-radius:20px !important; }
+    .cc-message-row { margin-bottom:18px; } .cc-user-row { display:flex; justify-content:flex-end; }
+    .cc-user-message { max-width:78%; padding:11px 14px; border-radius:16px 16px 4px 16px; background:linear-gradient(135deg,#7c3aed,#a855f7); color:white; }
+    .cc-coach-label { color:#22d3ee; font-size:.72rem; font-weight:800; margin-bottom:6px; }
+    .cc-assistant-message,.cc-thinking { color:#eef2ff; line-height:1.55; padding-left:10px; }
+    .cc-bullet { margin:4px 0; } .cc-space { height:8px; }
+    .cc-empty { color:rgba(226,232,240,.55); text-align:center; padding-top:100px; }
+    .cc-thinking-dot { display:inline-block; width:6px; height:6px; border-radius:50%; background:#22d3ee; margin-right:4px; }
+    #coach-chat-composer { padding:10px 12px !important; border:1px solid rgba(168,85,247,.72) !important; border-radius:18px !important; background:#0d1222 !important; }
+    #coach-chat-input, #coach-chat-input > div { background:transparent !important; border:none !important; box-shadow:none !important; }
+    #coach-chat-input textarea { background:transparent !important; border:none !important; color:white !important; }
+    #coach-chat-send { min-width:42px !important; width:42px !important; height:42px !important; border-radius:13px !important; background:linear-gradient(135deg,#7c3aed,#ec4899) !important; border:none !important; }
+    @media (max-width:700px) { #coach-chat-header,#coach-chat-history-panel,#coach-chat-window,#coach-chat-composer { width:100% !important; } #coach-chat-window { height:54vh !important; padding:17px !important; } .cc-user-message { max-width:88%; } }
     """
 
-    with gr.Column(
-        visible=visible,
-        elem_id="chat-page",
-    ) as chat_page:
-
+    with gr.Column(visible=visible, elem_id="chat-page") as chat_page:
         gr.HTML(f"<style>{css}</style>")
-
         with gr.Row(elem_id="coach-chat-header"):
-            gr.HTML(
-                """
-                <div class="cc-chat-header-inner">
-                    <span class="cc-chat-orb">✦</span>
-                    <span class="cc-chat-title">COACH CHAT</span>
-                </div>
-                """
-            )
+            gr.HTML('<div class="cc-chat-header-inner"><span class="cc-chat-orb">✦</span><span class="cc-chat-title">COACH CHAT</span></div>')
 
         history_state = gr.State([])
+        chat_id_state = gr.State(None)
 
-        chat_display = gr.HTML(
-            value=_render_chat([]),
-            elem_id="coach-chat-window",
-        )
+        with gr.Accordion("Chats", open=False, elem_id="coach-chat-history-panel"):
+            new_chat_button = gr.Button("＋ New Chat")
+            chat_picker = gr.Radio(choices=[], label="📌 Pinned  •  🕘 Recent", interactive=True)
+            rename_box = gr.Textbox(label="Conversation title", placeholder="Rename this chat...")
+            with gr.Row():
+                rename_button = gr.Button("Rename")
+                pin_button = gr.Button("Pin / Unpin")
+                delete_button = gr.Button("Delete", variant="stop")
+
+        chat_display = gr.HTML(value=_render_chat([]), elem_id="coach-chat-window")
 
         with gr.Row(elem_id="coach-chat-composer"):
-            message_box = gr.Textbox(
-                value="",
-                placeholder="Ask Channel Coach anything...",
-                show_label=False,
-                lines=1,
-                max_lines=6,
-                scale=12,
-                container=False,
-                elem_id="coach-chat-input",
-            )
+            message_box = gr.Textbox(value="", placeholder="Ask Channel Coach anything...", show_label=False, lines=1, max_lines=6, scale=12, container=False, elem_id="coach-chat-input")
+            send_button = gr.Button("➤", variant="primary", scale=0, min_width=48, elem_id="coach-chat-send")
 
-            send_button = gr.Button(
-                "➤",
-                variant="primary",
-                scale=0,
-                min_width=48,
-                elem_id="coach-chat-send",
-            )
-
-        send_button.click(
-            fn=_respond,
-            inputs=[
-                message_box,
-                history_state,
-                workspace_name,
-            ],
-            outputs=[
-                message_box,
-                history_state,
-                chat_display,
-            ],
+        new_chat_button.click(
+            fn=_new_chat, inputs=[workspace_name],
+            outputs=[history_state, chat_id_state, chat_display, rename_box, chat_picker, message_box],
+            show_progress="hidden",
+        )
+        chat_picker.change(
+            fn=_load_chat, inputs=[chat_picker, workspace_name],
+            outputs=[history_state, chat_id_state, chat_display, rename_box],
+            show_progress="hidden",
+        )
+        rename_button.click(fn=_rename_selected, inputs=[chat_id_state, rename_box, workspace_name], outputs=[chat_picker], show_progress="hidden")
+        pin_button.click(fn=_toggle_pin, inputs=[chat_id_state, workspace_name], outputs=[chat_picker], show_progress="hidden")
+        delete_button.click(
+            fn=_delete_selected, inputs=[chat_id_state, workspace_name],
+            outputs=[history_state, chat_id_state, chat_display, rename_box, chat_picker],
             show_progress="hidden",
         )
 
-        message_box.submit(
-            fn=_respond,
-            inputs=[
-                message_box,
-                history_state,
-                workspace_name,
-            ],
-            outputs=[
-                message_box,
-                history_state,
-                chat_display,
-            ],
-            show_progress="hidden",
-        )
+        send_inputs = [message_box, history_state, chat_id_state, workspace_name]
+        send_outputs = [message_box, history_state, chat_id_state, chat_display, chat_picker, rename_box]
+        send_button.click(fn=_respond, inputs=send_inputs, outputs=send_outputs, show_progress="hidden")
+        message_box.submit(fn=_respond, inputs=send_inputs, outputs=send_outputs, show_progress="hidden")
 
     return chat_page
+
 
 
     
