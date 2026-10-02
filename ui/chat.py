@@ -253,19 +253,20 @@ def build_chat_page(
     #coach-chat-shell { width:min(1180px,98%)!important; margin:0 auto!important; gap:18px!important; align-items:stretch!important; }
     #coach-chat-sidebar { flex:0 0 260px!important; max-width:260px!important; min-width:230px!important; height:650px!important; padding:12px 10px!important; background:#080b12!important; border-right:1px solid rgba(148,163,184,.16)!important; border-radius:18px!important; overflow:hidden!important; }
     #coach-chat-main { min-width:0!important; flex:1 1 auto!important; }
-    #coach-sidebar-title { color:rgba(226,232,240,.62); font-size:.72rem; font-weight:800; letter-spacing:.08em; margin:16px 8px 7px; }
+    
     #coach-new-chat { width:100%!important; justify-content:flex-start!important; text-align:left!important; background:transparent!important; border:none!important; box-shadow:none!important; color:#f8fafc!important; font-weight:700!important; }
     #coach-new-chat:hover { background:rgba(148,163,184,.09)!important; }
     #coach-chat-picker { max-height:365px!important; overflow-y:auto!important; border:none!important; background:transparent!important; }
     #coach-chat-picker .wrap, #coach-chat-picker fieldset { border:none!important; background:transparent!important; box-shadow:none!important; padding:0!important; }
     #coach-chat-picker label { border:none!important; background:transparent!important; padding:8px 9px!important; border-radius:9px!important; color:#dbe2ea!important; font-size:.9rem!important; }
+     #coach-chat-picker::before { content:"PINNED / RECENT"; display:block; color:rgba(226,232,240,.46); font-size:.68rem; font-weight:800; letter-spacing:.08em; padding:12px 9px 5px; }
     #coach-chat-picker label:hover { background:rgba(148,163,184,.09)!important; }
     #coach-chat-picker input:checked + span, #coach-chat-picker label:has(input:checked) { background:rgba(148,163,184,.12)!important; }
     #coach-chat-picker .label-wrap, #coach-chat-picker > label { display:none!important; }
     #coach-chat-actions { margin-top:auto!important; padding-top:10px!important; border-top:1px solid rgba(148,163,184,.12)!important; }
     #coach-chat-actions textarea { min-height:38px!important; font-size:.82rem!important; }
     #coach-chat-actions button { min-width:0!important; font-size:.76rem!important; padding:6px 7px!important; }
-    #coach-chat-header { margin:0 0 14px!important; padding:10px 14px!important; border-radius:16px!important; background:#0d1222!important; border:1px solid rgba(168,85,247,.58)!important; }
+    #coach-chat-header { margin:0 0 10px!important; padding:6px 8px!important; border-radius:0!important; background:transparent!important; border:none!important; }
     .cc-chat-header-inner { display:flex; align-items:center; gap:9px; }
     .cc-chat-orb { color:#22d3ee; } .cc-chat-title { color:#f7f7ff; font-weight:800; }
     #coach-chat-window { height:530px!important; overflow-y:auto!important; margin:0 0 14px!important; padding:24px 26px!important; background:#0d1222!important; border:1px solid rgba(168,85,247,.55)!important; border-radius:20px!important; }
@@ -298,7 +299,6 @@ def build_chat_page(
         with gr.Row(elem_id="coach-chat-shell"):
             with gr.Column(elem_id="coach-chat-sidebar"):
                 new_chat_button = gr.Button("＋  New chat", elem_id="coach-new-chat")
-                gr.HTML('<div id="coach-sidebar-title">CHATS</div>')
                 chat_picker = gr.Radio(
                     choices=[],
                     label="Saved chats",
@@ -309,14 +309,15 @@ def build_chat_page(
 
                 with gr.Column(elem_id="coach-chat-actions"):
                     rename_box = gr.Textbox(
-                        label="Title",
-                        placeholder="Rename selected chat...",
-                        lines=1,
+                        value="",
+                        visible=False,
+                        show_label=False,
                     )
-                    with gr.Row():
-                        rename_button = gr.Button("Rename")
-                        pin_button = gr.Button("Pin")
-                        delete_button = gr.Button("Delete", variant="stop")
+                    with gr.Accordion("Chat options", open=False, elem_id="coach-chat-options"):
+                        with gr.Row():
+                            rename_button = gr.Button("Rename")
+                            pin_button = gr.Button("Pin / Unpin")
+                            delete_button = gr.Button("Delete", variant="stop")
 
             with gr.Column(elem_id="coach-chat-main"):
                 with gr.Row(elem_id="coach-chat-header"):
@@ -380,7 +381,6 @@ def build_chat_page(
         message_box.submit(fn=_respond, inputs=send_inputs, outputs=send_outputs, show_progress="hidden")
 
     return chat_page
-
 
 
 
