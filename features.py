@@ -3706,20 +3706,60 @@ def build_creator_coach_context(user_id="main"):
     return context_json
 
 
-def _build_creator_coach_prompt(user_question, user_id="main"):
+def _build_creator_coach_prompt(
+    user_question,
+    user_id="main",
+    conversation_history=None,
+):
     """
     Build the Coach Chat prompt and return (prompt, context_seconds).
-    Context is still cached by build_creator_coach_context().
+
+    The creator workspace context is still cached by
+    build_creator_coach_context(). Recent finalized Coach Chat messages are
+    included so reopened conversations can continue naturally.
     """
     context_start = time.perf_counter()
     creator_context = build_creator_coach_context(user_id)
     context_seconds = time.perf_counter() - context_start
+
+    # Keep conversation context bounded so a long-running chat does not make
+    # every request unnecessarily large. Thinking placeholders are excluded.
+    history_lines = []
+    history_chars = 0
+    max_history_chars = 12000
+
+    for item in reversed(list(conversation_history or [])):
+        if not isinstance(item, dict) or item.get("thinking"):
+            continue
+
+        role = str(item.get("role", "")).strip().lower()
+        content = str(item.get("content", "")).strip()
+
+        if role not in {"user", "assistant"} or not content:
+            continue
+
+        label = "Creator" if role == "user" else "Coach Chat"
+        line = f"{label}: {content}"
+
+        if history_chars + len(line) > max_history_chars:
+            break
+
+        history_lines.append(line)
+        history_chars += len(line)
+
+    history_lines.reverse()
+    conversation_context = (
+        "\n\n".join(history_lines)
+        if history_lines
+        else "No earlier messages in this conversation."
+    )
 
     prompt = f"""
 You are Coach Chat inside Channel Coach, a supportive creator mentor
 for small content creators.
 
 Use the creator's saved workspace data to give practical, specific advice.
+Use the prior conversation when it is relevant to the creator's new question.
 Do not pretend data exists if it is missing.
 If the workspace is empty, give the creator a simple next step instead
 of generic strategy.
@@ -3730,7 +3770,10 @@ Keep normal answers concise unless the creator asks for detail.
 Creator Workspace Data:
 {creator_context}
 
-Creator's Question:
+Earlier Coach Chat Conversation:
+{conversation_context}
+
+Creator's New Question:
 {user_question}
 
 Answer as Coach Chat.
@@ -3739,7 +3782,11 @@ Answer as Coach Chat.
     return prompt, context_seconds
 
 
-def stream_creator_coach(user_question, user_id="main"):
+def stream_creator_coach(
+    user_question,
+    user_id="main",
+    conversation_history=None,
+):
     """
     Stream Coach Chat text as it is generated.
 
@@ -3765,6 +3812,7 @@ def stream_creator_coach(user_question, user_id="main"):
     prompt, context_seconds = _build_creator_coach_prompt(
         user_question,
         user_id=user_id,
+        conversation_history=conversation_history,
     )
 
     print(
@@ -4608,7 +4656,6 @@ def render_getting_started_checklist(user_id="main"):
         {items_html}
     </div>
     '''
-
 
 
 
