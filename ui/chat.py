@@ -271,7 +271,31 @@ def build_chat_page(
     #coach-chat-header, #coach-chat-header > div, #coach-chat-header .wrap, #coach-chat-header .block { margin:0 0 10px!important; padding:6px 8px!important; border-radius:0!important; background:transparent!important; border:0!important; outline:0!important; box-shadow:none!important; }
     .cc-chat-header-inner { display:flex; align-items:center; gap:9px; }
     .cc-chat-orb { color:#22d3ee; } .cc-chat-title { color:#f7f7ff; font-weight:800; }
-    #coach-chat-window, #coach-chat-window > div, #coach-chat-window .wrap, #coach-chat-window .block { height:530px!important; overflow-y:auto!important; margin:0 0 14px!important; padding:24px 26px!important; background:#0d1222!important; border:0!important; outline:0!important; border-radius:0!important; box-shadow:none!important; }
+    #coach-chat-window {
+        height:530px!important;
+        overflow-y:auto!important;
+        margin:0 0 14px!important;
+        padding:24px 26px!important;
+        background:#0d1222!important;
+        border:0!important;
+        outline:0!important;
+        border-radius:0!important;
+        box-shadow:none!important;
+    }
+    #coach-chat-window > div,
+    #coach-chat-window .wrap,
+    #coach-chat-window .block {
+        height:auto!important;
+        min-height:0!important;
+        overflow:visible!important;
+        margin:0!important;
+        padding:0!important;
+        background:transparent!important;
+        border:0!important;
+        outline:0!important;
+        border-radius:0!important;
+        box-shadow:none!important;
+    }
     .cc-message-row { margin-bottom:18px; } .cc-user-row { display:flex; justify-content:flex-end; }
     .cc-user-message { max-width:78%; padding:11px 14px; border-radius:16px 16px 4px 16px; background:linear-gradient(135deg,#7c3aed,#a855f7); color:white; }
     .cc-coach-label { color:#22d3ee; font-size:.72rem; font-weight:800; margin-bottom:6px; }
@@ -383,7 +407,6 @@ def build_chat_page(
         message_box.submit(fn=_respond, inputs=send_inputs, outputs=send_outputs, show_progress="hidden")
 
     return chat_page
-
 
 
     
