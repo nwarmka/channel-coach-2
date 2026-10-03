@@ -25,15 +25,20 @@ def build_dashboard_page(workspace_name, visible=True):
     #dashboard-page {
         padding: 0 !important;
         width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        margin: 0 !important;
         border: 0 !important;
         outline: 0 !important;
         box-shadow: none !important;
         background: transparent !important;
         border-radius: 0 !important;
+        box-sizing: border-box !important;
     }
 
     #dashboard-page .cc-dashboard-page-header {
         width: 100%;
+        max-width: 100%;
         margin: 0 0 14px 0;
         padding: 18px 22px;
         border: 2px solid rgba(190, 35, 143, .88);
@@ -62,31 +67,32 @@ def build_dashboard_page(workspace_name, visible=True):
     }
 
     #dashboard-output {
-        margin-top: 0 !important;
+        margin: 0 !important;
         width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
         border: none !important;
         outline: none !important;
         box-shadow: none !important;
         background: transparent !important;
         padding: 0 !important;
+        box-sizing: border-box !important;
     }
 
-    /* Remove the large outer Creator Dashboard wrapper/card.
-       Individual task cards keep their own borders. */
     #dashboard-output .cc-dashboard-wrap {
         border: none !important;
         outline: none !important;
         box-shadow: none !important;
         background: transparent !important;
         padding: 0 !important;
-    }
-
-    #dashboard-output .cc-dashboard-wrap {
         gap: 14px !important;
         width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        margin: 0 !important;
+        box-sizing: border-box !important;
     }
 
-    /* Keep the existing dashboard data, but make the task area the visual focus. */
     #dashboard-output .cc-dashboard-hero {
         padding: 15px 18px !important;
         border-radius: 16px !important;
@@ -107,9 +113,9 @@ def build_dashboard_page(workspace_name, visible=True):
         letter-spacing: .11em !important;
     }
 
-    /* NEXT CREATOR TASKS PANEL */
     #dashboard-output .cc-upcoming-box {
         width: 100% !important;
+        max-width: 100% !important;
         box-sizing: border-box !important;
         padding: 4px 0 0 !important;
         margin: 0 !important;
@@ -132,10 +138,10 @@ def build_dashboard_page(workspace_name, visible=True):
         font-size: .9rem !important;
     }
 
-    /* Clickable task rows */
     #dashboard-output a.cc-dashboard-task-link {
         display: block !important;
         width: 100% !important;
+        max-width: 100% !important;
         margin: 0 0 10px !important;
         text-decoration: none !important;
         color: inherit !important;
@@ -144,6 +150,7 @@ def build_dashboard_page(workspace_name, visible=True):
     #dashboard-output .cc-planner-project-card {
         position: relative !important;
         width: 100% !important;
+        max-width: 100% !important;
         min-height: 82px !important;
         box-sizing: border-box !important;
         margin: 0 !important;
@@ -211,7 +218,6 @@ def build_dashboard_page(workspace_name, visible=True):
         box-shadow: none !important;
     }
 
-    /* Restore the visible task progress bar. */
     #dashboard-output .cc-progress-wrap {
         display: block !important;
         width: 100% !important;
@@ -233,8 +239,6 @@ def build_dashboard_page(workspace_name, visible=True):
         box-shadow: 0 0 10px rgba(255, 20, 147, .24) !important;
     }
 
-    /* Remove the big native calendar button from Home.
-       It remains rendered off-screen so app.py's existing event wiring is safe. */
     #dashboard-open-calendar {
         position: fixed !important;
         left: -10000px !important;
@@ -267,18 +271,144 @@ def build_dashboard_page(workspace_name, visible=True):
         margin-top: 6px !important;
     }
 
+    /* Compact dashboard heading; preserve all task and health cards. */
+    #channel-coach-app #dashboard-page .cc-dashboard-page-header {
+        display: flex !important;
+        align-items: center !important;
+        gap: 16px !important;
+        padding: 16px 20px !important;
+        margin: 0 0 14px !important;
+        background: linear-gradient(120deg, #11141e, #090c14) !important;
+        border: 1px solid rgba(255,62,165,.55) !important;
+        border-radius: 18px !important;
+        box-shadow: none !important;
+        box-sizing: border-box !important;
+    }
+
+    #dashboard-page .cc-dashboard-header-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        width: 50px;
+        height: 50px;
+        font-size: 27px;
+        background: linear-gradient(135deg, #ff3ea5, #8b5cf6);
+        border-radius: 14px;
+    }
+
+    #dashboard-page .cc-dashboard-header-content {
+        min-width: 0;
+    }
+
+    #dashboard-page .cc-dashboard-header-content h1 {
+        margin: 0 !important;
+        color: #ffffff !important;
+        font-size: 1.55rem !important;
+        font-weight: 850 !important;
+        line-height: 1.2;
+    }
+
+    #dashboard-page .cc-dashboard-header-content p {
+        margin: 5px 0 0 !important;
+        color: #a9b6ce !important;
+        font-size: .9rem !important;
+        line-height: 1.4;
+    }
+
+    #channel-coach-app #dashboard-page #dashboard-header-html {
+        border: 0 !important;
+        outline: 0 !important;
+        box-shadow: none !important;
+        background: transparent !important;
+        background-image: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        border-radius: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+
+    #channel-coach-app #dashboard-page #dashboard-header-html .html-container,
+    #channel-coach-app #dashboard-page #dashboard-header-html .prose {
+        border: 0 !important;
+        box-shadow: none !important;
+        background: transparent !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+
+    /*
+       MOBILE FULL-WIDTH DASHBOARD
+       These rules apply only to phones/tablets <= 700px.
+       They deliberately remove the centered/max-width constraints that
+       were keeping the dashboard cards narrower than the phone viewport.
+    */
     @media (max-width: 700px) {
-        #dashboard-page .cc-dashboard-page-header {
-            padding: 14px 15px;
-            margin-bottom: 10px;
+        #channel-coach-app #dashboard-page,
+        #channel-coach-app #dashboard-header-html,
+        #channel-coach-app #dashboard-output,
+        #channel-coach-app #dashboard-output > div,
+        #channel-coach-app #dashboard-output .html-container,
+        #channel-coach-app #dashboard-output .prose,
+        #channel-coach-app #dashboard-output .cc-dashboard-wrap,
+        #channel-coach-app #dashboard-output .cc-balanced-dashboard,
+        #channel-coach-app #dashboard-output .cc-dashboard-full-stack,
+        #channel-coach-app #dashboard-output .cc-dashboard-grid,
+        #channel-coach-app #dashboard-output .cc-dashboard-two-col,
+        #channel-coach-app #dashboard-output .cc-upcoming-box {
+            width: 100% !important;
+            max-width: none !important;
+            min-width: 0 !important;
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+            box-sizing: border-box !important;
         }
 
-        #dashboard-page .cc-dashboard-page-title {
-            font-size: 1.28rem;
+        #channel-coach-app #dashboard-page {
+            padding-left: 0 !important;
+            padding-right: 0 !important;
+        }
+
+        #channel-coach-app #dashboard-header-html,
+        #channel-coach-app #dashboard-output {
+            padding-left: 0 !important;
+            padding-right: 0 !important;
+        }
+
+        #channel-coach-app #dashboard-page .cc-dashboard-page-header {
+            width: 100% !important;
+            max-width: none !important;
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+            padding: 13px !important;
+            gap: 11px !important;
+        }
+
+        #dashboard-page .cc-dashboard-header-icon {
+            width: 42px;
+            height: 42px;
+            font-size: 23px;
+        }
+
+        #dashboard-page .cc-dashboard-header-content h1 {
+            font-size: 1.2rem !important;
         }
 
         #dashboard-page .cc-dashboard-page-subtitle {
             font-size: .82rem;
+        }
+
+        #channel-coach-app #dashboard-output .cc-dashboard-hero,
+        #channel-coach-app #dashboard-output .cc-dashboard-stat,
+        #channel-coach-app #dashboard-output .cc-dashboard-panel,
+        #channel-coach-app #dashboard-output .cc-planner-wrap,
+        #channel-coach-app #dashboard-output .cc-planner-project-card,
+        #channel-coach-app #dashboard-output a.cc-dashboard-task-link {
+            max-width: none !important;
+            box-sizing: border-box !important;
         }
 
         #dashboard-output .cc-planner-project-card {
@@ -308,78 +438,6 @@ def build_dashboard_page(workspace_name, visible=True):
             right: 13px;
             font-size: 1.8rem;
         }
-    }
-    /* Compact dashboard heading; preserve all task and health cards. */
-    #channel-coach-app #dashboard-page .cc-dashboard-page-header {
-        display: flex !important;
-        align-items: center !important;
-        gap: 16px !important;
-        padding: 16px 20px !important;
-        margin: 0 0 14px !important;
-        background: linear-gradient(120deg, #11141e, #090c14) !important;
-        border: 1px solid rgba(255,62,165,.55) !important;
-        border-radius: 18px !important;
-        box-shadow: none !important;
-        box-sizing: border-box !important;
-    }
-    #dashboard-page .cc-dashboard-header-icon {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
-        width: 50px;
-        height: 50px;
-        font-size: 27px;
-        background: linear-gradient(135deg, #ff3ea5, #8b5cf6);
-        border-radius: 14px;
-    }
-    #dashboard-page .cc-dashboard-header-content { min-width: 0; }
-    #dashboard-page .cc-dashboard-header-content h1 {
-        margin: 0 !important;
-        color: #ffffff !important;
-        font-size: 1.55rem !important;
-        font-weight: 850 !important;
-        line-height: 1.2;
-    }
-    #dashboard-page .cc-dashboard-header-content p {
-        margin: 5px 0 0 !important;
-        color: #a9b6ce !important;
-        font-size: .9rem !important;
-        line-height: 1.4;
-    }
-    @media (max-width: 600px) {
-        #channel-coach-app #dashboard-page .cc-dashboard-page-header {
-            padding: 13px !important;
-            gap: 11px !important;
-        }
-        #dashboard-page .cc-dashboard-header-icon {
-            width: 42px;
-            height: 42px;
-            font-size: 23px;
-        }
-        #dashboard-page .cc-dashboard-header-content h1 {
-            font-size: 1.2rem !important;
-        }
-    }
-    /* Only the Gradio HTML component surrounding the title is redundant.
-       Keep the inner .cc-dashboard-page-header as the single outlined card. */
-    #channel-coach-app #dashboard-page #dashboard-header-html {
-        border: 0 !important;
-        outline: 0 !important;
-        box-shadow: none !important;
-        background: transparent !important;
-        background-image: none !important;
-        padding: 0 !important;
-        margin: 0 !important;
-        border-radius: 0 !important;
-    }
-    #channel-coach-app #dashboard-page #dashboard-header-html .html-container,
-    #channel-coach-app #dashboard-page #dashboard-header-html .prose {
-        border: 0 !important;
-        box-shadow: none !important;
-        background: transparent !important;
-        padding: 0 !important;
-        margin: 0 !important;
     }
     """
 
@@ -422,8 +480,6 @@ def build_dashboard_page(workspace_name, visible=True):
             """,
         )
 
-        # app.py expects this component, so keep it as the existing bridge.
-        # CSS above hides it from the Home screen.
         dashboard_open_calendar_button = gr.Button(
             "📅 Open Next Creator Task in Calendar",
             elem_id="dashboard-open-calendar",
@@ -454,4 +510,5 @@ def build_dashboard_page(workspace_name, visible=True):
         )
 
     return dashboard_page, dashboard_output, dashboard_open_calendar_button
+
 
