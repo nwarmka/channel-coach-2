@@ -2284,23 +2284,53 @@ button[role='tab'][aria-selected='true'] {
 
 /* Mobile layout */
 @media (max-width: 768px) {
-    html, body {
+
+    html,
+    body {
         width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
         overflow-x: hidden !important;
     }
 
     .gradio-container {
+        width: 100vw !important;
+        max-width: 100vw !important;
+        min-width: 0 !important;
+        margin: 0 !important;
+        padding: 8px !important;
+        box-sizing: border-box !important;
+        overflow-x: hidden !important;
+    }
+
+    #channel-coach-app {
         width: 100% !important;
         max-width: 100% !important;
-        padding: 12px !important;
+        min-width: 0 !important;
         margin: 0 !important;
+        padding: 0 !important;
+        box-sizing: border-box !important;
+    }
+
+    #channel-coach-app > div,
+    #channel-coach-app .contain,
+    #channel-coach-app .main,
+    #channel-coach-app .wrap {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
         box-sizing: border-box !important;
     }
 
     #channel-coach-header {
         width: 100% !important;
         max-width: 100% !important;
-        padding: 6px 0 12px !important;
+        min-width: 0 !important;
+        padding: 6px 2px 12px !important;
         margin: 0 0 8px 0 !important;
         box-sizing: border-box !important;
     }
@@ -2317,24 +2347,96 @@ button[role='tab'][aria-selected='true'] {
         margin-bottom: 0 !important;
     }
 
-    .block, .gr-box, .form, .panel, .gr-panel, .tabitem, [role='tabpanel'] {
+    .block,
+    .gr-box,
+    .form,
+    .panel,
+    .gr-panel,
+    .tabitem,
+    [role="tabpanel"] {
+        width: 100% !important;
         max-width: 100% !important;
+        min-width: 0 !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
         box-sizing: border-box !important;
     }
 
-    textarea, input, select {
+    .row,
+    .column {
         max-width: 100% !important;
+        min-width: 0 !important;
         box-sizing: border-box !important;
     }
 
-    button { min-height: 46px !important; }
+    textarea,
+    input,
+    select {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        box-sizing: border-box !important;
+    }
+
+    button {
+        max-width: 100% !important;
+        min-height: 46px !important;
+        box-sizing: border-box !important;
+    }
+
+    .cc-balanced-dashboard,
+    .cc-dashboard-wrap,
+    .cc-card-dashboard,
+    .cc-planner-layout,
+    .cc-calendar-wrap,
+    .cc-upcoming-box {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        box-sizing: border-box !important;
+    }
+
+    .cc-dashboard-grid,
+    .cc-balanced-stats-row,
+    .cc-action-grid {
+        grid-template-columns: 1fr !important;
+        width: 100% !important;
+    }
+
+    .cc-focus-grid,
+    .cc-card-layout,
+    .cc-planner-layout,
+    .cc-dashboard-two-col {
+        grid-template-columns: 1fr !important;
+        width: 100% !important;
+    }
+
+    /*
+       The calendar can be wider than a phone.
+       Keep the page full-screen while allowing only the calendar
+       itself to scroll sideways when necessary.
+    */
+    .cc-calendar-wrap {
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .cc-calendar-grid {
+        min-width: 700px;
+    }
 
     .tab-nav {
+        width: 100% !important;
+        max-width: 100% !important;
         overflow-x: auto !important;
         scrollbar-width: none !important;
     }
 
-    .tab-nav::-webkit-scrollbar { display: none !important; }
+    .tab-nav::-webkit-scrollbar {
+        display: none !important;
+    }
 }
 
 .footer, footer {
