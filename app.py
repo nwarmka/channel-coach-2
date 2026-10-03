@@ -23,8 +23,8 @@ from auth import (
 # =========================
 # PWA / INSTALL TO HOME SCREEN
 # =========================
-# Links the web app manifest, enables iPhone/iPad home-screen support,
-# and registers the service worker used by Chrome/Android/desktop installs.
+# Links the manifest, registers the service worker, and shows
+# connection status messages when the device goes offline/online.
 custom_head = custom_head + """
 <link rel="manifest" href="/manifest.json">
 <link rel="apple-touch-icon" href="/static/icon-192.png">
@@ -36,31 +36,158 @@ custom_head = custom_head + """
 <meta name="application-name" content="Channel Coach">
 <meta name="apple-mobile-web-app-title" content="Channel Coach">
 
-<script>
-if ("serviceWorker" in navigator) {
-    window.addEventListener("load", function() {
-        navigator.serviceWorker
-            .register("/service-worker.js")
-            .then(function(registration) {
-                console.log("Channel Coach service worker registered:", registration.scope);
-            })
-            .catch(function(error) {
-                console.error("Channel Coach service worker registration failed:", error);
-            });
-    });
+<style>
+#cc-connection-banner {
+    position: fixed;
+    left: 50%;
+    top: 14px;
+    transform: translate(-50%, -140%);
+    z-index: 2147483646;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    max-width: calc(100vw - 28px);
+    padding: 10px 14px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,.14);
+    background: rgba(8, 11, 20, .96);
+    color: #fff;
+    font: 700 13px/1.25 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    box-shadow: 0 14px 34px rgba(0,0,0,.38);
+    backdrop-filter: blur(14px);
+    opacity: 0;
+    pointer-events: none;
+    transition: transform .28s ease, opacity .28s ease;
 }
+#cc-connection-banner.cc-show {
+    transform: translate(-50%, 0);
+    opacity: 1;
+}
+#cc-connection-banner.cc-offline {
+    border-color: rgba(255,62,165,.48);
+    box-shadow: 0 14px 34px rgba(0,0,0,.38), 0 0 24px rgba(255,62,165,.10);
+}
+#cc-connection-banner.cc-online {
+    border-color: rgba(34,211,238,.42);
+    box-shadow: 0 14px 34px rgba(0,0,0,.38), 0 0 24px rgba(34,211,238,.10);
+}
+#cc-connection-dot {
+    width: 8px;
+    height: 8px;
+    flex: 0 0 8px;
+    border-radius: 50%;
+    background: #ff3ea5;
+    box-shadow: 0 0 10px rgba(255,62,165,.75);
+}
+#cc-connection-banner.cc-online #cc-connection-dot {
+    background: #22d3ee;
+    box-shadow: 0 0 10px rgba(34,211,238,.75);
+}
+@media (max-width: 600px) {
+    #cc-connection-banner {
+        top: 10px;
+        width: max-content;
+        max-width: calc(100vw - 20px);
+        font-size: 12px;
+        padding: 9px 12px;
+    }
+}
+</style>
 
-window.addEventListener("beforeinstallprompt", function(event) {
-    event.preventDefault();
-    window.channelCoachInstallPrompt = event;
-});
+<script>
+(function () {
+    function ensureConnectionBanner() {
+        var existing = document.getElementById("cc-connection-banner");
+        if (existing) return existing;
 
-window.addEventListener("appinstalled", function() {
-    window.channelCoachInstallPrompt = null;
-});
+        var banner = document.createElement("div");
+        banner.id = "cc-connection-banner";
+        banner.setAttribute("role", "status");
+        banner.setAttribute("aria-live", "polite");
+        banner.innerHTML =
+            '<span id="cc-connection-dot"></span>' +
+            '<span id="cc-connection-text"></span>';
+        document.body.appendChild(banner);
+        return banner;
+    }
+
+    var hideTimer = null;
+
+    function showConnectionMessage(message, state, autoHide) {
+        var banner = ensureConnectionBanner();
+        var text = document.getElementById("cc-connection-text");
+
+        if (hideTimer) {
+            clearTimeout(hideTimer);
+            hideTimer = null;
+        }
+
+        text.textContent = message;
+        banner.classList.remove("cc-offline", "cc-online");
+        banner.classList.add(state === "online" ? "cc-online" : "cc-offline");
+        banner.classList.add("cc-show");
+
+        if (autoHide) {
+            hideTimer = setTimeout(function () {
+                banner.classList.remove("cc-show");
+            }, 2600);
+        }
+    }
+
+    function handleOffline() {
+        showConnectionMessage(
+            "You're offline — Channel Coach will reconnect automatically.",
+            "offline",
+            false
+        );
+    }
+
+    function handleOnline() {
+        showConnectionMessage(
+            "Back online — connection restored.",
+            "online",
+            true
+        );
+    }
+
+    window.addEventListener("offline", handleOffline);
+    window.addEventListener("online", handleOnline);
+
+    window.addEventListener("DOMContentLoaded", function () {
+        ensureConnectionBanner();
+        if (!navigator.onLine) handleOffline();
+    });
+
+    if ("serviceWorker" in navigator) {
+        window.addEventListener("load", function () {
+            navigator.serviceWorker
+                .register("/service-worker.js")
+                .then(function (registration) {
+                    console.log(
+                        "Channel Coach service worker registered:",
+                        registration.scope
+                    );
+                })
+                .catch(function (error) {
+                    console.error(
+                        "Channel Coach service worker registration failed:",
+                        error
+                    );
+                });
+        });
+    }
+
+    window.addEventListener("beforeinstallprompt", function (event) {
+        event.preventDefault();
+        window.channelCoachInstallPrompt = event;
+    });
+
+    window.addEventListener("appinstalled", function () {
+        window.channelCoachInstallPrompt = null;
+    });
+})();
 </script>
 """
-
 
 with gr.Blocks(title="Channel Coach") as app:
 
