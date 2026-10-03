@@ -205,6 +205,110 @@ def _format_reminder_time(hour, minute, am_pm):
     return f"{hour_24:02d}:{minute:02d}"
 
 
+def load_reminder_preferences(workspace):
+    """
+    Load the saved reminder schedule for the current workspace/user.
+    Falls back to 9:00 AM and both reminder days when no saved row exists.
+    """
+    safe_user_id = clean_user_id(workspace)
+
+    default_values = (
+        "9",
+        "00",
+        "AM",
+        "Day before and day of",
+        "Choose your reminder schedule, then save it.",
+    )
+
+    if not safe_user_id or not supabase_is_ready():
+        return default_values
+
+    try:
+        result = (
+            supabase
+            .table("push_subscriptions")
+            .select(
+                "reminder_time,"
+                "remind_day_before,"
+                "remind_day_of"
+            )
+            .eq("user_id", safe_user_id)
+            .eq("enabled", True)
+            .limit(1)
+            .execute()
+        )
+
+        rows = result.data or []
+
+        if not rows:
+            return default_values
+
+        row = rows[0]
+
+        reminder_time = str(
+            row.get("reminder_time") or "09:00"
+        ).strip()
+
+        try:
+            hour_24_text, minute_text = reminder_time.split(":", 1)
+            hour_24 = int(hour_24_text)
+            minute = int(minute_text)
+        except (TypeError, ValueError):
+            hour_24 = 9
+            minute = 0
+
+        am_pm = "AM" if hour_24 < 12 else "PM"
+        display_hour = hour_24 % 12
+
+        if display_hour == 0:
+            display_hour = 12
+
+        reminder_minute = f"{minute:02d}"
+
+        if reminder_minute not in {
+            f"{value:02d}"
+            for value in range(0, 60, 5)
+        }:
+            reminder_minute = "00"
+
+        remind_day_before = bool(
+            row.get("remind_day_before", True)
+        )
+        remind_day_of = bool(
+            row.get("remind_day_of", True)
+        )
+
+        if remind_day_before and remind_day_of:
+            reminder_days = "Day before and day of"
+        elif remind_day_before:
+            reminder_days = "Day before only"
+        elif remind_day_of:
+            reminder_days = "Day of only"
+        else:
+            reminder_days = "Day before and day of"
+
+        status = (
+            f"✅ Saved reminder schedule loaded: "
+            f"{display_hour}:{reminder_minute} "
+            f"{am_pm} ({reminder_days.lower()})."
+        )
+
+        return (
+            str(display_hour),
+            reminder_minute,
+            am_pm,
+            reminder_days,
+            status,
+        )
+
+    except Exception as exc:
+        print(
+            f"Reminder preference load failed: {exc}",
+            flush=True,
+        )
+        return default_values
+
+
 def save_reminder_preferences(
     workspace,
     reminder_hour,
@@ -435,6 +539,21 @@ def build_settings_page(
                 show_progress="hidden",
             )
 
+            # Whenever login/restore changes the active workspace, refresh
+            # the reminder controls from Supabase automatically.
+            workspace_name.change(
+                load_reminder_preferences,
+                inputs=[workspace_name],
+                outputs=[
+                    reminder_hour,
+                    reminder_minute,
+                    reminder_am_pm,
+                    reminder_days,
+                    reminder_preferences_status,
+                ],
+                show_progress="hidden",
+            )
+
         with gr.Accordion("🚀 Getting Started", open=True):
             onboarding_output = gr.HTML(
                 value=render_getting_started_checklist("main")
@@ -596,6 +715,7 @@ def build_settings_page(
         "profile_preferred_tone": profile_preferred_tone,
         "profile_things_to_avoid": profile_things_to_avoid,
     }
+
 
 
 
