@@ -3611,6 +3611,89 @@ textarea[aria-label*="Description"] {
 .cc-next-action-box .cc-small-label {
     margin-bottom: 4px !important;
 }
+
+/* =========================
+   FINAL MOBILE FULL-WIDTH OVERRIDE
+   Phone/PWA only — desktop is unchanged.
+========================= */
+@media (max-width: 768px) {
+    html,
+    body,
+    #root,
+    .gradio-container {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        box-sizing: border-box !important;
+        overflow-x: hidden !important;
+    }
+
+    html body .gradio-container {
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+    }
+
+    html body .gradio-container #channel-coach-app {
+        width: 100% !important;
+        max-width: none !important;
+        min-width: 0 !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        padding-left: 8px !important;
+        padding-right: 8px !important;
+        box-sizing: border-box !important;
+    }
+
+    html body .gradio-container #channel-coach-app > div,
+    html body .gradio-container #channel-coach-app .contain,
+    html body .gradio-container #channel-coach-app .main,
+    html body .gradio-container #channel-coach-app .wrap,
+    html body .gradio-container #channel-coach-app .tabs,
+    html body .gradio-container #channel-coach-app .tabitem,
+    html body .gradio-container #channel-coach-app [role="tabpanel"] {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        box-sizing: border-box !important;
+    }
+
+    html body .gradio-container #channel-coach-app .cc-balanced-dashboard,
+    html body .gradio-container #channel-coach-app .cc-dashboard-full-stack,
+    html body .gradio-container #channel-coach-app .cc-dashboard-wrap,
+    html body .gradio-container #channel-coach-app .cc-card-dashboard,
+    html body .gradio-container #channel-coach-app .cc-planner-wrap,
+    html body .gradio-container #channel-coach-app .cc-calendar-wrap {
+        width: 100% !important;
+        max-width: none !important;
+        min-width: 0 !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        box-sizing: border-box !important;
+    }
+
+    html body .gradio-container #channel-coach-app .block,
+    html body .gradio-container #channel-coach-app .gr-box,
+    html body .gradio-container #channel-coach-app .panel,
+    html body .gradio-container #channel-coach-app .gr-panel {
+        max-width: 100% !important;
+        min-width: 0 !important;
+        box-sizing: border-box !important;
+    }
+
+    html body .gradio-container #channel-coach-app .cc-calendar-wrap {
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    html body .gradio-container #channel-coach-app .cc-calendar-grid {
+        min-width: 700px;
+    }
+}
+
 """
 
 # =========================
