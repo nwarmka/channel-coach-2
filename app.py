@@ -1764,6 +1764,18 @@ async def push_test(request: Request):
 
 
 # =========================
+# HEALTH CHECK
+# =========================
+
+@server.get("/health")
+async def health_check():
+    return {
+        "ok": True,
+        "message": "Channel Coach FastAPI is working",
+    }
+
+
+# =========================
 # MOUNT CHANNEL COACH
 # =========================
 
