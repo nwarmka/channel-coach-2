@@ -19,8 +19,12 @@ from auth import (
     signup_user,
 )
 
-from fastapi import Request
-from fastapi.responses import JSONResponse
+
+import os
+import uvicorn
+from fastapi import FastAPI, Request
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from push_notifications import (
     disable_push_subscription,
     get_vapid_public_key,
@@ -1607,43 +1611,81 @@ with gr.Blocks(title="Channel Coach") as app:
     )
 
 # =========================
-# SERVE PWA FILES
+# FASTAPI + GRADIO SERVER
 # =========================
-# These lines make Gradio serve your app icon files and PWA files.
+# Custom API routes must live on the outer FastAPI app. Gradio is then
+# mounted at "/" so the push endpoints, manifest, and service worker are
+# reachable alongside the Channel Coach interface.
 
-app.app.mount("/static", StaticFiles(directory="static"), name="static")
+server = FastAPI()
 
 
-@app.app.get("/manifest.json", include_in_schema=False)
+# =========================
+# STATIC / PWA FILES
+# =========================
+
+server.mount(
+    "/static",
+    StaticFiles(directory="static"),
+    name="static",
+)
+
+
+@server.get("/manifest.json", include_in_schema=False)
 async def serve_manifest():
-    return FileResponse("manifest.json", media_type="application/manifest+json")
+    return FileResponse(
+        "manifest.json",
+        media_type="application/manifest+json",
+    )
 
 
-@app.app.get("/service-worker.js", include_in_schema=False)
+@server.get("/service-worker.js", include_in_schema=False)
 async def serve_service_worker():
-    return FileResponse("service-worker.js", media_type="application/javascript")
+    return FileResponse(
+        "service-worker.js",
+        media_type="application/javascript",
+    )
 
 
-@app.app.get("/api/push/vapid-public-key", include_in_schema=False)
+# =========================
+# PUSH NOTIFICATION API
+# =========================
+
+@server.get(
+    "/api/push/vapid-public-key",
+    include_in_schema=False,
+)
 async def push_vapid_public_key():
     public_key = get_vapid_public_key()
 
     if not public_key:
         return JSONResponse(
-            {"ok": False, "message": "VAPID public key is not configured."},
+            {
+                "ok": False,
+                "message": "VAPID public key is not configured.",
+            },
             status_code=503,
         )
 
-    return {"ok": True, "public_key": public_key}
+    return {
+        "ok": True,
+        "public_key": public_key,
+    }
 
 
-@app.app.post("/api/push/subscribe", include_in_schema=False)
+@server.post(
+    "/api/push/subscribe",
+    include_in_schema=False,
+)
 async def push_subscribe(request: Request):
     try:
         body = await request.json()
     except Exception:
         return JSONResponse(
-            {"ok": False, "message": "Invalid subscription request."},
+            {
+                "ok": False,
+                "message": "Invalid subscription request.",
+            },
             status_code=400,
         )
 
@@ -1654,18 +1696,27 @@ async def push_subscribe(request: Request):
     )
 
     return JSONResponse(
-        {"ok": ok, "message": message},
+        {
+            "ok": ok,
+            "message": message,
+        },
         status_code=200 if ok else 400,
     )
 
 
-@app.app.post("/api/push/unsubscribe", include_in_schema=False)
+@server.post(
+    "/api/push/unsubscribe",
+    include_in_schema=False,
+)
 async def push_unsubscribe(request: Request):
     try:
         body = await request.json()
     except Exception:
         return JSONResponse(
-            {"ok": False, "message": "Invalid unsubscribe request."},
+            {
+                "ok": False,
+                "message": "Invalid unsubscribe request.",
+            },
             status_code=400,
         )
 
@@ -1675,40 +1726,75 @@ async def push_unsubscribe(request: Request):
     )
 
     return JSONResponse(
-        {"ok": ok, "message": message},
+        {
+            "ok": ok,
+            "message": message,
+        },
         status_code=200 if ok else 400,
     )
 
 
-@app.app.post("/api/push/test", include_in_schema=False)
+@server.post(
+    "/api/push/test",
+    include_in_schema=False,
+)
 async def push_test(request: Request):
     try:
         body = await request.json()
     except Exception:
         return JSONResponse(
-            {"ok": False, "message": "Invalid test request."},
+            {
+                "ok": False,
+                "message": "Invalid test request.",
+            },
             status_code=400,
         )
 
-    ok, message = send_test_push(body.get("workspace"))
+    ok, message = send_test_push(
+        body.get("workspace")
+    )
 
     return JSONResponse(
-        {"ok": ok, "message": message},
+        {
+            "ok": ok,
+            "message": message,
+        },
         status_code=200 if ok else 400,
     )
 
 
-port = int(os.environ.get("PORT", 7860))
+# =========================
+# MOUNT CHANNEL COACH
+# =========================
 
-
-app.launch(
-    server_name="0.0.0.0",
-    server_port=port,
-    share=False,
+server = gr.mount_gradio_app(
+    server,
+    app,
+    path="/",
     head=custom_head,
     css=custom_css,
     favicon_path="static/channel-coach-icon.png",
 )
+
+
+# =========================
+# START SERVER
+# =========================
+
+if __name__ == "__main__":
+    port = int(
+        os.environ.get(
+            "PORT",
+            7860,
+        )
+    )
+
+    uvicorn.run(
+        server,
+        host="0.0.0.0",
+        port=port,
+    )
+
 
 
 
