@@ -2,6 +2,7 @@
 
 import gradio as gr
 
+from database import clean_user_id, supabase, supabase_is_ready
 from features import (
     load_creator_profile,
     render_getting_started_checklist,
@@ -178,6 +179,128 @@ async (workspace) => {
 """
 
 
+def _format_reminder_time(hour, minute, am_pm):
+    try:
+        hour = int(hour)
+        minute = int(minute)
+    except (TypeError, ValueError):
+        return None
+
+    if hour < 1 or hour > 12:
+        return None
+
+    if minute < 0 or minute > 59:
+        return None
+
+    am_pm = str(am_pm or "").strip().upper()
+
+    if am_pm not in ("AM", "PM"):
+        return None
+
+    hour_24 = hour % 12
+
+    if am_pm == "PM":
+        hour_24 += 12
+
+    return f"{hour_24:02d}:{minute:02d}"
+
+
+def save_reminder_preferences(
+    workspace,
+    reminder_hour,
+    reminder_minute,
+    reminder_am_pm,
+    remind_day_before,
+    remind_day_of,
+):
+    safe_user_id = clean_user_id(workspace)
+
+    if not safe_user_id:
+        return "❌ Log in before saving reminder preferences."
+
+    if not supabase_is_ready():
+        return "❌ Reminder preferences are temporarily unavailable."
+
+    reminder_time = _format_reminder_time(
+        reminder_hour,
+        reminder_minute,
+        reminder_am_pm,
+    )
+
+    if not reminder_time:
+        return "❌ Choose a valid reminder time."
+
+    remind_day_before = bool(remind_day_before)
+    remind_day_of = bool(remind_day_of)
+
+    if not remind_day_before and not remind_day_of:
+        return "❌ Turn on Day Before, Day Of, or both."
+
+    try:
+        result = (
+            supabase
+            .table("push_subscriptions")
+            .select("id")
+            .eq("user_id", safe_user_id)
+            .eq("enabled", True)
+            .execute()
+        )
+
+        rows = result.data or []
+
+        if not rows:
+            return (
+                "❌ Enable Content Reminders on this device first, "
+                "then save your reminder preferences."
+            )
+
+        (
+            supabase
+            .table("push_subscriptions")
+            .update(
+                {
+                    "reminder_time": reminder_time,
+                    "remind_day_before": remind_day_before,
+                    "remind_day_of": remind_day_of,
+                }
+            )
+            .eq("user_id", safe_user_id)
+            .eq("enabled", True)
+            .execute()
+        )
+
+        display_hour = int(reminder_hour)
+        display_minute = int(reminder_minute)
+
+        schedule_parts = []
+
+        if remind_day_before:
+            schedule_parts.append("day before")
+
+        if remind_day_of:
+            schedule_parts.append("day of")
+
+        schedule_text = " and ".join(schedule_parts)
+
+        return (
+            f"✅ Reminder preferences saved: "
+            f"{display_hour}:{display_minute:02d} "
+            f"{str(reminder_am_pm).upper()} "
+            f"({schedule_text})."
+        )
+
+    except Exception as exc:
+        print(
+            f"Reminder preference save failed: {exc}",
+            flush=True,
+        )
+
+        return (
+            "❌ Could not save reminder preferences. "
+            "Make sure the reminder preference columns were added in Supabase."
+        )
+
+
 def build_settings_page(
     workspace_name,
     dashboard_output,
@@ -206,12 +329,9 @@ def build_settings_page(
                 """
                 Get push reminders for content on your Channel Coach calendar.
 
-                **Default reminder schedule**
-                - 9:00 AM the day before scheduled content
-                - 9:00 AM on the scheduled day
-
-                Reminders use this device's timezone. Content already marked
-                **Published** is skipped.
+                Choose **when** you want reminders and **which days** you want
+                them. Reminder times use the timezone saved for your device.
+                Content already marked **Published** will be skipped.
                 """
             )
 
@@ -252,6 +372,67 @@ def build_settings_page(
                 inputs=[workspace_name],
                 outputs=[reminder_status],
                 js=DISABLE_PUSH_JS,
+                show_progress="hidden",
+            )
+
+            gr.Markdown("### ⏰ Reminder Schedule")
+
+            with gr.Row():
+                reminder_hour = gr.Dropdown(
+                    choices=[str(value) for value in range(1, 13)],
+                    value="9",
+                    label="Hour",
+                    interactive=True,
+                )
+
+                reminder_minute = gr.Dropdown(
+                    choices=[
+                        f"{value:02d}"
+                        for value in range(0, 60, 5)
+                    ],
+                    value="00",
+                    label="Minute",
+                    interactive=True,
+                )
+
+                reminder_am_pm = gr.Radio(
+                    choices=["AM", "PM"],
+                    value="AM",
+                    label="AM / PM",
+                    interactive=True,
+                )
+
+            with gr.Row():
+                remind_day_before = gr.Checkbox(
+                    label="Remind me the day before",
+                    value=True,
+                )
+
+                remind_day_of = gr.Checkbox(
+                    label="Remind me on the scheduled day",
+                    value=True,
+                )
+
+            save_reminder_preferences_button = gr.Button(
+                "💾 Save Reminder Preferences",
+                variant="primary",
+            )
+
+            reminder_preferences_status = gr.Markdown(
+                "Choose your reminder schedule, then save it."
+            )
+
+            save_reminder_preferences_button.click(
+                save_reminder_preferences,
+                inputs=[
+                    workspace_name,
+                    reminder_hour,
+                    reminder_minute,
+                    reminder_am_pm,
+                    remind_day_before,
+                    remind_day_of,
+                ],
+                outputs=[reminder_preferences_status],
                 show_progress="hidden",
             )
 
