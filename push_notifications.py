@@ -1,356 +1,301 @@
-import sys
-from datetime import datetime, timedelta, timezone
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+import json
+import os
 
-from pywebpush import WebPushException
+from pywebpush import WebPushException, webpush
 
 from database import clean_user_id, supabase, supabase_is_ready
-from push_notifications import send_push_to_row
 
 
-def _parse_reminder_time(value):
-    value = str(value or "").strip()
-
-    try:
-        hour_text, minute_text = value.split(":", 1)
-        hour = int(hour_text)
-        minute = int(minute_text)
-    except (ValueError, TypeError):
-        return None
-
-    if hour < 0 or hour > 23:
-        return None
-
-    if minute < 0 or minute > 59:
-        return None
-
-    return hour, minute
+def get_vapid_public_key():
+    return (os.getenv("VAPID_PUBLIC_KEY") or "").strip()
 
 
-def _local_now(timezone_name, now_utc):
-    timezone_name = str(timezone_name or "UTC").strip() or "UTC"
-
-    try:
-        zone = ZoneInfo(timezone_name)
-    except ZoneInfoNotFoundError:
-        zone = timezone.utc
-
-    return now_utc.astimezone(zone)
+def _vapid_private_key():
+    return (os.getenv("VAPID_PRIVATE_KEY") or "").strip()
 
 
-def _subscription_delivery_key(subscription, item):
-    """
-    The existing reminder log has a unique key per user/content/reminder/date.
-    Preferences are per device, so include the subscription ID in the stored
-    content_item_id value. This lets each enabled device receive its own push
-    without requiring another Supabase migration.
-    """
-    subscription_id = str(
-        subscription.get("id")
-        or subscription.get("endpoint")
-        or "device"
+def _vapid_claims():
+    contact = (os.getenv("VAPID_CLAIMS_EMAIL") or "").strip()
+
+    if not contact:
+        contact = "mailto:admin@example.com"
+    elif not contact.startswith("mailto:"):
+        contact = f"mailto:{contact}"
+
+    return {"sub": contact}
+
+
+def push_is_configured():
+    return bool(
+        supabase_is_ready()
+        and get_vapid_public_key()
+        and _vapid_private_key()
     )
 
-    item_id = str(item.get("id") or "content")
 
-    return f"{item_id}:{subscription_id}"
-
-
-def _already_sent(
+def save_push_subscription(
     user_id,
-    delivery_key,
-    reminder_type,
-    reminder_date,
+    subscription,
+    timezone_name="UTC",
 ):
-    result = (
-        supabase
-        .table("push_reminder_log")
-        .select("id")
-        .eq("user_id", user_id)
-        .eq("content_item_id", delivery_key)
-        .eq("reminder_type", reminder_type)
-        .eq("reminder_date", reminder_date)
-        .limit(1)
-        .execute()
-    )
+    safe_user_id = clean_user_id(user_id)
+    subscription = subscription or {}
 
-    return bool(result.data)
+    endpoint = str(
+        subscription.get("endpoint") or ""
+    ).strip()
 
+    keys = subscription.get("keys") or {}
 
-def _record_sent(
-    user_id,
-    delivery_key,
-    reminder_type,
-    reminder_date,
-):
-    (
-        supabase
-        .table("push_reminder_log")
-        .insert(
-            {
-                "user_id": user_id,
-                "content_item_id": delivery_key,
-                "reminder_type": reminder_type,
-                "reminder_date": reminder_date,
-            }
+    p256dh = str(
+        keys.get("p256dh") or ""
+    ).strip()
+
+    auth = str(
+        keys.get("auth") or ""
+    ).strip()
+
+    timezone_name = str(
+        timezone_name or "UTC"
+    ).strip() or "UTC"
+
+    if not endpoint or not p256dh or not auth:
+        return (
+            False,
+            "The browser did not return a complete push subscription.",
         )
-        .execute()
-    )
+
+    if not supabase_is_ready():
+        return (
+            False,
+            "Push reminders are temporarily unavailable.",
+        )
+
+    payload = {
+        "user_id": safe_user_id,
+        "endpoint": endpoint,
+        "p256dh": p256dh,
+        "auth": auth,
+        "timezone": timezone_name,
+        "enabled": True,
+    }
+
+    try:
+        existing = (
+            supabase
+            .table("push_subscriptions")
+            .select("id")
+            .eq("endpoint", endpoint)
+            .limit(1)
+            .execute()
+        )
+
+        if existing.data:
+            (
+                supabase
+                .table("push_subscriptions")
+                .update(payload)
+                .eq("endpoint", endpoint)
+                .execute()
+            )
+        else:
+            (
+                supabase
+                .table("push_subscriptions")
+                .insert(payload)
+                .execute()
+            )
+
+        return (
+            True,
+            "Content reminders are enabled on this device.",
+        )
+
+    except Exception as exc:
+        print(
+            f"Push subscription save failed: {exc}"
+        )
+
+        return (
+            False,
+            "Could not save push reminders right now.",
+        )
 
 
-def _disable_expired_subscription(subscription):
-    endpoint = str(subscription.get("endpoint") or "").strip()
+def disable_push_subscription(
+    user_id,
+    endpoint,
+):
+    safe_user_id = clean_user_id(user_id)
 
-    if not endpoint:
-        return
+    endpoint = str(
+        endpoint or ""
+    ).strip()
+
+    if not endpoint or not supabase_is_ready():
+        return (
+            False,
+            "No active push subscription was found.",
+        )
 
     try:
         (
             supabase
             .table("push_subscriptions")
-            .update({"enabled": False})
+            .update(
+                {"enabled": False}
+            )
             .eq("endpoint", endpoint)
+            .eq("user_id", safe_user_id)
             .execute()
         )
+
+        return (
+            True,
+            "Content reminders are disabled on this device.",
+        )
+
     except Exception as exc:
         print(
-            f"Could not disable expired subscription: {exc}",
-            flush=True,
+            f"Push subscription disable failed: {exc}"
+        )
+
+        return (
+            False,
+            "Could not disable reminders right now.",
         )
 
 
-def _calendar_items_for_date(user_id, publish_date):
-    result = (
-        supabase
-        .table("content_calendar")
-        .select("*")
-        .eq("user_id", user_id)
-        .eq("publish_date", publish_date)
-        .execute()
-    )
-
-    items = result.data or []
-
-    return [
-        item
-        for item in items
-        if str(item.get("status") or "").strip().lower()
-        != "published"
-    ]
-
-
-def _payload_for(item, reminder_type):
-    title = str(item.get("title") or "Scheduled content").strip()
-    platform = str(item.get("platform") or "").strip()
-
-    if reminder_type == "day_before":
-        heading = "📅 Content reminder for tomorrow"
-        body = f"Tomorrow: {title}"
-    else:
-        heading = "🔔 Content reminder for today"
-        body = f"Today: {title}"
-
-    if platform:
-        body += f" • {platform}"
-
+def _subscription_info(row):
     return {
-        "title": heading,
-        "body": body,
-        "url": "/",
-        "tag": (
-            "channel-coach-"
-            f"{reminder_type}-"
-            f"{item.get('id') or 'content'}"
-        ),
+        "endpoint": row.get("endpoint"),
+        "keys": {
+            "p256dh": row.get("p256dh"),
+            "auth": row.get("auth"),
+        },
     }
 
 
-def _send_for_date(
-    subscription,
-    user_id,
-    target_date,
-    reminder_type,
+def send_push_to_row(
+    row,
+    payload,
 ):
-    publish_date = target_date.isoformat()
-    items = _calendar_items_for_date(
-        user_id,
-        publish_date,
+    if not push_is_configured():
+        raise RuntimeError(
+            "VAPID or Supabase push configuration is missing."
+        )
+
+    return webpush(
+        subscription_info=_subscription_info(row),
+        data=json.dumps(payload),
+        vapid_private_key=_vapid_private_key(),
+        vapid_claims=_vapid_claims(),
+        ttl=60 * 60 * 24,
     )
 
-    sent = 0
 
-    for item in items:
-        delivery_key = _subscription_delivery_key(
-            subscription,
-            item,
+def send_test_push(user_id):
+    safe_user_id = clean_user_id(user_id)
+
+    if not push_is_configured():
+        return (
+            False,
+            "Push is not fully configured on the server yet.",
         )
-
-        try:
-            if _already_sent(
-                user_id,
-                delivery_key,
-                reminder_type,
-                publish_date,
-            ):
-                continue
-
-            send_push_to_row(
-                subscription,
-                _payload_for(
-                    item,
-                    reminder_type,
-                ),
-            )
-
-            _record_sent(
-                user_id,
-                delivery_key,
-                reminder_type,
-                publish_date,
-            )
-
-            sent += 1
-
-            print(
-                "Reminder sent:",
-                user_id,
-                reminder_type,
-                publish_date,
-                item.get("title"),
-                flush=True,
-            )
-
-        except WebPushException as exc:
-            response = getattr(exc, "response", None)
-            status_code = getattr(
-                response,
-                "status_code",
-                None,
-            )
-
-            print(
-                "Push reminder failed:",
-                user_id,
-                item.get("title"),
-                exc,
-                flush=True,
-            )
-
-            if status_code in (404, 410):
-                _disable_expired_subscription(
-                    subscription
-                )
-
-        except Exception as exc:
-            print(
-                "Reminder processing failed:",
-                user_id,
-                item.get("title"),
-                f"{type(exc).__name__}: {exc}",
-                flush=True,
-            )
-
-    return sent
-
-
-def run_reminders():
-    if not supabase_is_ready():
-        print(
-            "Push reminder worker stopped: Supabase is unavailable.",
-            flush=True,
-        )
-        return 1
-
-    now_utc = datetime.now(timezone.utc)
 
     try:
         result = (
             supabase
             .table("push_subscriptions")
             .select("*")
+            .eq("user_id", safe_user_id)
             .eq("enabled", True)
             .execute()
         )
+
+        subscriptions = (
+            result.data or []
+        )
+
     except Exception as exc:
         print(
-            f"Could not load push subscriptions: {exc}",
-            flush=True,
-        )
-        return 1
-
-    subscriptions = result.data or []
-
-    print(
-        f"Push reminder worker checking {len(subscriptions)} enabled device(s).",
-        flush=True,
-    )
-
-    total_sent = 0
-
-    for subscription in subscriptions:
-        user_id = clean_user_id(
-            subscription.get("user_id")
+            f"Push test subscription load failed: {exc}"
         )
 
-        parsed_time = _parse_reminder_time(
-            subscription.get("reminder_time")
-            or "09:00"
+        return (
+            False,
+            "Could not load your push subscription.",
         )
 
-        if not parsed_time:
+    if not subscriptions:
+        return (
+            False,
+            "Enable content reminders on this device first.",
+        )
+
+    sent = 0
+
+    for row in subscriptions:
+        try:
+            send_push_to_row(
+                row,
+                {
+                    "title":
+                        "🔔 Channel Coach reminders are working",
+
+                    "body":
+                        "You’ll get reminders for upcoming content here.",
+
+                    "url": "/",
+
+                    "tag":
+                        "channel-coach-test",
+                },
+            )
+
+            sent += 1
+
+        except WebPushException as exc:
             print(
-                f"Skipping {user_id}: invalid reminder_time.",
-                flush=True,
+                f"Push test failed: {exc}"
             )
-            continue
 
-        reminder_hour, reminder_minute = parsed_time
+            if getattr(
+                exc,
+                "status_code",
+                None,
+            ) in (404, 410):
 
-        local_now = _local_now(
-            subscription.get("timezone"),
-            now_utc,
+                try:
+                    (
+                        supabase
+                        .table("push_subscriptions")
+                        .update(
+                            {"enabled": False}
+                        )
+                        .eq(
+                            "endpoint",
+                            row.get("endpoint"),
+                        )
+                        .execute()
+                    )
+
+                except Exception:
+                    pass
+
+        except Exception as exc:
+            print(
+                f"Push test failed: {exc}"
+            )
+
+    if sent:
+        return (
+            True,
+            "Test notification sent.",
         )
 
-        if (
-            local_now.hour != reminder_hour
-            or local_now.minute != reminder_minute
-        ):
-            continue
-
-        if bool(
-            subscription.get(
-                "remind_day_before",
-                True,
-            )
-        ):
-            total_sent += _send_for_date(
-                subscription,
-                user_id,
-                local_now.date() + timedelta(days=1),
-                "day_before",
-            )
-
-        if bool(
-            subscription.get(
-                "remind_day_of",
-                True,
-            )
-        ):
-            total_sent += _send_for_date(
-                subscription,
-                user_id,
-                local_now.date(),
-                "day_of",
-            )
-
-    print(
-        f"Push reminder worker finished. Sent {total_sent} reminder(s).",
-        flush=True,
+    return (
+        False,
+        "The test notification could not be sent.",
     )
-
-    return 0
-
-
-if __name__ == "__main__":
-    sys.exit(run_reminders())
 
