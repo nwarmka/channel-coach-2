@@ -20,21 +20,42 @@ from auth import (
 )
 
 
-# Extra PWA / Add-to-Home-Screen metadata.
+# =========================
+# PWA / INSTALL TO HOME SCREEN
+# =========================
+# Links the web app manifest, enables iPhone/iPad home-screen support,
+# and registers the service worker used by Chrome/Android/desktop installs.
 custom_head = custom_head + """
-<link rel="apple-touch-icon" href="/static/channel-coach-192.png">
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/static/icon-192.png">
+
+<meta name="theme-color" content="#8b5cf6">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="application-name" content="Channel Coach">
 <meta name="apple-mobile-web-app-title" content="Channel Coach">
+
 <script>
-window.addEventListener('beforeinstallprompt', function(event) {
-    // Keep the browser's install event available for a future in-app Install button.
+if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function() {
+        navigator.serviceWorker
+            .register("/service-worker.js")
+            .then(function(registration) {
+                console.log("Channel Coach service worker registered:", registration.scope);
+            })
+            .catch(function(error) {
+                console.error("Channel Coach service worker registration failed:", error);
+            });
+    });
+}
+
+window.addEventListener("beforeinstallprompt", function(event) {
     event.preventDefault();
     window.channelCoachInstallPrompt = event;
 });
-window.addEventListener('appinstalled', function() {
+
+window.addEventListener("appinstalled", function() {
     window.channelCoachInstallPrompt = null;
 });
 </script>
