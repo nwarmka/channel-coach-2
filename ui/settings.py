@@ -23,7 +23,7 @@ async (workspace) => {
         const permission = await Notification.requestPermission();
 
         if (permission !== "granted") {
-            return "Notifications were not allowed. You can enable them later in your browser/app settings.";
+            return "❌ Notifications were not allowed.";
         }
 
         const registration = await navigator.serviceWorker.ready;
@@ -36,44 +36,87 @@ async (workspace) => {
         }
 
         function urlBase64ToUint8Array(base64String) {
-            const padding = "=".repeat((4 - base64String.length % 4) % 4);
+            const padding = "=".repeat(
+                (4 - base64String.length % 4) % 4
+            );
+
             const base64 = (base64String + padding)
                 .replace(/-/g, "+")
                 .replace(/_/g, "/");
 
             const rawData = window.atob(base64);
-            return Uint8Array.from([...rawData].map((char) => char.charCodeAt(0)));
+
+            return Uint8Array.from(
+                [...rawData].map(
+                    (char) => char.charCodeAt(0)
+                )
+            );
         }
 
-        let subscription = await registration.pushManager.getSubscription();
+        const oldSubscription =
+            await registration.pushManager.getSubscription();
 
-        if (!subscription) {
-            subscription = await registration.pushManager.subscribe({
+        if (oldSubscription) {
+            try {
+                await oldSubscription.unsubscribe();
+            } catch (unsubscribeError) {
+                console.warn(
+                    "Could not remove old subscription:",
+                    unsubscribeError
+                );
+            }
+        }
+
+        const subscription =
+            await registration.pushManager.subscribe({
                 userVisibleOnly: true,
-                applicationServerKey: urlBase64ToUint8Array(keyData.public_key),
+                applicationServerKey:
+                    urlBase64ToUint8Array(
+                        keyData.public_key
+                    ),
             });
-        }
 
-        const response = await fetch("/api/push/subscribe", {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({
-                workspace: workspace,
-                subscription: subscription.toJSON(),
-                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"
-            })
-        });
+        const response = await fetch(
+            "/api/push/subscribe",
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    workspace: workspace,
+                    subscription: subscription.toJSON(),
+                    timezone:
+                        Intl.DateTimeFormat()
+                            .resolvedOptions()
+                            .timeZone || "UTC"
+                })
+            }
+        );
 
         const result = await response.json();
 
         if (!response.ok || !result.ok) {
-            return "❌ " + (result.message || "Could not enable reminders.");
+            return "❌ " + (
+                result.message ||
+                "Could not enable reminders."
+            );
         }
 
         return "✅ Content reminders are enabled on this device.";
+
     } catch (error) {
-        console.error("Enable push reminders failed:", error);
-        return "❌ Could not enable content reminders.";
+        console.error(
+            "Enable push reminders failed:",
+            error
+        );
+
+        return (
+            "❌ Enable error: " +
+            (error.name || "Error") +
+            ": " +
+            (error.message || String(error))
+        );
     }
 }
 """
@@ -373,5 +416,6 @@ def build_settings_page(
         "profile_preferred_tone": profile_preferred_tone,
         "profile_things_to_avoid": profile_things_to_avoid,
     }
+
 
 
