@@ -81,32 +81,18 @@ self.addEventListener("fetch", (event) => {
             <html>
               <head>
                 <meta charset="utf-8">
-
-                <meta
-                  name="viewport"
-                  content="width=device-width, initial-scale=1"
-                >
-
-                <meta
-                  name="theme-color"
-                  content="#8b5cf6"
-                >
-
-                <title>
-                  Channel Coach — Offline
-                </title>
+                <meta name="viewport" content="width=device-width, initial-scale=1">
+                <meta name="theme-color" content="#8b5cf6">
+                <title>Channel Coach — Offline</title>
 
                 <style>
                   body {
                     margin: 0;
                     min-height: 100vh;
-
                     display: grid;
                     place-items: center;
-
                     background: #05070d;
                     color: #f8fafc;
-
                     font-family:
                       system-ui,
                       -apple-system,
@@ -122,17 +108,12 @@ self.addEventListener("fetch", (event) => {
                     );
 
                     padding: 28px;
-
                     text-align: center;
-
                     border:
                       1px solid
                       rgba(139,92,246,.45);
-
                     border-radius: 20px;
-
                     background: #0b0f19;
-
                     box-shadow:
                       0 18px 50px
                       rgba(0,0,0,.4);
@@ -140,29 +121,22 @@ self.addEventListener("fetch", (event) => {
 
                   h1 {
                     margin: 0 0 10px;
-
                     font-size: 1.5rem;
                   }
 
                   p {
                     margin: 0;
-
                     color: #aab2c6;
-
                     line-height: 1.55;
                   }
 
                   .dot {
                     width: 11px;
                     height: 11px;
-
                     margin:
                       0 auto 16px;
-
                     border-radius: 50%;
-
                     background: #ff3ea5;
-
                     box-shadow:
                       0 0 16px
                       rgba(255,62,165,.8);
@@ -233,3 +207,92 @@ self.addEventListener("fetch", (event) => {
     );
   }
 });
+
+self.addEventListener("push", (event) => {
+  let data = {};
+
+  try {
+    data = event.data
+      ? event.data.json()
+      : {};
+  } catch (error) {
+    data = {
+      title: "Channel Coach",
+      body: event.data
+        ? event.data.text()
+        : "You have an upcoming content reminder.",
+      url: "/"
+    };
+  }
+
+  const title =
+    data.title || "Channel Coach";
+
+  const options = {
+    body:
+      data.body ||
+      "You have an upcoming content reminder.",
+
+    icon:
+      "/static/icon-192.png",
+
+    badge:
+      "/static/icon-192.png",
+
+    tag:
+      data.tag ||
+      "channel-coach-content-reminder",
+
+    renotify: true,
+
+    data: {
+      url: data.url || "/"
+    }
+  };
+
+  event.waitUntil(
+    self.registration.showNotification(
+      title,
+      options
+    )
+  );
+});
+
+self.addEventListener(
+  "notificationclick",
+  (event) => {
+    event.notification.close();
+
+    const targetUrl =
+      (
+        event.notification.data &&
+        event.notification.data.url
+      ) || "/";
+
+    event.waitUntil(
+      clients
+        .matchAll({
+          type: "window",
+          includeUncontrolled: true
+        })
+        .then((windowClients) => {
+          for (
+            const client
+            of windowClients
+          ) {
+            if ("focus" in client) {
+              client.navigate(targetUrl);
+
+              return client.focus();
+            }
+          }
+
+          if (clients.openWindow) {
+            return clients.openWindow(
+              targetUrl
+            );
+          }
+        })
+    );
+  }
+);
