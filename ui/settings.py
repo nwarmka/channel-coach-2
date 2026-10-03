@@ -210,8 +210,7 @@ def save_reminder_preferences(
     reminder_hour,
     reminder_minute,
     reminder_am_pm,
-    remind_day_before,
-    remind_day_of,
+    reminder_days,
 ):
     safe_user_id = clean_user_id(workspace)
 
@@ -230,11 +229,22 @@ def save_reminder_preferences(
     if not reminder_time:
         return "❌ Choose a valid reminder time."
 
-    remind_day_before = bool(remind_day_before)
-    remind_day_of = bool(remind_day_of)
+    reminder_days = str(reminder_days or "").strip()
 
-    if not remind_day_before and not remind_day_of:
-        return "❌ Turn on Day Before, Day Of, or both."
+    if reminder_days == "Day before only":
+        remind_day_before = True
+        remind_day_of = False
+        schedule_text = "day before"
+
+    elif reminder_days == "Day of only":
+        remind_day_before = False
+        remind_day_of = True
+        schedule_text = "day of"
+
+    else:
+        remind_day_before = True
+        remind_day_of = True
+        schedule_text = "day before and day of"
 
     try:
         result = (
@@ -271,16 +281,6 @@ def save_reminder_preferences(
 
         display_hour = int(reminder_hour)
         display_minute = int(reminder_minute)
-
-        schedule_parts = []
-
-        if remind_day_before:
-            schedule_parts.append("day before")
-
-        if remind_day_of:
-            schedule_parts.append("day of")
-
-        schedule_text = " and ".join(schedule_parts)
 
         return (
             f"✅ Reminder preferences saved: "
@@ -395,23 +395,23 @@ def build_settings_page(
                     interactive=True,
                 )
 
-                reminder_am_pm = gr.Radio(
+                reminder_am_pm = gr.Dropdown(
                     choices=["AM", "PM"],
                     value="AM",
                     label="AM / PM",
                     interactive=True,
                 )
 
-            with gr.Row():
-                remind_day_before = gr.Checkbox(
-                    label="Remind me the day before",
-                    value=True,
-                )
-
-                remind_day_of = gr.Checkbox(
-                    label="Remind me on the scheduled day",
-                    value=True,
-                )
+            reminder_days = gr.Dropdown(
+                choices=[
+                    "Day before and day of",
+                    "Day before only",
+                    "Day of only",
+                ],
+                value="Day before and day of",
+                label="When should Channel Coach remind you?",
+                interactive=True,
+            )
 
             save_reminder_preferences_button = gr.Button(
                 "💾 Save Reminder Preferences",
@@ -429,8 +429,7 @@ def build_settings_page(
                     reminder_hour,
                     reminder_minute,
                     reminder_am_pm,
-                    remind_day_before,
-                    remind_day_of,
+                    reminder_days,
                 ],
                 outputs=[reminder_preferences_status],
                 show_progress="hidden",
@@ -597,6 +596,7 @@ def build_settings_page(
         "profile_preferred_tone": profile_preferred_tone,
         "profile_things_to_avoid": profile_things_to_avoid,
     }
+
 
 
 
