@@ -22,6 +22,39 @@ from auth import (
 
 with gr.Blocks(title="Channel Coach") as app:
 
+    # SPLASH / LOADING SCREEN
+    gr.HTML("""
+    <style>
+    #cc-splash-screen{position:fixed;inset:0;z-index:2147483647;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 38%,rgba(139,92,246,.18),transparent 28%),radial-gradient(circle at 45% 55%,rgba(255,62,165,.10),transparent 32%),#000;opacity:1;visibility:visible;pointer-events:all;animation:ccSplashExit .55s ease 2.15s forwards}
+    .cc-splash-inner{width:min(420px,86vw);text-align:center;animation:ccSplashEnter .5s ease both}
+    .cc-splash-icon{width:82px;height:82px;margin:0 auto 20px;display:flex;align-items:center;justify-content:center;border-radius:22px;color:#fff;background:linear-gradient(135deg,#ff3ea5,#8b5cf6);box-shadow:0 0 28px rgba(255,62,165,.28),0 0 55px rgba(139,92,246,.18);animation:ccSplashPulse 1.45s ease-in-out infinite}
+    .cc-splash-icon svg{width:49px;height:49px}
+    .cc-splash-name{margin:0;color:#fff;font-size:clamp(1.85rem,7vw,2.65rem);line-height:1;font-weight:900;letter-spacing:.045em}
+    .cc-splash-name span{color:#ff3ea5}
+    .cc-splash-tagline{margin-top:10px;color:#aab2c6;font-size:.73rem;font-weight:800;letter-spacing:.22em}
+    .cc-splash-status{margin-top:34px;color:#cbd5e1;font-size:.84rem}
+    .cc-splash-track{width:100%;height:5px;margin-top:13px;overflow:hidden;border-radius:999px;background:#141824}
+    .cc-splash-bar{width:42%;height:100%;border-radius:inherit;background:linear-gradient(90deg,#8b5cf6,#ff3ea5,#16d9ff);box-shadow:0 0 18px rgba(255,62,165,.45);animation:ccSplashLoad 1.15s ease-in-out infinite}
+    @keyframes ccSplashEnter{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+    @keyframes ccSplashPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.045)}}
+    @keyframes ccSplashLoad{0%{transform:translateX(-115%)}100%{transform:translateX(345%)}}
+    @keyframes ccSplashExit{to{opacity:0;visibility:hidden;pointer-events:none}}
+    @media(max-width:600px){.cc-splash-icon{width:70px;height:70px}.cc-splash-icon svg{width:42px;height:42px}.cc-splash-tagline{font-size:.62rem;letter-spacing:.14em}}
+    @media(prefers-reduced-motion:reduce){.cc-splash-icon,.cc-splash-bar,.cc-splash-inner{animation:none!important}#cc-splash-screen{animation:ccSplashExit .25s ease 1.1s forwards}}
+    </style>
+    <div id="cc-splash-screen" role="status" aria-label="Channel Coach is loading">
+      <div class="cc-splash-inner">
+        <div class="cc-splash-icon" aria-hidden="true">
+          <svg viewBox="0 0 64 64" fill="none"><path d="M20 22h24c7 0 12 5 13 12l2 10c1 5-4 9-8 6l-8-7H21l-8 7c-4 3-9-1-8-6l2-10c1-7 6-12 13-12Z" stroke="currentColor" stroke-width="4" stroke-linejoin="round"/><path d="M19 31v10M14 36h10" stroke="currentColor" stroke-width="4" stroke-linecap="round"/><circle cx="44" cy="33" r="2.7" fill="currentColor"/><circle cx="50" cy="39" r="2.7" fill="currentColor"/></svg>
+        </div>
+        <h1 class="cc-splash-name">CHANNEL <span>COACH</span></h1>
+        <div class="cc-splash-tagline">CREATE · LEVEL UP · GROW</div>
+        <div class="cc-splash-status">Loading your creator workspace...</div>
+        <div class="cc-splash-track"><div class="cc-splash-bar"></div></div>
+      </div>
+    </div>
+    """)
+
     gr.HTML("""
     <style>
     :root{
@@ -1424,6 +1457,7 @@ app.launch(
     css=custom_css,
     favicon_path="static/channel-coach-icon.png",
 )
+
 
 
 
