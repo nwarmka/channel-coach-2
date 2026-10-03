@@ -1,20 +1,25 @@
 {
   "name": "Channel Coach",
   "short_name": "Channel Coach",
+  "description": "Your creator coaching workspace for planning, growing, and leveling up your content.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#111111",
-  "theme_color": "#111111",
+  "background_color": "#000000",
+  "theme_color": "#8b5cf6",
+  "orientation": "any",
   "icons": [
     {
-      "src": "/static/icon-192.png",
+      "src": "/static/channel-coach-192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
-      "src": "/static/icon-512.png",
+      "src": "/static/channel-coach-512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ]
 }
