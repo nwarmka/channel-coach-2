@@ -19,6 +19,15 @@ from auth import (
     signup_user,
 )
 
+from fastapi import Request
+from fastapi.responses import JSONResponse
+from push_notifications import (
+    disable_push_subscription,
+    get_vapid_public_key,
+    save_push_subscription,
+    send_test_push,
+)
+
 
 # =========================
 # PWA / INSTALL TO HOME SCREEN
@@ -1615,6 +1624,80 @@ async def serve_service_worker():
     return FileResponse("service-worker.js", media_type="application/javascript")
 
 
+@app.app.get("/api/push/vapid-public-key", include_in_schema=False)
+async def push_vapid_public_key():
+    public_key = get_vapid_public_key()
+
+    if not public_key:
+        return JSONResponse(
+            {"ok": False, "message": "VAPID public key is not configured."},
+            status_code=503,
+        )
+
+    return {"ok": True, "public_key": public_key}
+
+
+@app.app.post("/api/push/subscribe", include_in_schema=False)
+async def push_subscribe(request: Request):
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse(
+            {"ok": False, "message": "Invalid subscription request."},
+            status_code=400,
+        )
+
+    ok, message = save_push_subscription(
+        body.get("workspace"),
+        body.get("subscription"),
+        body.get("timezone") or "UTC",
+    )
+
+    return JSONResponse(
+        {"ok": ok, "message": message},
+        status_code=200 if ok else 400,
+    )
+
+
+@app.app.post("/api/push/unsubscribe", include_in_schema=False)
+async def push_unsubscribe(request: Request):
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse(
+            {"ok": False, "message": "Invalid unsubscribe request."},
+            status_code=400,
+        )
+
+    ok, message = disable_push_subscription(
+        body.get("workspace"),
+        body.get("endpoint"),
+    )
+
+    return JSONResponse(
+        {"ok": ok, "message": message},
+        status_code=200 if ok else 400,
+    )
+
+
+@app.app.post("/api/push/test", include_in_schema=False)
+async def push_test(request: Request):
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse(
+            {"ok": False, "message": "Invalid test request."},
+            status_code=400,
+        )
+
+    ok, message = send_test_push(body.get("workspace"))
+
+    return JSONResponse(
+        {"ok": ok, "message": message},
+        status_code=200 if ok else 400,
+    )
+
+
 port = int(os.environ.get("PORT", 7860))
 
 
@@ -1626,6 +1709,7 @@ app.launch(
     css=custom_css,
     favicon_path="static/channel-coach-icon.png",
 )
+
 
 
 
