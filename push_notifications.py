@@ -113,12 +113,13 @@ def save_push_subscription(
 
     except Exception as exc:
         print(
-            f"Push subscription save failed: {exc}"
+            f"Push subscription save failed: {exc}",
+            flush=True,
         )
 
         return (
             False,
-            "Could not save push reminders right now.",
+            f"Could not save push reminders: {type(exc).__name__}: {exc}",
         )
 
 
@@ -157,12 +158,13 @@ def disable_push_subscription(
 
     except Exception as exc:
         print(
-            f"Push subscription disable failed: {exc}"
+            f"Push subscription disable failed: {exc}",
+            flush=True,
         )
 
         return (
             False,
-            "Could not disable reminders right now.",
+            f"Could not disable reminders: {type(exc).__name__}: {exc}",
         )
 
 
@@ -194,6 +196,39 @@ def send_push_to_row(
     )
 
 
+def _webpush_error_details(exc):
+    parts = [
+        f"{type(exc).__name__}: {exc}",
+    ]
+
+    response = getattr(exc, "response", None)
+
+    if response is not None:
+        status_code = getattr(response, "status_code", None)
+        reason = getattr(response, "reason", None)
+        body = getattr(response, "text", None)
+
+        if status_code:
+            parts.append(f"HTTP {status_code}")
+
+        if reason:
+            parts.append(str(reason))
+
+        if body:
+            body = str(body).strip()
+            if body:
+                parts.append(body[:500])
+
+    status_code = getattr(exc, "status_code", None)
+    if status_code and not any(
+        part == f"HTTP {status_code}"
+        for part in parts
+    ):
+        parts.append(f"HTTP {status_code}")
+
+    return " | ".join(parts)
+
+
 def send_test_push(user_id):
     safe_user_id = clean_user_id(user_id)
 
@@ -219,12 +254,13 @@ def send_test_push(user_id):
 
     except Exception as exc:
         print(
-            f"Push test subscription load failed: {exc}"
+            f"Push test subscription load failed: {exc}",
+            flush=True,
         )
 
         return (
             False,
-            "Could not load your push subscription.",
+            f"Could not load your push subscription: {type(exc).__name__}: {exc}",
         )
 
     if not subscriptions:
@@ -234,6 +270,7 @@ def send_test_push(user_id):
         )
 
     sent = 0
+    errors = []
 
     for row in subscriptions:
         try:
@@ -256,16 +293,28 @@ def send_test_push(user_id):
             sent += 1
 
         except WebPushException as exc:
+            details = _webpush_error_details(exc)
+            errors.append(details)
+
             print(
-                f"Push test failed: {exc}"
+                f"Push test failed: {details}",
+                flush=True,
             )
 
-            if getattr(
-                exc,
+            status_code = getattr(
+                getattr(exc, "response", None),
                 "status_code",
                 None,
-            ) in (404, 410):
+            )
 
+            if status_code is None:
+                status_code = getattr(
+                    exc,
+                    "status_code",
+                    None,
+                )
+
+            if status_code in (404, 410):
                 try:
                     (
                         supabase
@@ -280,18 +329,33 @@ def send_test_push(user_id):
                         .execute()
                     )
 
-                except Exception:
-                    pass
+                except Exception as cleanup_exc:
+                    print(
+                        f"Could not disable expired push subscription: {cleanup_exc}",
+                        flush=True,
+                    )
 
         except Exception as exc:
+            details = (
+                f"{type(exc).__name__}: {exc}"
+            )
+            errors.append(details)
+
             print(
-                f"Push test failed: {exc}"
+                f"Push test failed: {details}",
+                flush=True,
             )
 
     if sent:
         return (
             True,
-            "Test notification sent.",
+            f"Test notification sent to {sent} device(s).",
+        )
+
+    if errors:
+        return (
+            False,
+            "Push send error: " + errors[0],
         )
 
     return (
