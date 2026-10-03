@@ -20,6 +20,27 @@ from auth import (
 )
 
 
+# Extra PWA / Add-to-Home-Screen metadata.
+custom_head = custom_head + """
+<link rel="apple-touch-icon" href="/static/channel-coach-192.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="application-name" content="Channel Coach">
+<meta name="apple-mobile-web-app-title" content="Channel Coach">
+<script>
+window.addEventListener('beforeinstallprompt', function(event) {
+    // Keep the browser's install event available for a future in-app Install button.
+    event.preventDefault();
+    window.channelCoachInstallPrompt = event;
+});
+window.addEventListener('appinstalled', function() {
+    window.channelCoachInstallPrompt = null;
+});
+</script>
+"""
+
+
 with gr.Blocks(title="Channel Coach") as app:
 
     # SPLASH / LOADING SCREEN
@@ -1457,6 +1478,7 @@ app.launch(
     css=custom_css,
     favicon_path="static/channel-coach-icon.png",
 )
+
 
 
 
