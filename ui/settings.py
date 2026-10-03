@@ -9,13 +9,139 @@ from features import (
 )
 
 
+ENABLE_PUSH_JS = r"""
+async (workspace) => {
+    try {
+        if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+            return "❌ Push notifications are not supported on this device/browser.";
+        }
+
+        if (!workspace) {
+            return "❌ Log in before enabling reminders.";
+        }
+
+        const permission = await Notification.requestPermission();
+
+        if (permission !== "granted") {
+            return "Notifications were not allowed. You can enable them later in your browser/app settings.";
+        }
+
+        const registration = await navigator.serviceWorker.ready;
+
+        const keyResponse = await fetch("/api/push/vapid-public-key");
+        const keyData = await keyResponse.json();
+
+        if (!keyResponse.ok || !keyData.public_key) {
+            return "❌ Push reminders are not configured on the server yet.";
+        }
+
+        function urlBase64ToUint8Array(base64String) {
+            const padding = "=".repeat((4 - base64String.length % 4) % 4);
+            const base64 = (base64String + padding)
+                .replace(/-/g, "+")
+                .replace(/_/g, "/");
+
+            const rawData = window.atob(base64);
+            return Uint8Array.from([...rawData].map((char) => char.charCodeAt(0)));
+        }
+
+        let subscription = await registration.pushManager.getSubscription();
+
+        if (!subscription) {
+            subscription = await registration.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: urlBase64ToUint8Array(keyData.public_key),
+            });
+        }
+
+        const response = await fetch("/api/push/subscribe", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({
+                workspace: workspace,
+                subscription: subscription.toJSON(),
+                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"
+            })
+        });
+
+        const result = await response.json();
+
+        if (!response.ok || !result.ok) {
+            return "❌ " + (result.message || "Could not enable reminders.");
+        }
+
+        return "✅ Content reminders are enabled on this device.";
+    } catch (error) {
+        console.error("Enable push reminders failed:", error);
+        return "❌ Could not enable content reminders.";
+    }
+}
+"""
+
+
+DISABLE_PUSH_JS = r"""
+async (workspace) => {
+    try {
+        const registration = await navigator.serviceWorker.ready;
+        const subscription = await registration.pushManager.getSubscription();
+
+        if (!subscription) {
+            return "Content reminders are already disabled on this device.";
+        }
+
+        const endpoint = subscription.endpoint;
+
+        await fetch("/api/push/unsubscribe", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({
+                workspace: workspace,
+                endpoint: endpoint
+            })
+        });
+
+        await subscription.unsubscribe();
+
+        return "🔕 Content reminders are disabled on this device.";
+    } catch (error) {
+        console.error("Disable push reminders failed:", error);
+        return "❌ Could not disable content reminders.";
+    }
+}
+"""
+
+
+TEST_PUSH_JS = r"""
+async (workspace) => {
+    try {
+        const response = await fetch("/api/push/test", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({workspace: workspace})
+        });
+
+        const result = await response.json();
+
+        if (!response.ok || !result.ok) {
+            return "❌ " + (result.message || "Could not send the test notification.");
+        }
+
+        return "✅ Test notification sent. Check your notifications.";
+    } catch (error) {
+        console.error("Test push failed:", error);
+        return "❌ Could not send the test notification.";
+    }
+}
+"""
+
+
 def build_settings_page(
     workspace_name,
     dashboard_output,
     visible=False,
 ):
     """
-    Build Settings, Getting Started, and Creator Profile.
+    Build Settings, Getting Started, Creator Profile, and reminder controls.
 
     Returns the page plus the components app.py needs when a workspace loads.
     """
@@ -31,6 +157,60 @@ def build_settings_page(
             "## ⚙️ Settings\n\n"
             "Manage your creator profile and app preferences."
         )
+
+        with gr.Accordion("🔔 Content Reminders", open=True):
+            gr.Markdown(
+                """
+                Get push reminders for content on your Channel Coach calendar.
+
+                **Default reminder schedule**
+                - 9:00 AM the day before scheduled content
+                - 9:00 AM on the scheduled day
+
+                Reminders use this device's timezone. Content already marked
+                **Published** is skipped.
+                """
+            )
+
+            reminder_status = gr.Markdown(
+                "Push reminders are currently controlled per device."
+            )
+
+            with gr.Row():
+                enable_reminders_button = gr.Button(
+                    "🔔 Enable Content Reminders",
+                    variant="primary",
+                )
+                test_reminders_button = gr.Button(
+                    "🧪 Send Test Notification",
+                )
+                disable_reminders_button = gr.Button(
+                    "🔕 Disable on This Device",
+                )
+
+            enable_reminders_button.click(
+                fn=None,
+                inputs=[workspace_name],
+                outputs=[reminder_status],
+                js=ENABLE_PUSH_JS,
+                show_progress="hidden",
+            )
+
+            test_reminders_button.click(
+                fn=None,
+                inputs=[workspace_name],
+                outputs=[reminder_status],
+                js=TEST_PUSH_JS,
+                show_progress="hidden",
+            )
+
+            disable_reminders_button.click(
+                fn=None,
+                inputs=[workspace_name],
+                outputs=[reminder_status],
+                js=DISABLE_PUSH_JS,
+                show_progress="hidden",
+            )
 
         with gr.Accordion("🚀 Getting Started", open=True):
             onboarding_output = gr.HTML(
@@ -193,4 +373,5 @@ def build_settings_page(
         "profile_preferred_tone": profile_preferred_tone,
         "profile_things_to_avoid": profile_things_to_avoid,
     }
+
 
