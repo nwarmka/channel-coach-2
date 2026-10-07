@@ -272,7 +272,7 @@ with gr.Blocks(title="Channel Coach") as app:
       box-shadow:0 16px 34px rgba(0,0,0,.34),0 0 28px rgba(139,92,246,.05)!important;
     }
 
-    #channel-coach-app input,
+    #channel-coach-app input:not([type="checkbox"]):not([type="radio"]),
     #channel-coach-app textarea,
     #channel-coach-app select,
     #channel-coach-app [role="combobox"]{
@@ -283,7 +283,7 @@ with gr.Blocks(title="Channel Coach") as app:
       box-shadow:none!important;
     }
 
-    #channel-coach-app input:focus,
+    #channel-coach-app input:not([type="checkbox"]):not([type="radio"]):focus,
     #channel-coach-app textarea:focus,
     #channel-coach-app [role="combobox"]:focus{
       border-color:var(--cyan)!important;
@@ -529,7 +529,7 @@ with gr.Blocks(title="Channel Coach") as app:
       box-shadow: none !important;
     }
 
-    #channel-coach-app input,
+    #channel-coach-app input:not([type="checkbox"]):not([type="radio"]),
     #channel-coach-app textarea,
     #channel-coach-app select,
     #channel-coach-app [role="combobox"] {
@@ -550,7 +550,7 @@ with gr.Blocks(title="Channel Coach") as app:
       opacity: 1 !important;
     }
 
-    #channel-coach-app input:focus,
+    #channel-coach-app input:not([type="checkbox"]):not([type="radio"]):focus,
     #channel-coach-app textarea:focus,
     #channel-coach-app select:focus,
     #channel-coach-app [role="combobox"]:focus-within {
