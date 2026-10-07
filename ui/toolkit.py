@@ -47,6 +47,8 @@ def build_toolkit_page(workspace_name, visible=False):
                 label="Upload Video"
             )
 
+            # filterable=False makes this a simple tap-to-select menu on mobile
+            # instead of an editable/searchable dropdown that opens the keyboard.
             analyzer_type = gr.Dropdown(
                 [
                     "Long-form YouTube Video",
@@ -57,6 +59,7 @@ def build_toolkit_page(workspace_name, visible=False):
                 ],
                 value="Long-form YouTube Video",
                 label="Video Type",
+                filterable=False,
             )
 
             analyzer_notes = gr.Textbox(
@@ -352,4 +355,5 @@ def build_toolkit_page(workspace_name, visible=False):
             )
 
     return toolkit_page
+
 
