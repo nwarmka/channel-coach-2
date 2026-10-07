@@ -272,7 +272,7 @@ with gr.Blocks(title="Channel Coach") as app:
       box-shadow:0 16px 34px rgba(0,0,0,.34),0 0 28px rgba(139,92,246,.05)!important;
     }
 
-    #channel-coach-app input:not([type="checkbox"]):not([type="radio"]),
+    #channel-coach-app input,
     #channel-coach-app textarea,
     #channel-coach-app select,
     #channel-coach-app [role="combobox"]{
@@ -283,7 +283,7 @@ with gr.Blocks(title="Channel Coach") as app:
       box-shadow:none!important;
     }
 
-    #channel-coach-app input:not([type="checkbox"]):not([type="radio"]):focus,
+    #channel-coach-app input:focus,
     #channel-coach-app textarea:focus,
     #channel-coach-app [role="combobox"]:focus{
       border-color:var(--cyan)!important;
@@ -529,7 +529,7 @@ with gr.Blocks(title="Channel Coach") as app:
       box-shadow: none !important;
     }
 
-    #channel-coach-app input:not([type="checkbox"]):not([type="radio"]),
+    #channel-coach-app input,
     #channel-coach-app textarea,
     #channel-coach-app select,
     #channel-coach-app [role="combobox"] {
@@ -550,7 +550,7 @@ with gr.Blocks(title="Channel Coach") as app:
       opacity: 1 !important;
     }
 
-    #channel-coach-app input:not([type="checkbox"]):not([type="radio"]):focus,
+    #channel-coach-app input:focus,
     #channel-coach-app textarea:focus,
     #channel-coach-app select:focus,
     #channel-coach-app [role="combobox"]:focus-within {
@@ -571,6 +571,42 @@ with gr.Blocks(title="Channel Coach") as app:
       color: #dfe6ff !important;
       fill: currentColor !important;
       stroke: currentColor !important;
+    }
+
+
+    /* Video Analyzer: keep Gradio radio choices compact on mobile.
+       This is intentionally scoped ONLY to the Video Type picker. */
+    #video-type-picker input[type="radio"] {
+      appearance: auto !important;
+      -webkit-appearance: radio !important;
+      width: 18px !important;
+      min-width: 18px !important;
+      max-width: 18px !important;
+      height: 18px !important;
+      min-height: 18px !important;
+      max-height: 18px !important;
+      padding: 0 !important;
+      margin: 0 9px 0 0 !important;
+      border-radius: 50% !important;
+      box-shadow: none !important;
+      flex: 0 0 18px !important;
+    }
+
+    #video-type-picker label {
+      width: auto !important;
+      max-width: 100% !important;
+      min-height: 34px !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: flex-start !important;
+      white-space: normal !important;
+      overflow: visible !important;
+    }
+
+    #video-type-picker .wrap,
+    #video-type-picker .wrap-inner {
+      width: 100% !important;
+      max-width: 100% !important;
     }
 
     /* Calendar gets one clean neon panel per section, not a box around each control */
@@ -1892,6 +1928,7 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=port,
     )
+
 
 
 
