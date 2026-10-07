@@ -1110,6 +1110,21 @@ with gr.Blocks(title="Channel Coach") as app:
       }
     }
 
+
+/* Keep Gradio checkboxes from inheriting full-size text input styling */
+#channel-coach-app input[type="checkbox"] {
+  width: 20px !important;
+  height: 20px !important;
+  min-width: 20px !important;
+  min-height: 20px !important;
+  max-width: 20px !important;
+  max-height: 20px !important;
+  padding: 0 !important;
+  flex: 0 0 20px !important;
+  -webkit-appearance: checkbox !important;
+  appearance: checkbox !important;
+}
+
     </style>
     """)
 
@@ -1877,6 +1892,7 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=port,
     )
+
 
 
 
