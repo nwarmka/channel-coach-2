@@ -42,9 +42,10 @@ def build_toolkit_page(workspace_name, visible=False):
                 title, and editing advice.
                 """
             )
-
             analyzer_upload = gr.Video(
-                label="Upload Video"
+            label="Upload Video",
+            format="mp4",
+            elem_id="video-analyzer-upload",
             )
 
             # Use radio buttons instead of a dropdown here.
