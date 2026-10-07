@@ -2208,7 +2208,7 @@ label, .block-label {
 }
 
 /* Inputs */
-textarea, input, select {
+textarea, input:not([type="checkbox"]):not([type="radio"]), select {
     background: #ffffff !important;
     color: var(--text) !important;
     border: 1px solid var(--border) !important;
@@ -2216,7 +2216,7 @@ textarea, input, select {
     box-shadow: none !important;
 }
 
-textarea:focus, input:focus, select:focus {
+textarea:focus, input:not([type="checkbox"]):not([type="radio"]):focus, select:focus {
     border-color: #b9b9b9 !important;
     box-shadow: 0 0 0 1px #b9b9b9 !important;
 }
@@ -2284,53 +2284,23 @@ button[role='tab'][aria-selected='true'] {
 
 /* Mobile layout */
 @media (max-width: 768px) {
-
-    html,
-    body {
+    html, body {
         width: 100% !important;
-        max-width: 100% !important;
-        min-width: 0 !important;
-        margin: 0 !important;
-        padding: 0 !important;
         overflow-x: hidden !important;
     }
 
     .gradio-container {
-        width: 100vw !important;
-        max-width: 100vw !important;
-        min-width: 0 !important;
-        margin: 0 !important;
-        padding: 8px !important;
-        box-sizing: border-box !important;
-        overflow-x: hidden !important;
-    }
-
-    #channel-coach-app {
         width: 100% !important;
         max-width: 100% !important;
-        min-width: 0 !important;
+        padding: 12px !important;
         margin: 0 !important;
-        padding: 0 !important;
-        box-sizing: border-box !important;
-    }
-
-    #channel-coach-app > div,
-    #channel-coach-app .contain,
-    #channel-coach-app .main,
-    #channel-coach-app .wrap {
-        width: 100% !important;
-        max-width: 100% !important;
-        min-width: 0 !important;
-        margin-left: 0 !important;
-        margin-right: 0 !important;
         box-sizing: border-box !important;
     }
 
     #channel-coach-header {
         width: 100% !important;
         max-width: 100% !important;
-        min-width: 0 !important;
-        padding: 6px 2px 12px !important;
+        padding: 6px 0 12px !important;
         margin: 0 0 8px 0 !important;
         box-sizing: border-box !important;
     }
@@ -2347,96 +2317,24 @@ button[role='tab'][aria-selected='true'] {
         margin-bottom: 0 !important;
     }
 
-    .block,
-    .gr-box,
-    .form,
-    .panel,
-    .gr-panel,
-    .tabitem,
-    [role="tabpanel"] {
-        width: 100% !important;
+    .block, .gr-box, .form, .panel, .gr-panel, .tabitem, [role='tabpanel'] {
         max-width: 100% !important;
-        min-width: 0 !important;
-        margin-left: 0 !important;
-        margin-right: 0 !important;
         box-sizing: border-box !important;
     }
 
-    .row,
-    .column {
+    textarea, input:not([type="checkbox"]):not([type="radio"]), select {
         max-width: 100% !important;
-        min-width: 0 !important;
         box-sizing: border-box !important;
     }
 
-    textarea,
-    input,
-    select {
-        width: 100% !important;
-        max-width: 100% !important;
-        min-width: 0 !important;
-        box-sizing: border-box !important;
-    }
-
-    button {
-        max-width: 100% !important;
-        min-height: 46px !important;
-        box-sizing: border-box !important;
-    }
-
-    .cc-balanced-dashboard,
-    .cc-dashboard-wrap,
-    .cc-card-dashboard,
-    .cc-planner-layout,
-    .cc-calendar-wrap,
-    .cc-upcoming-box {
-        width: 100% !important;
-        max-width: 100% !important;
-        min-width: 0 !important;
-        margin-left: 0 !important;
-        margin-right: 0 !important;
-        box-sizing: border-box !important;
-    }
-
-    .cc-dashboard-grid,
-    .cc-balanced-stats-row,
-    .cc-action-grid {
-        grid-template-columns: 1fr !important;
-        width: 100% !important;
-    }
-
-    .cc-focus-grid,
-    .cc-card-layout,
-    .cc-planner-layout,
-    .cc-dashboard-two-col {
-        grid-template-columns: 1fr !important;
-        width: 100% !important;
-    }
-
-    /*
-       The calendar can be wider than a phone.
-       Keep the page full-screen while allowing only the calendar
-       itself to scroll sideways when necessary.
-    */
-    .cc-calendar-wrap {
-        overflow-x: auto !important;
-        -webkit-overflow-scrolling: touch;
-    }
-
-    .cc-calendar-grid {
-        min-width: 700px;
-    }
+    button { min-height: 46px !important; }
 
     .tab-nav {
-        width: 100% !important;
-        max-width: 100% !important;
         overflow-x: auto !important;
         scrollbar-width: none !important;
     }
 
-    .tab-nav::-webkit-scrollbar {
-        display: none !important;
-    }
+    .tab-nav::-webkit-scrollbar { display: none !important; }
 }
 
 .footer, footer {
@@ -3611,89 +3509,6 @@ textarea[aria-label*="Description"] {
 .cc-next-action-box .cc-small-label {
     margin-bottom: 4px !important;
 }
-
-/* =========================
-   FINAL MOBILE FULL-WIDTH OVERRIDE
-   Phone/PWA only — desktop is unchanged.
-========================= */
-@media (max-width: 768px) {
-    html,
-    body,
-    #root,
-    .gradio-container {
-        width: 100% !important;
-        max-width: 100% !important;
-        min-width: 0 !important;
-        margin-left: 0 !important;
-        margin-right: 0 !important;
-        box-sizing: border-box !important;
-        overflow-x: hidden !important;
-    }
-
-    html body .gradio-container {
-        padding-left: 0 !important;
-        padding-right: 0 !important;
-    }
-
-    html body .gradio-container #channel-coach-app {
-        width: 100% !important;
-        max-width: none !important;
-        min-width: 0 !important;
-        margin-left: 0 !important;
-        margin-right: 0 !important;
-        padding-left: 8px !important;
-        padding-right: 8px !important;
-        box-sizing: border-box !important;
-    }
-
-    html body .gradio-container #channel-coach-app > div,
-    html body .gradio-container #channel-coach-app .contain,
-    html body .gradio-container #channel-coach-app .main,
-    html body .gradio-container #channel-coach-app .wrap,
-    html body .gradio-container #channel-coach-app .tabs,
-    html body .gradio-container #channel-coach-app .tabitem,
-    html body .gradio-container #channel-coach-app [role="tabpanel"] {
-        width: 100% !important;
-        max-width: 100% !important;
-        min-width: 0 !important;
-        margin-left: 0 !important;
-        margin-right: 0 !important;
-        box-sizing: border-box !important;
-    }
-
-    html body .gradio-container #channel-coach-app .cc-balanced-dashboard,
-    html body .gradio-container #channel-coach-app .cc-dashboard-full-stack,
-    html body .gradio-container #channel-coach-app .cc-dashboard-wrap,
-    html body .gradio-container #channel-coach-app .cc-card-dashboard,
-    html body .gradio-container #channel-coach-app .cc-planner-wrap,
-    html body .gradio-container #channel-coach-app .cc-calendar-wrap {
-        width: 100% !important;
-        max-width: none !important;
-        min-width: 0 !important;
-        margin-left: 0 !important;
-        margin-right: 0 !important;
-        box-sizing: border-box !important;
-    }
-
-    html body .gradio-container #channel-coach-app .block,
-    html body .gradio-container #channel-coach-app .gr-box,
-    html body .gradio-container #channel-coach-app .panel,
-    html body .gradio-container #channel-coach-app .gr-panel {
-        max-width: 100% !important;
-        min-width: 0 !important;
-        box-sizing: border-box !important;
-    }
-
-    html body .gradio-container #channel-coach-app .cc-calendar-wrap {
-        overflow-x: auto !important;
-        -webkit-overflow-scrolling: touch;
-    }
-
-    html body .gradio-container #channel-coach-app .cc-calendar-grid {
-        min-width: 700px;
-    }
-}
-
 """
 
 # =========================
