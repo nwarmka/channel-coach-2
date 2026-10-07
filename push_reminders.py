@@ -316,12 +316,13 @@ def run_reminders():
             continue
 
         # Send at most one overdue summary per day/device at the
-        # user's normal reminder time.
-        total_sent += _send_overdue_summary(
-            subscription,
-            user_id,
-            local_now.date(),
-        )
+        # user's normal reminder time, unless the user turned it off.
+        if bool(subscription.get("remind_overdue", True)):
+            total_sent += _send_overdue_summary(
+                subscription,
+                user_id,
+                local_now.date(),
+            )
 
         if bool(subscription.get("remind_day_before", True)):
             total_sent += _send_for_date(
@@ -348,3 +349,4 @@ def run_reminders():
 
 if __name__ == "__main__":
     sys.exit(run_reminders())
+
