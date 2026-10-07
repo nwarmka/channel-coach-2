@@ -217,6 +217,7 @@ def load_reminder_preferences(workspace):
         "00",
         "AM",
         "Day before and day of",
+        True,
         "Choose your reminder schedule, then save it.",
     )
 
@@ -230,7 +231,8 @@ def load_reminder_preferences(workspace):
             .select(
                 "reminder_time,"
                 "remind_day_before,"
-                "remind_day_of"
+                "remind_day_of,"
+                "remind_overdue"
             )
             .eq("user_id", safe_user_id)
             .eq("enabled", True)
@@ -277,6 +279,9 @@ def load_reminder_preferences(workspace):
         remind_day_of = bool(
             row.get("remind_day_of", True)
         )
+        remind_overdue = bool(
+            row.get("remind_overdue", True)
+        )
 
         if remind_day_before and remind_day_of:
             reminder_days = "Day before and day of"
@@ -298,6 +303,7 @@ def load_reminder_preferences(workspace):
             reminder_minute,
             am_pm,
             reminder_days,
+            remind_overdue,
             status,
         )
 
@@ -315,6 +321,7 @@ def save_reminder_preferences(
     reminder_minute,
     reminder_am_pm,
     reminder_days,
+    remind_overdue,
 ):
     safe_user_id = clean_user_id(workspace)
 
@@ -376,6 +383,7 @@ def save_reminder_preferences(
                     "reminder_time": reminder_time,
                     "remind_day_before": remind_day_before,
                     "remind_day_of": remind_day_of,
+                    "remind_overdue": bool(remind_overdue),
                 }
             )
             .eq("user_id", safe_user_id)
@@ -390,7 +398,8 @@ def save_reminder_preferences(
             f"✅ Reminder preferences saved: "
             f"{display_hour}:{display_minute:02d} "
             f"{str(reminder_am_pm).upper()} "
-            f"({schedule_text})."
+            f"({schedule_text}; "
+            f"overdue reminders {'on' if remind_overdue else 'off'})."
         )
 
     except Exception as exc:
@@ -517,6 +526,16 @@ def build_settings_page(
                 interactive=True,
             )
 
+            remind_overdue = gr.Checkbox(
+                value=True,
+                label="⚠️ Overdue Project Reminders",
+                info=(
+                    "Send one daily summary when projects are overdue. "
+                    "Published projects are skipped automatically."
+                ),
+                interactive=True,
+            )
+
             save_reminder_preferences_button = gr.Button(
                 "💾 Save Reminder Preferences",
                 variant="primary",
@@ -534,6 +553,7 @@ def build_settings_page(
                     reminder_minute,
                     reminder_am_pm,
                     reminder_days,
+                    remind_overdue,
                 ],
                 outputs=[reminder_preferences_status],
                 show_progress="hidden",
@@ -549,6 +569,7 @@ def build_settings_page(
                     reminder_minute,
                     reminder_am_pm,
                     reminder_days,
+                    remind_overdue,
                     reminder_preferences_status,
                 ],
                 show_progress="hidden",
