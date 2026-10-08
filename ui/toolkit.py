@@ -1,6 +1,7 @@
 # Channel Coach - Creator Toolkit UI
 
 import gradio as gr
+import cv2
 
 from features import (
     analyze_thumbnail,
@@ -13,6 +14,57 @@ from features import (
     shorts_ideas,
     video_analyzer_with_history,
 )
+
+
+
+def preview_uploaded_video(video_path):
+    """Show a still thumbnail even when iOS cannot render Gradio's video player."""
+    if not video_path:
+        return gr.update(value=None, visible=False), ""
+
+    # Gradio's Video component normally supplies a local file path.
+    if isinstance(video_path, (tuple, list)):
+        video_path = video_path[0] if video_path else None
+    if isinstance(video_path, dict):
+        video_path = video_path.get("video") or video_path.get("path")
+
+    if not video_path:
+        return gr.update(value=None, visible=False), ""
+
+    capture = cv2.VideoCapture(str(video_path))
+    try:
+        if not capture.isOpened():
+            return gr.update(value=None, visible=False), (
+                "✅ Video uploaded. Thumbnail unavailable, but you can try Analyze Video."
+            )
+
+        frame_count = int(capture.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
+        if frame_count > 1:
+            capture.set(cv2.CAP_PROP_POS_FRAMES, max(0, frame_count // 4))
+
+        ok, frame = capture.read()
+        if not ok:
+            capture.set(cv2.CAP_PROP_POS_FRAMES, 0)
+            ok, frame = capture.read()
+
+        if not ok:
+            return gr.update(value=None, visible=False), (
+                "✅ Video uploaded. Thumbnail unavailable, but you can try Analyze Video."
+            )
+
+        height, width = frame.shape[:2]
+        if width > 720:
+            frame = cv2.resize(
+                frame, (720, max(1, round(height * 720 / width)))
+            )
+        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+        return (
+            gr.update(value=frame_rgb, visible=True),
+            "✅ Video ready to analyze. Preview image shown below.",
+        )
+    finally:
+        capture.release()
 
 
 def build_toolkit_page(workspace_name, visible=False):
@@ -42,11 +94,20 @@ def build_toolkit_page(workspace_name, visible=False):
                 title, and editing advice.
                 """
             )
+
             analyzer_upload = gr.Video(
-            label="Upload Video",
-            format="mp4",
-            elem_id="video-analyzer-upload",
+                label="Upload Video",
+                format="mp4",
+                elem_id="video-analyzer-upload",
             )
+
+            analyzer_preview = gr.Image(
+                label="Video Thumbnail Preview",
+                interactive=False,
+                visible=False,
+                elem_id="video-analyzer-thumbnail",
+            )
+            analyzer_preview_status = gr.Markdown("")
 
             # Use radio buttons instead of a dropdown here.
             # Gradio dropdown menus render as floating overlays on mobile/PWA,
@@ -100,6 +161,13 @@ def build_toolkit_page(workspace_name, visible=False):
                 inputs=[workspace_name],
                 outputs=review_history_output,
             )
+
+        analyzer_upload.change(
+            fn=preview_uploaded_video,
+            inputs=[analyzer_upload],
+            outputs=[analyzer_preview, analyzer_preview_status],
+            show_progress="hidden",
+        )
 
         analyzer_button.click(
             video_analyzer_with_history,
