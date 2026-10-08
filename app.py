@@ -9,6 +9,7 @@ from ui.settings import build_settings_page
 from ui.chat import build_chat_page
 from ui.bug_report import build_bug_report_page
 from ui.bug_admin import admin_button_visibility, build_bug_admin_page
+from ui.ideas_inbox import build_ideas_inbox_page, refresh_ideas
 from credits import ensure_initial_credits, get_credit_balance
 from auth import (
     empty_saved_session,
@@ -1247,6 +1248,7 @@ with gr.Blocks(title="Channel Coach") as app:
             home_nav = gr.Button("\U0001F3E0 Home")
             chat_nav = gr.Button("\U0001F4AC Coach Chat")
             calendar_nav = gr.Button("\U0001F4C5 Calendar")
+            ideas_nav = gr.Button("💡 Content Ideas Inbox")
             toolkit_nav = gr.Button("\U0001F3AC Toolkit")
             settings_nav = gr.Button("\u2699\uFE0F Settings")
             bug_report_nav = gr.Button("\U0001F41E Report a Bug")
@@ -1381,6 +1383,10 @@ with gr.Blocks(title="Channel Coach") as app:
             visible=False,
         )
 
+        ideas_page, (ideas_listing, ideas_picker, ideas_status) = build_ideas_inbox_page(
+            saved_login, visible=False
+        )
+
         settings_page = settings_components["page"]
         onboarding_output = settings_components["onboarding_output"]
         profile_channel_name = settings_components["profile_channel_name"]
@@ -1405,7 +1411,7 @@ with gr.Blocks(title="Channel Coach") as app:
     # =========================
     # PAGE NAVIGATION
     # =========================
-    PAGE_NAMES = ["chat", "dashboard", "calendar", "toolkit", "settings", "bugs", "bug_admin"]
+    PAGE_NAMES = ["chat", "dashboard", "calendar", "ideas", "toolkit", "settings", "bugs", "bug_admin"]
 
     def toggle_menu(is_open):
         new_state = not bool(is_open)
@@ -1436,6 +1442,7 @@ with gr.Blocks(title="Channel Coach") as app:
         chat_page,
         dashboard_page,
         calendar_page,
+        ideas_page,
         toolkit_page,
         settings_page,
         bug_report_page,
@@ -1515,6 +1522,17 @@ with gr.Blocks(title="Channel Coach") as app:
         lambda current: navigate_to("calendar", current),
         inputs=[current_page],
         outputs=page_outputs,
+        show_progress="hidden",
+    )
+    ideas_nav.click(
+        lambda current: navigate_to("ideas", current),
+        inputs=[current_page],
+        outputs=page_outputs,
+        show_progress="hidden",
+    ).then(
+        refresh_ideas,
+        inputs=[saved_login],
+        outputs=[ideas_listing, ideas_picker, ideas_status, saved_login],
         show_progress="hidden",
     )
     toolkit_nav.click(
@@ -1928,7 +1946,6 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=port,
     )
-
 
 
 
