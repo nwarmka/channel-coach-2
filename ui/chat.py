@@ -280,27 +280,14 @@ def build_chat_page(
     #coach-new-chat { width:100%!important; justify-content:flex-start!important; text-align:left!important; background:transparent!important; border:none!important; box-shadow:none!important; color:#f8fafc!important; font-weight:700!important; }
     #coach-new-chat:hover { background:rgba(148,163,184,.09)!important; }
     #coach-chat-picker { max-height:365px!important; overflow-y:auto!important; border:none!important; background:transparent!important; }
-    /* Keep radio labels in one flexible column instead of Gradio's default grid. */
-    #coach-chat-picker, #coach-chat-picker * { box-sizing:border-box!important; min-width:0!important; }
+    /* Style saved chats without overriding Gradio's internal radio layout. */
     #coach-chat-picker { width:100%!important; overflow-x:hidden!important; }
-    #coach-chat-picker .wrap, #coach-chat-picker fieldset,
-    #coach-chat-picker [role="radiogroup"] { display:flex!important; flex-direction:column!important; width:100%!important; max-width:100%!important; overflow-x:hidden!important; }
-    #coach-chat-picker label { display:flex!important; align-items:center!important; gap:8px!important; width:100%!important; max-width:100%!important; min-width:0!important; white-space:normal!important; overflow-wrap:anywhere!important; }
-    #coach-chat-picker .wrap > div, #coach-chat-picker fieldset > div { display:flex!important; flex-direction:column!important; grid-template-columns:1fr!important; width:100%!important; min-width:0!important; }
-    #coach-chat-picker label { justify-content:flex-start!important; }
-    #coach-chat-picker label input { position:static!important; margin:0!important; }
-
-    #coach-chat-picker label span { flex:1 1 auto!important; min-width:0!important; overflow-wrap:anywhere!important; }
-    #coach-chat-picker input[type="radio"] { flex:0 0 auto!important; }
+    #coach-chat-picker .wrap, #coach-chat-picker fieldset { border:none!important; background:transparent!important; box-shadow:none!important; padding:0!important; max-width:100%!important; }
+    #coach-chat-picker label { color:#dbe2ea!important; font-size:.9rem!important; white-space:normal!important; overflow-wrap:anywhere!important; }
+    #coach-chat-picker label:hover { background:rgba(148,163,184,.09)!important; }
+    #coach-chat-picker::before { content:"PINNED / RECENT"; display:block; color:rgba(226,232,240,.46); font-size:.68rem; font-weight:800; letter-spacing:.08em; padding:12px 9px 5px; }
     #coach-chat-sidebar { overflow-x:hidden!important; }
     #coach-chat-window { overflow-x:hidden!important; overscroll-behavior:contain!important; }
-
-    #coach-chat-picker .wrap, #coach-chat-picker fieldset { border:none!important; background:transparent!important; box-shadow:none!important; padding:0!important; }
-    #coach-chat-picker label { border:none!important; background:transparent!important; padding:8px 9px!important; border-radius:9px!important; color:#dbe2ea!important; font-size:.9rem!important; }
-     #coach-chat-picker::before { content:"PINNED / RECENT"; display:block; color:rgba(226,232,240,.46); font-size:.68rem; font-weight:800; letter-spacing:.08em; padding:12px 9px 5px; }
-    #coach-chat-picker label:hover { background:rgba(148,163,184,.09)!important; }
-    #coach-chat-picker input:checked + span, #coach-chat-picker label:has(input:checked) { background:rgba(148,163,184,.12)!important; }
-    #coach-chat-picker .label-wrap, #coach-chat-picker > label { display:none!important; }
     #coach-chat-actions { margin-top:auto!important; padding-top:10px!important; border-top:1px solid rgba(148,163,184,.12)!important; }
     #coach-chat-actions textarea { min-height:38px!important; font-size:.82rem!important; }
     #coach-chat-actions button { min-width:0!important; font-size:.76rem!important; padding:6px 7px!important; }
