@@ -4011,7 +4011,15 @@ def stream_creator_coach(
         "weekly plan", "monthly plan", "schedule", "roadmap",
     )
     question_lower = str(user_question).lower()
-    output_limit = 2400 if any(marker in question_lower for marker in detailed_markers) else 300
+    continuation_markers = (
+        "continue", "keep going", "go on", "finish the plan",
+        "pick up where", "remaining days", "next days", "finish the rest",
+    )
+    is_continuation = any(marker in question_lower for marker in continuation_markers)
+    output_limit = 2400 if (
+        any(marker in question_lower for marker in detailed_markers)
+        or (is_continuation and conversation_history)
+    ) else 300
 
     api_start = time.perf_counter()
     first_token_logged = False
