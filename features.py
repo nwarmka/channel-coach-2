@@ -4031,10 +4031,16 @@ def stream_creator_coach(
         "pick up where", "remaining days", "next days", "finish the rest",
     )
     is_continuation = any(marker in question_lower for marker in continuation_markers)
-    output_limit = 2400 if (
-        any(marker in question_lower for marker in detailed_markers)
-        or (is_continuation and conversation_history)
-    ) else 300
+    is_detailed = any(marker in question_lower for marker in detailed_markers)
+    # Multi-item creator requests need room for each idea, hook and caption.
+    import re
+    requested_count = re.search(r"\\b(\\d{1,2}|five|six|seven|eight|nine|ten)\\s+(?:tiktok\\s+|video\\s+|content\\s+)?(?:ideas?|hooks?|captions?|posts?|videos?)\\b", question_lower)
+    multi_item_request = bool(requested_count) or (
+        "ideas" in question_lower and ("hook" in question_lower or "caption" in question_lower)
+    )
+    output_limit = 2400 if (is_detailed or (is_continuation and conversation_history)) else (
+        1200 if multi_item_request else 300
+    )
 
     api_start = time.perf_counter()
     first_token_logged = False
