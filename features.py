@@ -4004,6 +4004,15 @@ def stream_creator_coach(
         flush=True,
     )
 
+    # Larger plans need more output space; ordinary questions stay inexpensive.
+    detailed_markers = (
+        "30-day", "30 day", "calendar", "content strategy",
+        "detailed plan", "step-by-step", "step by step",
+        "weekly plan", "monthly plan", "schedule", "roadmap",
+    )
+    question_lower = str(user_question).lower()
+    output_limit = 2400 if any(marker in question_lower for marker in detailed_markers) else 300
+
     api_start = time.perf_counter()
     first_token_logged = False
 
@@ -4012,7 +4021,7 @@ def stream_creator_coach(
             model="gpt-5.6-luna",
             input=prompt,
             reasoning={"effort": "none"},
-            max_output_tokens=300,
+            max_output_tokens=output_limit,
             service_tier="fast",
             stream=True,
             stream_options={"include_obfuscation": False},
@@ -4038,8 +4047,17 @@ def stream_creator_coach(
 
                     yield delta
 
-            elif event_type == "response.completed":
+            elif event_type in ("response.completed", "response.incomplete"):
                 completed_response = getattr(event, "response", None)
+
+        if getattr(completed_response, "status", None) == "incomplete":
+            reason = getattr(
+                getattr(completed_response, "incomplete_details", None),
+                "reason",
+                "unknown",
+            )
+            print(f"[COACH TIMING] INCOMPLETE RESPONSE: {reason}", flush=True)
+            yield "\\n\\n*This answer reached its length limit. Ask me to continue for the remaining details.*"
 
         actual_service_tier = getattr(
             completed_response,
