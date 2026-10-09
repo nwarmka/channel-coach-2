@@ -265,6 +265,15 @@ def build_chat_page(
     css = """
     #chat-page { min-height:78vh!important; background:transparent!important; border:none!important; box-shadow:none!important; }
     #coach-chat-shell { width:min(1180px,98%)!important; margin:0 auto!important; gap:18px!important; align-items:stretch!important; }
+    /* Gradio rows may wrap their columns; force the desktop chat to stay in two columns. */
+    @media (min-width:801px) {
+      #coach-chat-shell { display:flex!important; flex-flow:row nowrap!important; align-items:flex-start!important; }
+      #coach-chat-shell > .gradio-column,
+      #coach-chat-shell > div { min-width:0!important; }
+      #coach-chat-sidebar { flex:0 0 260px!important; width:260px!important; min-width:260px!important; max-width:260px!important; }
+      #coach-chat-main { flex:1 1 0%!important; width:auto!important; min-width:0!important; max-width:none!important; }
+    }
+
     #coach-chat-sidebar { flex:0 0 260px!important; max-width:260px!important; min-width:230px!important; height:650px!important; padding:12px 10px!important; background:#080b12!important; border-right:1px solid rgba(148,163,184,.16)!important; border-radius:18px!important; overflow:hidden!important; }
     #coach-chat-main { min-width:0!important; flex:1 1 auto!important; }
     
@@ -277,6 +286,10 @@ def build_chat_page(
     #coach-chat-picker .wrap, #coach-chat-picker fieldset,
     #coach-chat-picker [role="radiogroup"] { display:flex!important; flex-direction:column!important; width:100%!important; max-width:100%!important; overflow-x:hidden!important; }
     #coach-chat-picker label { display:flex!important; align-items:center!important; gap:8px!important; width:100%!important; max-width:100%!important; min-width:0!important; white-space:normal!important; overflow-wrap:anywhere!important; }
+    #coach-chat-picker .wrap > div, #coach-chat-picker fieldset > div { display:flex!important; flex-direction:column!important; grid-template-columns:1fr!important; width:100%!important; min-width:0!important; }
+    #coach-chat-picker label { justify-content:flex-start!important; }
+    #coach-chat-picker label input { position:static!important; margin:0!important; }
+
     #coach-chat-picker label span { flex:1 1 auto!important; min-width:0!important; overflow-wrap:anywhere!important; }
     #coach-chat-picker input[type="radio"] { flex:0 0 auto!important; }
     #coach-chat-sidebar { overflow-x:hidden!important; }
