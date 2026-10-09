@@ -374,7 +374,7 @@ def build_chat_page(
         with gr.Row(elem_id="coach-chat-shell"):
             with gr.Column(elem_id="coach-chat-sidebar"):
                 new_chat_button = gr.Button("＋  New chat", elem_id="coach-new-chat")
-                chat_picker = gr.Radio(
+                chat_picker = gr.Dropdown(
                     choices=[],
                     label="Saved chats",
                     show_label=False,
