@@ -22,6 +22,7 @@ from auth import (
 
 
 import os
+from urllib.parse import urlsplit
 import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse
@@ -1383,7 +1384,7 @@ with gr.Blocks(title="Channel Coach") as app:
             visible=False,
         )
 
-        ideas_page, (ideas_listing, ideas_picker, ideas_status) = build_ideas_inbox_page(
+        ideas_page, (ideas_listing, ideas_picker, ideas_status, idea_title, idea_link, idea_text) = build_ideas_inbox_page(
             saved_login, visible=False
         )
 
@@ -1452,6 +1453,27 @@ with gr.Blocks(title="Channel Coach") as app:
         current_page,
         previous_page,
     ]
+
+    def open_shared_idea(workspace, current, request: gr.Request):
+        """Prefill the inbox from the iPhone shortcut URL; never auto-save."""
+        shared = ""
+        try:
+            shared = str(request.query_params.get("shared", "") or "").strip()
+        except (AttributeError, TypeError):
+            pass
+        no_change = (gr.update(),) * (3 + len(PAGE_NAMES) + 4)
+        if not shared or not workspace:
+            return no_change
+        shared = shared[:10000]
+        parsed = urlsplit(shared)
+        is_link = parsed.scheme.lower() in ("http", "https") and bool(parsed.netloc)
+        title = (parsed.netloc if is_link else shared[:80]).strip()[:200] or "Shared idea"
+        return (
+            title,
+            shared[:2000] if is_link else "",
+            "" if is_link else shared,
+            *navigate_to("ideas", current),
+        )
 
     def open_next_creator_task(current):
         """Native Home-screen button: open the Content Calendar."""
@@ -1678,6 +1700,11 @@ with gr.Blocks(title="Channel Coach") as app:
         inputs=[saved_login],
         outputs=[bug_admin_nav],
         show_progress="hidden",
+    ).then(
+        open_shared_idea,
+        inputs=[workspace_name, current_page],
+        outputs=[idea_title, idea_link, idea_text, *page_outputs],
+        show_progress="hidden",
     )
 
     signup_button.click(
@@ -1747,6 +1774,11 @@ with gr.Blocks(title="Channel Coach") as app:
         admin_button_visibility,
         inputs=[saved_login],
         outputs=[bug_admin_nav],
+        show_progress="hidden",
+    ).then(
+        open_shared_idea,
+        inputs=[workspace_name, current_page],
+        outputs=[idea_title, idea_link, idea_text, *page_outputs],
         show_progress="hidden",
     )
 
