@@ -279,12 +279,9 @@ def build_chat_page(
     
     #coach-new-chat { width:100%!important; justify-content:flex-start!important; text-align:left!important; background:transparent!important; border:none!important; box-shadow:none!important; color:#f8fafc!important; font-weight:700!important; }
     #coach-new-chat:hover { background:rgba(148,163,184,.09)!important; }
-    #coach-chat-picker { max-height:365px!important; overflow-y:auto!important; border:none!important; background:transparent!important; }
-    /* Style saved chats without overriding Gradio's internal radio layout. */
-    #coach-chat-picker { width:100%!important; overflow-x:hidden!important; }
-    #coach-chat-picker .wrap, #coach-chat-picker fieldset { border:none!important; background:transparent!important; box-shadow:none!important; padding:0!important; max-width:100%!important; }
-    #coach-chat-picker label { color:#dbe2ea!important; font-size:.9rem!important; white-space:normal!important; overflow-wrap:anywhere!important; }
-    #coach-chat-picker label:hover { background:rgba(148,163,184,.09)!important; }
+    /* Native Gradio dropdown avoids the radio group's broken multi-column grid. */
+    #coach-chat-picker { width:100%!important; min-width:0!important; max-width:100%!important; }
+    #coach-chat-picker input { min-width:0!important; text-overflow:ellipsis!important; }
     #coach-chat-picker::before { content:"PINNED / RECENT"; display:block; color:rgba(226,232,240,.46); font-size:.68rem; font-weight:800; letter-spacing:.08em; padding:12px 9px 5px; }
     #coach-chat-sidebar { overflow-x:hidden!important; }
     #coach-chat-window { overflow-x:hidden!important; overscroll-behavior:contain!important; }
