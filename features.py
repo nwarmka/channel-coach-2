@@ -3933,12 +3933,27 @@ def _build_creator_coach_prompt(
         else "No earlier messages in this conversation."
     )
 
+    continuation_words = (
+        "continue", "keep going", "go on", "pick up where",
+        "finish the rest", "remaining days", "next days",
+    )
+    is_continuation = any(word in str(user_question).lower() for word in continuation_words)
+    continuation_instruction = (
+        "IMPORTANT: The creator is asking to continue the immediately preceding "
+        "Coach Chat answer, not asking for new workspace recommendations. "
+        "Continue the same topic and numbering from the prior conversation. "
+        "Do not switch to the content queue or offer unrelated tasks. "
+        "If the preceding topic cannot be determined from the conversation "
+        "provided, ask which answer they want continued."
+        if is_continuation else ""
+    )
+
     prompt = f"""
 You are Coach Chat inside Channel Coach, a supportive creator mentor
 for small content creators.
 
 Use the creator's saved workspace data to give practical, specific advice.
-Use the prior conversation when it is relevant to the creator's new question.
+Use the prior conversation when it is relevant to the creator's new question.\n{continuation_instruction}
 Do not pretend data exists if it is missing.
 If the workspace is empty, give the creator a simple next step instead
 of generic strategy.
