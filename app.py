@@ -2,6 +2,8 @@
 # UI lives here. Feature functions, styles, constants, and helpers are imported from features.py.
 
 from features import *
+from api_usage_tracker import install_usage_tracking
+install_usage_tracking(client)
 from ui.calendar import build_calendar_page
 from ui.dashboard import build_dashboard_page
 from ui.toolkit import build_toolkit_page
