@@ -24,6 +24,8 @@ def record_response_usage(response, feature="unknown"):
         "output_tokens": getattr(usage, "output_tokens", 0),
         "reasoning_output_tokens": getattr(output_details, "reasoning_tokens", 0) if output_details else 0,
         "total_tokens": getattr(usage, "total_tokens", 0),
+        "status": getattr(response, "status", None),
+        "incomplete_reason": getattr(getattr(response, "incomplete_details", None), "reason", None),
     }
     logger.warning(json.dumps(record, default=str))
     return True
@@ -41,7 +43,7 @@ def install_usage_tracking(client):
             def tracked_events():
                 try:
                     for event in result:
-                        if getattr(event, "type", None) == "response.completed":
+                        if getattr(event, "type", None) in ("response.completed", "response.incomplete"):
                             try:
                                 record_response_usage(getattr(event, "response", None), feature)
                             except Exception:
