@@ -27,3 +27,35 @@ def record_response_usage(response, feature="unknown"):
     }
     logger.warning(json.dumps(record, default=str))
     return True
+
+
+def install_usage_tracking(client):
+    """Wrap sync Responses calls, including streaming completion events."""
+    responses = client.responses
+    original_create = responses.create
+
+    def tracked_create(*args, **kwargs):
+        result = original_create(*args, **kwargs)
+        feature = "coach_stream" if kwargs.get("stream") else "coach_request"
+        if kwargs.get("stream"):
+            def tracked_events():
+                try:
+                    for event in result:
+                        if getattr(event, "type", None) == "response.completed":
+                            try:
+                                record_response_usage(getattr(event, "response", None), feature)
+                            except Exception:
+                                logger.exception("Could not log OpenAI usage")
+                        yield event
+                finally:
+                    close = getattr(result, "close", None)
+                    if callable(close):
+                        close()
+            return tracked_events()
+        try:
+            record_response_usage(result, feature)
+        except Exception:
+            logger.exception("Could not log OpenAI usage")
+        return result
+
+    responses.create = tracked_create
