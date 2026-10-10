@@ -4,6 +4,7 @@ import time
 import gradio as gr
 
 from features import stream_creator_coach
+from credits import spend_credits, get_credit_balance
 from database import (
     create_coach_chat,
     delete_coach_chat,
@@ -201,7 +202,18 @@ def _respond(message, history, chat_id, workspace_name):
     user_id = (workspace_name or "main").strip() or "main"
 
     if not message:
-        yield "", history, chat_id, _render_chat(history), _refresh_chat_picker(user_id, chat_id), gr.update()
+        yield "", history, chat_id, _render_chat(history), _refresh_chat_picker(user_id, chat_id), gr.update(), gr.update(), gr.update()
+        return
+
+    try:
+        balance = get_credit_balance(user_id)
+        if balance < 1:
+            gr.Warning("You need at least 1 credit to send a Coach Chat message.")
+            yield message, history, chat_id, _render_chat(history), gr.update(), gr.update(), gr.update(value=f"**Credits: {balance}**")
+            return
+    except Exception:
+        gr.Warning("Could not verify your credits. Please try again.")
+        yield message, history, chat_id, _render_chat(history), gr.update(), gr.update(), gr.update(), gr.update()
         return
 
     prior_history = [dict(item) for item in history if not item.get("thinking")]
@@ -210,7 +222,7 @@ def _respond(message, history, chat_id, workspace_name):
         {"role": "assistant", "content": "", "thinking": True},
     ]
 
-    yield "", working_history, chat_id, _render_chat(working_history), gr.update(), gr.update()
+    yield "", working_history, chat_id, _render_chat(working_history), gr.update(), gr.update(), gr.update()
 
     partial_reply = ""
     last_ui_update = 0.0
@@ -224,7 +236,7 @@ def _respond(message, history, chat_id, workspace_name):
             }
             now = time.monotonic()
             if now - last_ui_update >= 0.05:
-                yield "", working_history, chat_id, _render_chat(working_history), gr.update(), gr.update()
+                yield "", working_history, chat_id, _render_chat(working_history), gr.update(), gr.update(), gr.update()
                 last_ui_update = now
 
         working_history[-1] = {
@@ -232,7 +244,11 @@ def _respond(message, history, chat_id, workspace_name):
             "content": partial_reply or "I couldn't generate a response.",
             "thinking": False,
         }
+        if not partial_reply.strip():
+            raise RuntimeError("No response was generated; no credit was charged.")
         final_history = [dict(item) for item in working_history if not item.get("thinking")]
+
+        new_balance = spend_credits(user_id, 1, description="Coach Chat message")
 
         current_chat_id = chat_id
         title = None
@@ -246,13 +262,13 @@ def _respond(message, history, chat_id, workspace_name):
 
         yield (
             "", final_history, current_chat_id, _render_chat(final_history),
-            _refresh_chat_picker(user_id, current_chat_id), gr.update(value=title or "")
+            _refresh_chat_picker(user_id, current_chat_id), gr.update(value=title or ""), gr.update(value=f"**Credits: {new_balance}**")
         )
     except Exception as exc:
         working_history[-1] = {
             "role": "assistant", "content": f"Coach Chat error: {exc}", "thinking": False
         }
-        yield "", working_history, chat_id, _render_chat(working_history), gr.update(), gr.update()
+        yield "", working_history, chat_id, _render_chat(working_history), gr.update(), gr.update(), gr.update()
 
 
 def build_chat_page(
@@ -459,7 +475,7 @@ def build_chat_page(
         )
 
         send_inputs = [message_box, history_state, chat_id_state, workspace_name]
-        send_outputs = [message_box, history_state, chat_id_state, chat_display, chat_picker, rename_box]
+        send_outputs = [message_box, history_state, chat_id_state, chat_display, chat_picker, rename_box, credit_balance]
         send_button.click(fn=_respond, inputs=send_inputs, outputs=send_outputs, show_progress="hidden")
         message_box.submit(fn=_respond, inputs=send_inputs, outputs=send_outputs, show_progress="hidden")
 
