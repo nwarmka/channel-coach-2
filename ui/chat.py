@@ -213,7 +213,7 @@ def _respond(message, history, chat_id, workspace_name):
             return
     except Exception:
         gr.Warning("Could not verify your credits. Please try again.")
-        yield message, history, chat_id, _render_chat(history), gr.update(), gr.update(), gr.update(), gr.update()
+        yield message, history, chat_id, _render_chat(history), gr.update(), gr.update(), gr.update()
         return
 
     prior_history = [dict(item) for item in history if not item.get("thinking")]
