@@ -248,8 +248,6 @@ def _respond(message, history, chat_id, workspace_name):
             raise RuntimeError("No response was generated; no credit was charged.")
         final_history = [dict(item) for item in working_history if not item.get("thinking")]
 
-        new_balance = spend_credits(user_id, 1, description="Coach Chat message")
-
         current_chat_id = chat_id
         title = None
         if current_chat_id:
@@ -259,6 +257,9 @@ def _respond(message, history, chat_id, workspace_name):
         else:
             title = _auto_chat_title(message)
             current_chat_id = create_coach_chat(title, final_history, user_id)
+
+        # Save first so a database save failure never consumes a credit.
+        new_balance = spend_credits(user_id, 1, description="Coach Chat message")
 
         yield (
             "", final_history, current_chat_id, _render_chat(final_history),
