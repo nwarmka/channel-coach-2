@@ -14,7 +14,7 @@ SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 
 DEFAULT_STARTING_CREDITS = int(
-    os.getenv("CHANNEL_COACH_STARTING_CREDITS", "100")
+    os.getenv("CHANNEL_COACH_STARTING_CREDITS", "15")
 )
 
 _credit_client = None
@@ -58,7 +58,7 @@ def _valid_user_id(user_id):
 
 def ensure_initial_credits(user_id, starting_credits=None):
     """
-    Gives a user their one-time Phase 1 starting credits.
+    Gives a new user their one-time signup credits.
 
     Safe to call on every login because transaction_key is unique.
     Returns the current credit balance.
@@ -94,7 +94,7 @@ def ensure_initial_credits(user_id, starting_credits=None):
                     "user_id": user_id,
                     "amount": amount,
                     "transaction_type": "initial_grant",
-                    "description": "Phase 1 starting credits",
+                    "description": "One-time signup credits",
                     "transaction_key": transaction_key,
                 })
                 .execute()
