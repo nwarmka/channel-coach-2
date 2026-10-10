@@ -274,6 +274,8 @@ def _save_progress_status(selected_item_id, new_status, selected_date, workspace
         return (
             "Choose a scheduled item first.",
             _day_details_html(workspace_name, selected_date),
+            render_content_calendar(month, year, "All", "All", user_id=workspace_name),
+            render_upcoming_content(user_id=workspace_name),
             *_button_updates(workspace_name, month, year),
         )
 
@@ -287,6 +289,8 @@ def _save_progress_status(selected_item_id, new_status, selected_date, workspace
         return (
             "Could not find that scheduled item.",
             _day_details_html(workspace_name, selected_date),
+            render_content_calendar(month, year, "All", "All", user_id=workspace_name),
+            render_upcoming_content(user_id=workspace_name),
             *_button_updates(workspace_name, month, year),
         )
 
