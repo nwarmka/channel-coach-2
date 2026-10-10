@@ -425,6 +425,14 @@ def build_chat_page(
             outputs=[history_state, chat_id_state, chat_display, rename_box, chat_picker, message_box],
             show_progress="hidden",
         )
+        # Choices start empty at build time; reload them when the user opens
+        # the selector, including after a Render restart or fresh login.
+        chat_picker.focus(
+            fn=_refresh_chat_picker,
+            inputs=[workspace_name],
+            outputs=[chat_picker],
+            show_progress="hidden",
+        )
         chat_picker.change(
             fn=_load_chat,
             inputs=[chat_picker, workspace_name],
