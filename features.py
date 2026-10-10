@@ -10,6 +10,7 @@ import gradio as gr
 from datetime import date, datetime, timedelta
 from dotenv import load_dotenv
 from openai import OpenAI
+from credits import grant_credits, get_credit_balance
 from database import (
     data_file,
     load_creator_profile_record,
@@ -1174,6 +1175,20 @@ def update_content_item(selected_item_id, title, content_type, game_topic, statu
         tags=(game_topic or "").strip(),
         user_id=workspace_id(user_id)
     )
+
+    if message.startswith("✅") and status in ("Scheduled", "Published"):
+        try:
+            grant_credits(
+                workspace_id(user_id), 5,
+                description="First completed creator task bonus",
+                transaction_type="admin_adjustment",
+                transaction_key=f"first-creator-task-bonus:{workspace_id(user_id)}",
+            )
+            message += " 🎁 Your first completed creator task earns 5 bonus credits!"
+        except Exception as exc:
+            # A unique transaction key prevents a second bonus on repeat saves.
+            # If it already exists, don't treat that as a new reward.
+            print(f"Creator task bonus not granted (possibly already claimed): {type(exc).__name__}")
 
     return (
         render_content_calendar(month, year, status_filter, type_filter, user_id),
