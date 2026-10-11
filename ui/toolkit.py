@@ -297,7 +297,7 @@ def build_toolkit_page(workspace_name, credit_balance, visible=False):
                     title_tone,
                     workspace_name,
                 ],
-                outputs=title_output,
+                outputs=[title_output, credit_balance],
                 show_progress="full",
             )
 
