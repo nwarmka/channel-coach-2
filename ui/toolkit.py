@@ -244,7 +244,7 @@ def build_toolkit_page(workspace_name, credit_balance, visible=False):
                     thumbnail_input,
                     workspace_name,
                 ],
-                outputs=thumbnail_output,
+                outputs=[thumbnail_output, credit_balance],
                 show_progress="full",
             )
 
