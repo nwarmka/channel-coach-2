@@ -4167,37 +4167,70 @@ def encode_image_file(image_path):
 
 
 def extract_video_frames(video_path, max_frames=8):
+    """Sample frames by timestamp, with fallbacks for difficult MP4 seeking."""
     frames = []
-
     cap = cv2.VideoCapture(video_path)
-
     if not cap.isOpened():
+        print("Video analysis: OpenCV could not open the uploaded video.")
         return frames
 
-    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    try:
+        fps = float(cap.get(cv2.CAP_PROP_FPS) or 0)
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
+        duration_ms = float(cap.get(cv2.CAP_PROP_POS_MSEC) or 0)
+        if fps > 0 and total_frames > 0:
+            duration_ms = total_frames * 1000.0 / fps
 
-    if total_frames <= 0:
+        # Use timestamps rather than frame-index seeking for long videos.
+        if duration_ms > 0:
+            targets = [duration_ms * (i + 1) / (max_frames + 1)
+                       for i in range(max_frames)]
+        elif total_frames > 0:
+            targets = [int(total_frames * (i + 1) / (max_frames + 1))
+                       for i in range(max_frames)]
+        else:
+            targets = []
+
+        def append_frame(frame):
+            # Keep images reasonably sized to reduce API payloads and memory.
+            height, width = frame.shape[:2]
+            if max(height, width) > 1024:
+                scale = 1024 / max(height, width)
+                frame = cv2.resize(frame, (max(1, int(width * scale)),
+                                           max(1, int(height * scale))))
+            ok, buffer = cv2.imencode(".jpg", frame,
+                                      [int(cv2.IMWRITE_JPEG_QUALITY), 75])
+            if ok:
+                frames.append(base64.b64encode(buffer).decode("utf-8"))
+
+        for target in targets:
+            if duration_ms > 0:
+                cap.set(cv2.CAP_PROP_POS_MSEC, target)
+            else:
+                cap.set(cv2.CAP_PROP_POS_FRAMES, target)
+            success, frame = cap.read()
+            if not success and fps > 0 and duration_ms > 0:
+                # Some codecs seek more reliably by frame number.
+                cap.set(cv2.CAP_PROP_POS_FRAMES, int(target * fps / 1000))
+                success, frame = cap.read()
+            if success and frame is not None:
+                append_frame(frame)
+
+        if not frames:
+            # Last resort: try decoding the beginning without seeking.
+            cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+            for _ in range(30):
+                success, frame = cap.read()
+                if success and frame is not None:
+                    append_frame(frame)
+                    break
+        print(f"Video analysis: extracted {len(frames)} frames; "
+              f"duration_seconds={duration_ms / 1000:.1f}; "
+              f"reported_frames={total_frames}")
+    except Exception as exc:
+        print(f"Video analysis: frame extraction error: {type(exc).__name__}: {exc}")
+    finally:
         cap.release()
-        return frames
-
-    frame_positions = []
-
-    for i in range(max_frames):
-        position = int((i + 1) * total_frames / (max_frames + 1))
-        frame_positions.append(position)
-
-    for position in frame_positions:
-        cap.set(cv2.CAP_PROP_POS_FRAMES, position)
-        success, frame = cap.read()
-
-        if success:
-            success, buffer = cv2.imencode(".jpg", frame)
-
-            if success:
-                frame_base64 = base64.b64encode(buffer).decode("utf-8")
-                frames.append(frame_base64)
-
-    cap.release()
     return frames
 
 
