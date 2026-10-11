@@ -175,6 +175,7 @@ def build_toolkit_page(workspace_name, visible=False):
                 analyzer_upload,
                 analyzer_notes,
                 analyzer_type,
+                workspace_name,
             ],
             outputs=[
                 analyzer_output,
