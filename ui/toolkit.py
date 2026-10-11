@@ -67,7 +67,7 @@ def preview_uploaded_video(video_path):
         capture.release()
 
 
-def build_toolkit_page(workspace_name, visible=False):
+def build_toolkit_page(workspace_name, credit_balance, visible=False):
     """Build the Creator Toolkit page and wire all toolkit events."""
 
     with gr.Column(
@@ -180,6 +180,7 @@ def build_toolkit_page(workspace_name, visible=False):
             outputs=[
                 analyzer_output,
                 review_history_output,
+                credit_balance,
             ],
             show_progress="full",
         )
