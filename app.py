@@ -1367,6 +1367,7 @@ with gr.Blocks(title="Channel Coach") as app:
 
         toolkit_page = build_toolkit_page(
             workspace_name,
+            credit_balance,
             visible=False,
         )
 
