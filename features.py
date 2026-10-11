@@ -4684,8 +4684,17 @@ For each idea include:
 # =========================
 
 def analyze_thumbnail(image, user_id="main"):
+    user_id = (user_id or "").strip()
+    if not user_id:
+        return "Please sign in to review a thumbnail.", gr.update()
     if image is None:
-        return "Please upload a thumbnail."
+        return "Please upload a thumbnail.", gr.update()
+    try:
+        balance = get_credit_balance(user_id)
+    except Exception:
+        return "Could not verify your credits. Please try again.", gr.update()
+    if balance < 3:
+        return f"Thumbnail Review requires 3 credits. You currently have {balance}.", gr.update()
 
     base64_image = encode_image_file(image)
 
@@ -4724,7 +4733,15 @@ Give:
         ]
     )
 
-    return response.output_text
+    feedback = (response.output_text or "").strip()
+    if not feedback:
+        return "Thumbnail Review produced no feedback. No credits were charged.", gr.update()
+    try:
+        new_balance = spend_credits(user_id, 3, description="Thumbnail Review")
+    except Exception as exc:
+        print(f"Thumbnail Review credit charge failed: {type(exc).__name__}: {exc}")
+        return "Could not charge credits for Thumbnail Review. Please try again.", gr.update()
+    return f"{feedback}\\n\\n---\\nThumbnail Review: 3 credits used. Remaining balance: {new_balance}.", f"**Credits: {new_balance}**"
 
 
 # =========================
