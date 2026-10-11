@@ -4315,7 +4315,19 @@ Give detailed creator feedback:
 # TEXT TOOLS
 # =========================
 
-def generate_titles(video_idea, platform, tone):
+def generate_titles(video_idea, platform, tone, user_id):
+    user_id = (user_id or "").strip()
+    if not user_id:
+        return "Please sign in to generate titles.", gr.update()
+    if not (video_idea or "").strip():
+        return "Please enter your video idea.", gr.update()
+    try:
+        balance = get_credit_balance(user_id)
+    except Exception:
+        return "Could not verify your credits. Please try again.", gr.update()
+    if balance < 2:
+        return f"AI Video Titles requires 2 credits. You currently have {balance}.", gr.update()
+
     prompt = f"""
 You are Channel Coach.
 
@@ -4327,7 +4339,19 @@ Video idea: {video_idea}
 
 Make them clickable but not fake clickbait.
 """
-    return ask_channel_coach(prompt)
+    try:
+        feedback = (ask_channel_coach(prompt, user_id=user_id) or "").strip()
+    except Exception as exc:
+        print(f"AI Video Titles failed: {type(exc).__name__}: {exc}")
+        return "Title generation failed. No credits were charged.", gr.update()
+    if not feedback or feedback == AI_UNAVAILABLE_MESSAGE:
+        return "Title generation unavailable. No credits were charged.", gr.update()
+    try:
+        new_balance = spend_credits(user_id, 2, description="AI Video Titles")
+    except Exception as exc:
+        print(f"AI Video Titles credit charge failed: {type(exc).__name__}: {exc}")
+        return "Could not charge credits for AI Video Titles. Please try again.", gr.update()
+    return f"{feedback}\\n\\n---\\nAI Video Titles: 2 credits used. Remaining balance: {new_balance}.", f"**Credits: {new_balance}**"
 
 
 def seo_help(video_idea, platform, niche):
