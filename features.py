@@ -4540,7 +4540,7 @@ def video_analyzer_with_history(video_file, notes, content_type, user_id):
         return "Could not charge the 5 credits for this analysis. Please refresh your balance and try again.", render_video_review_history(), gr.update()
 
     save_video_review_record(content_type, notes, feedback)
-    return f"{feedback}\n\n---\nVideo Analysis: 5 credits used. Remaining balance: {new_balance}.", render_video_review_history(), f"**Credits: {new_balance}**", gr.update()
+    return f"{feedback}\n\n---\nVideo Analysis: 5 credits used. Remaining balance: {new_balance}.", render_video_review_history(), f"**Credits: {new_balance}**"
 
 
 
