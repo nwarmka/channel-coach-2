@@ -10,7 +10,7 @@ import gradio as gr
 from datetime import date, datetime, timedelta
 from dotenv import load_dotenv
 from openai import OpenAI
-from credits import grant_credits, get_credit_balance
+from credits import grant_credits, get_credit_balance, spend_credits
 from database import (
     data_file,
     load_creator_profile_record,
@@ -4510,21 +4510,37 @@ def render_video_review_history(limit=10):
     return html_output
 
 
-def video_analyzer_with_history(video_file, notes, content_type):
-    feedback = video_analyzer(video_file, notes, content_type)
+def video_analyzer_with_history(video_file, notes, content_type, user_id):
+    """Charge the signed-in workspace only after successful video feedback."""
+    user_id = (user_id or "").strip()
+    if not user_id:
+        return "Please sign in to analyze a video.", render_video_review_history()
 
-    error_starts = (
-        "Please upload",
-        "I could not",
-        "Could not",
-        "Error",
-        "❌"
-    )
+    try:
+        balance = get_credit_balance(user_id)
+    except Exception:
+        return "Could not verify your credits. Please try again.", render_video_review_history()
+    if balance < 5:
+        return f"Video Analysis requires 5 credits. You currently have {balance}.", render_video_review_history()
 
-    if feedback and not str(feedback).startswith(error_starts):
-        save_video_review_record(content_type, notes, feedback)
+    try:
+        feedback = video_analyzer(video_file, notes, content_type)
+    except Exception as exc:
+        print(f"Video analysis failed: {type(exc).__name__}: {exc}")
+        return "Video Analysis failed. No credits were charged.", render_video_review_history()
 
-    return feedback, render_video_review_history()
+    error_starts = ("Please upload", "I could not", "Could not", "Error", "❌")
+    if not feedback or str(feedback).startswith(error_starts):
+        return feedback or "Video Analysis failed. No credits were charged.", render_video_review_history()
+
+    try:
+        new_balance = spend_credits(user_id, 5, description="Video Analysis")
+    except Exception as exc:
+        print(f"Video analysis credit charge failed: {type(exc).__name__}: {exc}")
+        return "Could not charge the 5 credits for this analysis. Please refresh your balance and try again.", render_video_review_history()
+
+    save_video_review_record(content_type, notes, feedback)
+    return f"{feedback}\n\n---\nVideo Analysis: 5 credits used. Remaining balance: {new_balance}.", render_video_review_history()
 
 
 
