@@ -4169,6 +4169,21 @@ def encode_image_file(image_path):
 def extract_video_frames(video_path, max_frames=8):
     """Sample frames by timestamp, with fallbacks for difficult MP4 seeking."""
     frames = []
+    # Gradio may supply a path, (video_path, subtitle_path), or file dict.
+    if isinstance(video_path, (tuple, list)):
+        video_path = video_path[0] if video_path else None
+    if isinstance(video_path, dict):
+        video_path = video_path.get("video") or video_path.get("path")
+    if hasattr(video_path, "name") and not isinstance(video_path, str):
+        video_path = video_path.name
+    if not video_path:
+        print("Video analysis: no uploaded video path received.")
+        return frames
+    video_path = str(video_path)
+    if not os.path.isfile(video_path):
+        print(f"Video analysis: uploaded file not found: {video_path!r}")
+        return frames
+    print(f"Video analysis: input_size_bytes={os.path.getsize(video_path)}")
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
         print("Video analysis: OpenCV could not open the uploaded video.")
