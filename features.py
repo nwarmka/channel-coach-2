@@ -1381,7 +1381,7 @@ def render_needs_attention(user_id="main", compact=False):
     profile = load_creator_profile(user_id)
     stats = get_dashboard_stats(user_id)
     items = load_content_calendar(user_id)
-    history = load_video_review_history()
+    history = load_video_review_history(user_id)
 
     try:
         analytics_entries = load_analytics_entries()
@@ -3850,7 +3850,7 @@ def build_creator_coach_context(user_id="main"):
         calendar_items = []
 
     try:
-        review_history = load_video_review_history()
+        review_history = load_video_review_history(uid)
     except Exception:
         review_history = []
 
@@ -4410,28 +4410,35 @@ def video_analyzer(video_file, notes, content_type):
 # VIDEO REVIEW HISTORY
 # =========================
 
-def load_video_review_history():
+def _video_review_history_path(user_id):
+    """Separate video reviews by authenticated Supabase account."""
     try:
-        if os.path.exists(VIDEO_REVIEW_HISTORY_FILE):
-            with open(VIDEO_REVIEW_HISTORY_FILE, "r", encoding="utf-8") as f:
-                history = json.load(f)
+        safe_id = str(uuid.UUID(str(user_id)))
+    except (TypeError, ValueError, AttributeError):
+        raise ValueError("A valid signed-in user is required for video review history.")
+    root, ext = os.path.splitext(VIDEO_REVIEW_HISTORY_FILE)
+    return f"{root}_{safe_id}{ext or '.json'}"
 
+
+def load_video_review_history(user_id):
+    path = _video_review_history_path(user_id)
+    try:
+        if os.path.exists(path):
+            with open(path, "r", encoding="utf-8") as f:
+                history = json.load(f)
             if isinstance(history, list):
                 return history
-
-    except Exception:
-        return []
-
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        print(f"Could not load video review history: {type(exc).__name__}")
     return []
 
 
-def save_video_review_history(history):
-    history_dir = os.path.dirname(VIDEO_REVIEW_HISTORY_FILE)
-
+def save_video_review_history(history, user_id):
+    path = _video_review_history_path(user_id)
+    history_dir = os.path.dirname(path)
     if history_dir:
         os.makedirs(history_dir, exist_ok=True)
-
-    with open(VIDEO_REVIEW_HISTORY_FILE, "w", encoding="utf-8") as f:
+    with open(path, "w", encoding="utf-8") as f:
         json.dump(history, f, indent=4)
 
 
@@ -4465,8 +4472,8 @@ def extract_score_from_feedback(feedback):
     return None
 
 
-def save_video_review_record(video_type, notes, feedback):
-    history = load_video_review_history()
+def save_video_review_record(video_type, notes, feedback, user_id):
+    history = load_video_review_history(user_id)
 
     record = {
         "id": str(uuid.uuid4()),
@@ -4482,12 +4489,12 @@ def save_video_review_record(video_type, notes, feedback):
     # Keep the history from growing forever.
     history = history[:50]
 
-    save_video_review_history(history)
+    save_video_review_history(history, user_id)
     return record
 
 
-def render_video_review_history(limit=10):
-    history = load_video_review_history()
+def render_video_review_history(user_id, limit=10):
+    history = load_video_review_history(user_id)
 
     if not history:
         return """
@@ -4538,33 +4545,33 @@ def video_analyzer_with_history(video_file, notes, content_type, user_id):
     """Charge the signed-in workspace only after successful video feedback."""
     user_id = (user_id or "").strip()
     if not user_id:
-        return "Please sign in to analyze a video.", render_video_review_history(), gr.update()
+        return "Please sign in to analyze a video.", render_video_review_history(user_id), gr.update()
 
     try:
         balance = get_credit_balance(user_id)
     except Exception:
-        return "Could not verify your credits. Please try again.", render_video_review_history(), gr.update()
+        return "Could not verify your credits. Please try again.", render_video_review_history(user_id), gr.update()
     if balance < 5:
-        return f"Video Analysis requires 5 credits. You currently have {balance}.", render_video_review_history(), gr.update()
+        return f"Video Analysis requires 5 credits. You currently have {balance}.", render_video_review_history(user_id), gr.update()
 
     try:
         feedback = video_analyzer(video_file, notes, content_type)
     except Exception as exc:
         print(f"Video analysis failed: {type(exc).__name__}: {exc}")
-        return "Video Analysis failed. No credits were charged.", render_video_review_history(), gr.update()
+        return "Video Analysis failed. No credits were charged.", render_video_review_history(user_id), gr.update()
 
     error_starts = ("Please upload", "I could not", "Could not", "Error", "❌")
     if not feedback or str(feedback).startswith(error_starts):
-        return feedback or "Video Analysis failed. No credits were charged.", render_video_review_history(), gr.update()
+        return feedback or "Video Analysis failed. No credits were charged.", render_video_review_history(user_id), gr.update()
 
     try:
         new_balance = spend_credits(user_id, 5, description="Video Analysis")
     except Exception as exc:
         print(f"Video analysis credit charge failed: {type(exc).__name__}: {exc}")
-        return "Could not charge the 5 credits for this analysis. Please refresh your balance and try again.", render_video_review_history(), gr.update()
+        return "Could not charge the 5 credits for this analysis. Please refresh your balance and try again.", render_video_review_history(user_id), gr.update()
 
-    save_video_review_record(content_type, notes, feedback)
-    return f"{feedback}\n\n---\nVideo Analysis: 5 credits used. Remaining balance: {new_balance}.", render_video_review_history(), f"**Credits: {new_balance}**"
+    save_video_review_record(content_type, notes, feedback, user_id)
+    return f"{feedback}\n\n---\nVideo Analysis: 5 credits used. Remaining balance: {new_balance}.", render_video_review_history(user_id), f"**Credits: {new_balance}**"
 
 
 
@@ -4655,8 +4662,8 @@ Keep it encouraging, specific, and not too long.
     return ask_channel_coach(prompt)
 
 
-def render_creator_memory_snapshot():
-    history = load_video_review_history()
+def render_creator_memory_snapshot(user_id):
+    history = load_video_review_history(user_id)
 
     if not history:
         return """
