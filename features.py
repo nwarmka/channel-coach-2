@@ -4421,7 +4421,12 @@ def _video_review_history_path(user_id):
 
 
 def load_video_review_history(user_id):
-    path = _video_review_history_path(user_id)
+    # Dashboard renders before login with the placeholder "main". Never read
+    # another user\'s history or crash the server for an unauthenticated view.
+    try:
+        path = _video_review_history_path(user_id)
+    except ValueError:
+        return []
     try:
         if os.path.exists(path):
             with open(path, "r", encoding="utf-8") as f:
