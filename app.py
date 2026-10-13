@@ -1610,7 +1610,6 @@ with gr.Blocks(title="Channel Coach") as app:
             user_id or "",
             saved_session,
             session if logged_in else empty_saved_session(),
-            session if logged_in else empty_saved_session(),
             gr.update(visible=not logged_in),
             gr.update(visible=logged_in),
         )
@@ -1622,6 +1621,7 @@ with gr.Blocks(title="Channel Coach") as app:
         return (
             message,
             user_id or "",
+            session if logged_in else empty_saved_session(),
             session if logged_in else empty_saved_session(),
             gr.update(visible=not logged_in),
             gr.update(visible=logged_in),
