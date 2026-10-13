@@ -1179,6 +1179,7 @@ with gr.Blocks(title="Channel Coach") as app:
         "channel-coach-browser-state-v2",
     )
 
+    active_chat_session = gr.State(value=empty_saved_session())
     saved_login = gr.BrowserState(
         default_value=empty_saved_session(),
         storage_key="channel_coach_login_v2",
@@ -1282,6 +1283,7 @@ with gr.Blocks(title="Channel Coach") as app:
         chat_page = build_chat_page(
             workspace_name,
             credit_balance,
+            session_state=active_chat_session,
             visible=False,
         )
 
@@ -1594,6 +1596,7 @@ with gr.Blocks(title="Channel Coach") as app:
                 "Enter both your email and password.",
                 "",
                 empty_saved_session(),
+                empty_saved_session(),
                 gr.update(visible=True),
                 gr.update(visible=False),
             )
@@ -1606,6 +1609,8 @@ with gr.Blocks(title="Channel Coach") as app:
             message,
             user_id or "",
             saved_session,
+            session if logged_in else empty_saved_session(),
+            session if logged_in else empty_saved_session(),
             gr.update(visible=not logged_in),
             gr.update(visible=logged_in),
         )
@@ -1628,6 +1633,7 @@ with gr.Blocks(title="Channel Coach") as app:
             message,
             "",
             cleared,
+            empty_saved_session(),
             gr.update(visible=True),
             gr.update(visible=False),
             False,
@@ -1666,7 +1672,7 @@ with gr.Blocks(title="Channel Coach") as app:
     login_button.click(
         login_and_open_app,
         inputs=[login_email, login_password, remember_me],
-        outputs=[login_status, workspace_name, saved_login, login_screen, app_shell],
+        outputs=[login_status, workspace_name, saved_login, active_chat_session, login_screen, app_shell],
         show_progress="full"
     ).then(
         reset_navigation,
@@ -1730,6 +1736,7 @@ with gr.Blocks(title="Channel Coach") as app:
             login_status,
             workspace_name,
             saved_login,
+            active_chat_session,
             login_screen,
             app_shell,
             menu_open,
@@ -1742,7 +1749,7 @@ with gr.Blocks(title="Channel Coach") as app:
     app.load(
         restore_and_open_app,
         inputs=[saved_login],
-        outputs=[login_status, workspace_name, saved_login, login_screen, app_shell],
+        outputs=[login_status, workspace_name, saved_login, active_chat_session, login_screen, app_shell],
     ).then(
         reset_navigation,
         outputs=page_outputs,
