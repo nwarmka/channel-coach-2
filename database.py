@@ -469,13 +469,29 @@ def delete_calendar_item(
 # COACH CHAT STORAGE
 # =========================
 
-def get_coach_chats(user_id="main"):
+def verified_chat_client(user_id, session):
+    """Fresh per-request client, bound to a verified Supabase user JWT."""
+    from supabase import create_client
+    token = session.get("access_token") if isinstance(session, dict) else None
+    if not token:
+        raise PermissionError("Please sign in again to access Coach Chat.")
+    client = create_client(SUPABASE_URL, os.getenv("SUPABASE_ANON_KEY") or SUPABASE_KEY)
+    response = client.auth.get_user(token)
+    verified_id = str(response.user.id) if response and response.user else ""
+    if not verified_id or verified_id != str(user_id):
+        raise PermissionError("The signed-in account does not match this workspace.")
+    client.postgrest.auth(token)
+    return client
+
+
+def get_coach_chats(user_id="main", session=None):
     safe_user_id = clean_user_id(user_id)
     if not supabase_is_ready():
         print(f"Coach Chat load skipped for {safe_user_id}: {supabase_status()}")
         return []
     try:
-        result = (supabase.table("coach_chats").select("*")
+        chat_client = verified_chat_client(safe_user_id, session)
+        result = (chat_client.table("coach_chats").select("*")
                   .eq("user_id", safe_user_id)
                   .order("is_pinned", desc=True)
                   .order("updated_at", desc=True).execute())
@@ -484,12 +500,13 @@ def get_coach_chats(user_id="main"):
         print(f"Supabase Coach Chat load failed for {safe_user_id}: {e}")
         return []
 
-def get_coach_chat(chat_id, user_id="main"):
+def get_coach_chat(chat_id, user_id="main", session=None):
     safe_user_id = clean_user_id(user_id)
     if not chat_id or not supabase_is_ready():
         return None
     try:
-        result = (supabase.table("coach_chats").select("*")
+        chat_client = verified_chat_client(safe_user_id, session)
+        result = (chat_client.table("coach_chats").select("*")
                   .eq("id", chat_id).eq("user_id", safe_user_id)
                   .limit(1).execute())
         return result.data[0] if result.data else None
@@ -497,13 +514,14 @@ def get_coach_chat(chat_id, user_id="main"):
         print(f"Supabase Coach Chat load failed for {safe_user_id}: {e}")
         return None
 
-def create_coach_chat(title, messages, user_id="main"):
+def create_coach_chat(title, messages, user_id="main", session=None):
     safe_user_id = clean_user_id(user_id)
     if not supabase_is_ready():
         print(f"Coach Chat create skipped for {safe_user_id}: {supabase_status()}")
         return None
     try:
-        result = (supabase.table("coach_chats").insert({
+        chat_client = verified_chat_client(safe_user_id, session)
+        result = (chat_client.table("coach_chats").insert({
             "user_id": safe_user_id,
             "title": str(title or "New Chat").strip() or "New Chat",
             "messages": messages or [],
@@ -514,49 +532,53 @@ def create_coach_chat(title, messages, user_id="main"):
         print(f"Supabase Coach Chat create failed for {safe_user_id}: {e}")
         return None
 
-def save_coach_chat(chat_id, messages, user_id="main"):
+def save_coach_chat(chat_id, messages, user_id="main", session=None):
     safe_user_id = clean_user_id(user_id)
     if not chat_id or not supabase_is_ready():
         return False
     try:
-        (supabase.table("coach_chats").update({"messages": messages or []})
+        chat_client = verified_chat_client(safe_user_id, session)
+        (chat_client.table("coach_chats").update({"messages": messages or []})
          .eq("id", chat_id).eq("user_id", safe_user_id).execute())
         return True
     except Exception as e:
         print(f"Supabase Coach Chat save failed for {safe_user_id}: {e}")
         return False
 
-def rename_coach_chat(chat_id, title, user_id="main"):
+def rename_coach_chat(chat_id, title, user_id="main", session=None):
     safe_user_id = clean_user_id(user_id)
     clean_title = str(title or "").strip()
     if not chat_id or not clean_title or not supabase_is_ready():
         return False
     try:
-        (supabase.table("coach_chats").update({"title": clean_title})
+        chat_client = verified_chat_client(safe_user_id, session)
+        (chat_client.table("coach_chats").update({"title": clean_title})
          .eq("id", chat_id).eq("user_id", safe_user_id).execute())
         return True
     except Exception as e:
         print(f"Supabase Coach Chat rename failed for {safe_user_id}: {e}")
         return False
 
-def set_coach_chat_pinned(chat_id, is_pinned, user_id="main"):
+def set_coach_chat_pinned(chat_id, is_pinned, user_id="main", session=None):
     safe_user_id = clean_user_id(user_id)
     if not chat_id or not supabase_is_ready():
         return False
     try:
-        (supabase.table("coach_chats").update({"is_pinned": bool(is_pinned)})
+        chat_client = verified_chat_client(safe_user_id, session)
+        (chat_client.table("coach_chats").update({"is_pinned": bool(is_pinned)})
          .eq("id", chat_id).eq("user_id", safe_user_id).execute())
         return True
     except Exception as e:
         print(f"Supabase Coach Chat pin update failed for {safe_user_id}: {e}")
         return False
 
-def delete_coach_chat(chat_id, user_id="main"):
+def delete_coach_chat(chat_id, user_id="main", session=None):
     safe_user_id = clean_user_id(user_id)
     if not chat_id or not supabase_is_ready():
         return False
     try:
-        (supabase.table("coach_chats").delete()
+        chat_client = verified_chat_client(safe_user_id, session)
+        (chat_client.table("coach_chats").delete()
          .eq("id", chat_id).eq("user_id", safe_user_id).execute())
         return True
     except Exception as e:
