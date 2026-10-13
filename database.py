@@ -471,6 +471,7 @@ def delete_calendar_item(
 
 def verified_chat_client(user_id, session):
     """Fresh per-request client, bound to a verified Supabase user JWT."""
+    raise PermissionError("Coach Chat is temporarily disabled while account isolation is investigated.")
     from supabase import create_client
     token = session.get("access_token") if isinstance(session, dict) else None
     if not token:
