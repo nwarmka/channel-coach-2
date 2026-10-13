@@ -149,7 +149,7 @@ def build_toolkit_page(workspace_name, credit_balance, visible=False):
         # =====================================================
         with gr.Accordion("📚 Review History", open=False):
             review_history_output = gr.HTML(
-                value=render_video_review_history("main")
+                value=""
             )
 
             review_history_refresh = gr.Button(
@@ -201,7 +201,7 @@ def build_toolkit_page(workspace_name, credit_balance, visible=False):
             )
 
             creator_memory_snapshot = gr.HTML(
-                value=render_creator_memory_snapshot()
+                value=""
             )
 
             creator_memory_button = gr.Button(
@@ -215,7 +215,7 @@ def build_toolkit_page(workspace_name, credit_balance, visible=False):
 
             creator_memory_button.click(
                 generate_creator_memory_insights,
-                inputs=[],
+                inputs=[workspace_name],
                 outputs=creator_memory_output,
                 show_progress="full",
             )
