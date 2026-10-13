@@ -141,8 +141,8 @@ def _auto_chat_title(message):
     return title or "New Chat"
 
 
-def _chat_choices(user_id):
-    chats = get_coach_chats(user_id)
+def _chat_choices(user_id, session=None):
+    chats = get_coach_chats(user_id, session=session)
     choices = []
     for chat in chats:
         prefix = "📌 " if chat.get("is_pinned") else "🕘 "
@@ -150,59 +150,62 @@ def _chat_choices(user_id):
     return choices
 
 
-def _refresh_chat_picker(workspace_name, selected=None):
+def _refresh_chat_picker(workspace_name, selected=None, session=None):
     user_id = (workspace_name or "main").strip() or "main"
-    choices = _chat_choices(user_id)
+    choices = _chat_choices(user_id, session=session)
     values = [value for _, value in choices]
     value = selected if selected in values else (values[0] if values else None)
     return gr.update(choices=choices, value=value)
 
 
-def _new_chat(workspace_name):
-    return [], None, _render_chat([]), "", _refresh_chat_picker(workspace_name, None), ""
+def _new_chat(workspace_name, session=None):
+    return [], None, _render_chat([]), "", _refresh_chat_picker(workspace_name, None, session=session), ""
 
 
-def _load_chat(chat_id, workspace_name):
+def _load_chat(chat_id, workspace_name, session=None):
     if not chat_id:
         return [], None, _render_chat([]), ""
     user_id = (workspace_name or "main").strip() or "main"
-    chat = get_coach_chat(chat_id, user_id)
+    chat = get_coach_chat(chat_id, user_id, session=session)
     if not chat:
         return [], None, _render_chat([]), ""
     history = list(chat.get("messages") or [])
     return history, chat_id, _render_chat(history), chat.get("title") or "New Chat"
 
 
-def _rename_selected(chat_id, title, workspace_name):
+def _rename_selected(chat_id, title, workspace_name, session=None):
     user_id = (workspace_name or "main").strip() or "main"
     if chat_id and str(title or "").strip():
-        rename_coach_chat(chat_id, title, user_id)
-    return _refresh_chat_picker(user_id, chat_id)
+        rename_coach_chat(chat_id, title, user_id, session=session)
+    return _refresh_chat_picker(user_id, chat_id, session=session)
 
 
-def _toggle_pin(chat_id, workspace_name):
+def _toggle_pin(chat_id, workspace_name, session=None):
     user_id = (workspace_name or "main").strip() or "main"
     if chat_id:
-        chat = get_coach_chat(chat_id, user_id)
+        chat = get_coach_chat(chat_id, user_id, session=session)
         if chat:
-            set_coach_chat_pinned(chat_id, not bool(chat.get("is_pinned")), user_id)
-    return _refresh_chat_picker(user_id, chat_id)
+            set_coach_chat_pinned(chat_id, not bool(chat.get("is_pinned")), user_id, session=session)
+    return _refresh_chat_picker(user_id, chat_id, session=session)
 
 
-def _delete_selected(chat_id, workspace_name):
+def _delete_selected(chat_id, workspace_name, session=None):
     user_id = (workspace_name or "main").strip() or "main"
     if chat_id:
-        delete_coach_chat(chat_id, user_id)
-    return [], None, _render_chat([]), "", _refresh_chat_picker(user_id, None)
+        delete_coach_chat(chat_id, user_id, session=session)
+    return [], None, _render_chat([]), "", _refresh_chat_picker(user_id, None, session=session)
 
 
-def _respond(message, history, chat_id, workspace_name):
+def _respond(message, history, chat_id, workspace_name, session=None):
     message = (message or "").strip()
     history = list(history or [])
     user_id = (workspace_name or "main").strip() or "main"
 
+    from database import verified_chat_client
+    verified_chat_client(user_id, session)
+
     if not message:
-        yield "", history, chat_id, _render_chat(history), _refresh_chat_picker(user_id, chat_id), gr.update(), gr.update(), gr.update()
+        yield "", history, chat_id, _render_chat(history), _refresh_chat_picker(user_id, chat_id, session=session), gr.update(), gr.update(), gr.update()
         return
 
     try:
@@ -251,19 +254,22 @@ def _respond(message, history, chat_id, workspace_name):
         current_chat_id = chat_id
         title = None
         if current_chat_id:
-            save_coach_chat(current_chat_id, final_history, user_id)
-            chat = get_coach_chat(current_chat_id, user_id)
+            if not save_coach_chat(current_chat_id, final_history, user_id, session=session):
+                raise RuntimeError("Chat was not saved; no credit was charged.")
+            chat = get_coach_chat(current_chat_id, user_id, session=session)
             title = (chat or {}).get("title") or "New Chat"
         else:
             title = _auto_chat_title(message)
-            current_chat_id = create_coach_chat(title, final_history, user_id)
+            current_chat_id = create_coach_chat(title, final_history, user_id, session=session)
+            if not current_chat_id:
+                raise RuntimeError("Chat was not saved; no credit was charged.")
 
         # Save first so a database save failure never consumes a credit.
         new_balance = spend_credits(user_id, 1, description="Coach Chat message")
 
         yield (
             "", final_history, current_chat_id, _render_chat(final_history),
-            _refresh_chat_picker(user_id, current_chat_id), gr.update(value=title or ""), gr.update(value=f"**Credits: {new_balance}**")
+            _refresh_chat_picker(user_id, current_chat_id, session=session), gr.update(value=title or ""), gr.update(value=f"**Credits: {new_balance}**")
         )
     except Exception as exc:
         working_history[-1] = {
@@ -275,6 +281,7 @@ def _respond(message, history, chat_id, workspace_name):
 def build_chat_page(
     workspace_name,
     credit_balance=None,
+    session_state=None,
     visible=False,
 ):
     """Full-page Coach Chat with a ChatGPT-style conversation sidebar."""
@@ -438,7 +445,7 @@ def build_chat_page(
 
         new_chat_button.click(
             fn=_new_chat,
-            inputs=[workspace_name],
+            inputs=[workspace_name, session_state],
             outputs=[history_state, chat_id_state, chat_display, rename_box, chat_picker, message_box],
             show_progress="hidden",
         )
@@ -446,36 +453,36 @@ def build_chat_page(
         # the selector, including after a Render restart or fresh login.
         chat_picker.focus(
             fn=_refresh_chat_picker,
-            inputs=[workspace_name],
+            inputs=[workspace_name, session_state],
             outputs=[chat_picker],
             show_progress="hidden",
         )
         chat_picker.change(
             fn=_load_chat,
-            inputs=[chat_picker, workspace_name],
+            inputs=[chat_picker, workspace_name, session_state],
             outputs=[history_state, chat_id_state, chat_display, rename_box],
             show_progress="hidden",
         )
         rename_button.click(
             fn=_rename_selected,
-            inputs=[chat_id_state, rename_box, workspace_name],
+            inputs=[chat_id_state, rename_box, workspace_name, session_state],
             outputs=[chat_picker],
             show_progress="hidden",
         )
         pin_button.click(
             fn=_toggle_pin,
-            inputs=[chat_id_state, workspace_name],
+            inputs=[chat_id_state, workspace_name, session_state],
             outputs=[chat_picker],
             show_progress="hidden",
         )
         delete_button.click(
             fn=_delete_selected,
-            inputs=[chat_id_state, workspace_name],
+            inputs=[chat_id_state, workspace_name, session_state],
             outputs=[history_state, chat_id_state, chat_display, rename_box, chat_picker],
             show_progress="hidden",
         )
 
-        send_inputs = [message_box, history_state, chat_id_state, workspace_name]
+        send_inputs = [message_box, history_state, chat_id_state, workspace_name, session_state]
         send_outputs = [message_box, history_state, chat_id_state, chat_display, chat_picker, rename_box, credit_balance]
         send_button.click(fn=_respond, inputs=send_inputs, outputs=send_outputs, show_progress="hidden")
         message_box.submit(fn=_respond, inputs=send_inputs, outputs=send_outputs, show_progress="hidden")
