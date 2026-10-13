@@ -452,7 +452,7 @@ def build_chat_page(
         # Choices start empty at build time; reload them when the user opens
         # the selector, including after a Render restart or fresh login.
         chat_picker.focus(
-            fn=_refresh_chat_picker,
+            fn=lambda workspace, session: _refresh_chat_picker(workspace, session=session),
             inputs=[workspace_name, session_state],
             outputs=[chat_picker],
             show_progress="hidden",
