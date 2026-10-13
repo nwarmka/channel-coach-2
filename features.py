@@ -4545,7 +4545,7 @@ def video_analyzer_with_history(video_file, notes, content_type, user_id):
     """Charge the signed-in workspace only after successful video feedback."""
     user_id = (user_id or "").strip()
     if not user_id:
-        return "Please sign in to analyze a video.", render_video_review_history(user_id), gr.update()
+        return "Please sign in to analyze a video.", gr.update(), gr.update()
 
     try:
         balance = get_credit_balance(user_id)
@@ -4580,7 +4580,7 @@ def video_analyzer_with_history(video_file, notes, content_type, user_id):
 # =========================
 
 def generate_creator_memory_insights(user_id="main"):
-    history = load_video_review_history()
+    history = load_video_review_history(user_id)
 
     if not history:
         return """
@@ -4952,7 +4952,7 @@ def save_analytics_snapshot(views, subscribers, watch_time_hours, ctr, notes):
 def render_getting_started_checklist(user_id="main"):
     profile = load_creator_profile(user_id)
     calendar_items = load_content_calendar(user_id)
-    review_history = load_video_review_history()
+    review_history = load_video_review_history(user_id)
     analytics_entries = load_analytics_entries()
 
     profile_complete = bool(
