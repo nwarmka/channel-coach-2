@@ -443,6 +443,27 @@ def build_chat_page(
                         elem_id="coach-chat-send",
                     )
 
+        # Never carry a prior account's visible messages or picker options into
+        # another login, even if Gradio keeps this browser tab's component state.
+        def _clear_account_chat():
+            return (
+                [], None, _render_chat([]), "",
+                gr.update(choices=[], value=None), "",
+            )
+
+        workspace_name.change(
+            fn=_clear_account_chat,
+            inputs=[],
+            outputs=[history_state, chat_id_state, chat_display, rename_box, chat_picker, message_box],
+            show_progress="hidden",
+        )
+        session_state.change(
+            fn=_clear_account_chat,
+            inputs=[],
+            outputs=[history_state, chat_id_state, chat_display, rename_box, chat_picker, message_box],
+            show_progress="hidden",
+        )
+
         new_chat_button.click(
             fn=_new_chat,
             inputs=[workspace_name, session_state],
