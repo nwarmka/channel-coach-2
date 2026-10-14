@@ -330,16 +330,18 @@ def build_chat_page(
     #coach-new-chat { width:100%!important; justify-content:flex-start!important; text-align:left!important; background:transparent!important; border:none!important; box-shadow:none!important; color:#f8fafc!important; font-weight:700!important; }
     #coach-new-chat:hover { background:rgba(148,163,184,.09)!important; }
     /* One-click conversation list */
-    #coach-chat-picker { display:block!important; visibility:visible!important; width:100%!important; min-width:0!important; max-width:100%!important; height:auto!important; overflow:visible!important; }
-    #coach-chat-picker .wrap, #coach-chat-picker .form, #coach-chat-picker fieldset { display:flex!important; flex-direction:column!important; height:auto!important; min-height:0!important; overflow:visible!important; }
-    #coach-chat-picker .wrap { max-height:410px!important; overflow-y:auto!important; }
-    #coach-chat-picker label { display:flex!important; opacity:1!important; visibility:visible!important; color:#e2e8f0!important; background:transparent!important; }
-    #coach-chat-picker label:hover { background:rgba(168,85,247,.14)!important; }
-    #coach-chat-picker input[type="radio"] { accent-color:#d946ef!important; }
-    #coach-chat-picker [role="radiogroup"] { display:flex!important; flex-direction:column!important; flex-wrap:nowrap!important; gap:3px!important; max-height:405px!important; overflow-y:auto!important; }
-    #coach-chat-picker label { width:100%!important; min-width:0!important; text-align:left!important; justify-content:flex-start!important; padding:9px!important; border-radius:9px!important; }
-    #coach-chat-picker label span { overflow:hidden!important; text-overflow:ellipsis!important; white-space:nowrap!important; }
-    #coach-chat-picker::before { content:"PINNED / RECENT"; display:block; color:rgba(226,232,240,.46); font-size:.68rem; font-weight:800; letter-spacing:.08em; padding:12px 9px 5px; }
+    /* Flat ChatGPT-like conversation rows: no cards, outlines or horizontal scrolling. */
+    #coach-chat-picker { width:100%!important; min-width:0!important; max-width:100%!important; padding:0!important; background:transparent!important; border:0!important; box-shadow:none!important; overflow:hidden!important; }
+    #coach-chat-picker::before { content:"CONVERSATIONS"; display:block; padding:14px 9px 8px; color:#9298a9; font-size:11px; font-weight:700; letter-spacing:.07em; }
+    #coach-chat-picker > div, #coach-chat-picker fieldset, #coach-chat-picker .wrap, #coach-chat-picker .form { width:100%!important; min-width:0!important; max-width:100%!important; padding:0!important; margin:0!important; border:0!important; background:transparent!important; box-shadow:none!important; overflow-x:hidden!important; }
+    #coach-chat-picker [role="radiogroup"], #coach-chat-picker .wrap { display:flex!important; flex-direction:column!important; flex-wrap:nowrap!important; gap:2px!important; max-height:440px!important; overflow-y:auto!important; overflow-x:hidden!important; }
+    #coach-chat-picker label, #coach-chat-picker [role="radio"] { display:flex!important; flex-direction:row!important; align-items:center!important; width:100%!important; min-width:0!important; max-width:100%!important; min-height:34px!important; padding:7px 9px!important; margin:0!important; border:0!important; outline:0!important; border-radius:8px!important; background:transparent!important; box-shadow:none!important; color:#eef2ff!important; font-size:13px!important; text-align:left!important; justify-content:flex-start!important; cursor:pointer!important; overflow:hidden!important; }
+    #coach-chat-picker label:hover { background:#202332!important; }
+    #coach-chat-picker label:has(input:checked) { background:#292538!important; }
+    #coach-chat-picker label span, #coach-chat-picker label p, #coach-chat-picker label .label-wrap { display:block!important; visibility:visible!important; opacity:1!important; color:#eef2ff!important; font-size:13px!important; text-align:left!important; white-space:nowrap!important; overflow:hidden!important; text-overflow:ellipsis!important; }
+    #coach-chat-picker input[type="radio"] { flex:0 0 auto!important; accent-color:#d946ef!important; margin-right:7px!important; }
+    #coach-chat-refresh-status { font-size:11px!important; color:#9298a9!important; }
+    #coach-chat-refresh-status p { color:#9298a9!important; font-size:11px!important; }
     #coach-chat-sidebar { overflow-x:hidden!important; }
     #coach-chat-window { overflow-x:hidden!important; overscroll-behavior:contain!important; }
     #coach-chat-actions { margin-top:auto!important; padding-top:10px!important; border-top:1px solid rgba(148,163,184,.12)!important; }
