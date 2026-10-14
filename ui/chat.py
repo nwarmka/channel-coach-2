@@ -303,9 +303,11 @@ def build_chat_page(
     
     #coach-new-chat { width:100%!important; justify-content:flex-start!important; text-align:left!important; background:transparent!important; border:none!important; box-shadow:none!important; color:#f8fafc!important; font-weight:700!important; }
     #coach-new-chat:hover { background:rgba(148,163,184,.09)!important; }
-    /* Native Gradio dropdown avoids the radio group's broken multi-column grid. */
+    /* One-click conversation list */
     #coach-chat-picker { width:100%!important; min-width:0!important; max-width:100%!important; }
-    #coach-chat-picker input { min-width:0!important; text-overflow:ellipsis!important; }
+    #coach-chat-picker [role="radiogroup"] { display:flex!important; flex-direction:column!important; flex-wrap:nowrap!important; gap:3px!important; max-height:405px!important; overflow-y:auto!important; }
+    #coach-chat-picker label { width:100%!important; min-width:0!important; text-align:left!important; justify-content:flex-start!important; padding:9px!important; border-radius:9px!important; }
+    #coach-chat-picker label span { overflow:hidden!important; text-overflow:ellipsis!important; white-space:nowrap!important; }
     #coach-chat-picker::before { content:"PINNED / RECENT"; display:block; color:rgba(226,232,240,.46); font-size:.68rem; font-weight:800; letter-spacing:.08em; padding:12px 9px 5px; }
     #coach-chat-sidebar { overflow-x:hidden!important; }
     #coach-chat-window { overflow-x:hidden!important; overscroll-behavior:contain!important; }
@@ -396,9 +398,9 @@ def build_chat_page(
         chat_id_state = gr.State(None)
 
         with gr.Row(elem_id="coach-chat-shell"):
-            with gr.Column(elem_id="coach-chat-sidebar"):
+            with gr.Column(elem_id="coach-chat-sidebar", visible=True) as sidebar_column:
                 new_chat_button = gr.Button("＋  New chat", elem_id="coach-new-chat")
-                chat_picker = gr.Dropdown(
+                chat_picker = gr.Radio(
                     choices=[],
                     label="Saved chats",
                     show_label=False,
@@ -420,6 +422,7 @@ def build_chat_page(
 
             with gr.Column(elem_id="coach-chat-main"):
                 with gr.Row(elem_id="coach-chat-header"):
+                    sidebar_toggle = gr.Button("☰", size="sm", min_width=42, elem_id="coach-sidebar-toggle")
                     gr.HTML('<div class="cc-chat-header-inner"><span class="cc-chat-orb">✦</span><span class="cc-chat-title">COACH CHAT</span></div>')
 
                 chat_display = gr.HTML(value=_render_chat([]), elem_id="coach-chat-window")
@@ -442,6 +445,18 @@ def build_chat_page(
                         min_width=48,
                         elem_id="coach-chat-send",
                     )
+
+        sidebar_open = gr.State(True)
+        def _toggle_sidebar(is_open):
+            next_open = not bool(is_open)
+            return next_open, gr.update(visible=next_open)
+
+        sidebar_toggle.click(
+            fn=_toggle_sidebar,
+            inputs=[sidebar_open],
+            outputs=[sidebar_open, sidebar_column],
+            show_progress="hidden",
+        )
 
         # Never carry a prior account's visible messages or picker options into
         # another login, even if Gradio keeps this browser tab's component state.
