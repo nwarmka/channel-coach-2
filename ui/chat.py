@@ -330,7 +330,12 @@ def build_chat_page(
     #coach-new-chat { width:100%!important; justify-content:flex-start!important; text-align:left!important; background:transparent!important; border:none!important; box-shadow:none!important; color:#f8fafc!important; font-weight:700!important; }
     #coach-new-chat:hover { background:rgba(148,163,184,.09)!important; }
     /* One-click conversation list */
-    #coach-chat-picker { width:100%!important; min-width:0!important; max-width:100%!important; }
+    #coach-chat-picker { display:block!important; visibility:visible!important; width:100%!important; min-width:0!important; max-width:100%!important; height:auto!important; overflow:visible!important; }
+    #coach-chat-picker .wrap, #coach-chat-picker .form, #coach-chat-picker fieldset { display:flex!important; flex-direction:column!important; height:auto!important; min-height:0!important; overflow:visible!important; }
+    #coach-chat-picker .wrap { max-height:410px!important; overflow-y:auto!important; }
+    #coach-chat-picker label { display:flex!important; opacity:1!important; visibility:visible!important; color:#e2e8f0!important; background:transparent!important; }
+    #coach-chat-picker label:hover { background:rgba(168,85,247,.14)!important; }
+    #coach-chat-picker input[type="radio"] { accent-color:#d946ef!important; }
     #coach-chat-picker [role="radiogroup"] { display:flex!important; flex-direction:column!important; flex-wrap:nowrap!important; gap:3px!important; max-height:405px!important; overflow-y:auto!important; }
     #coach-chat-picker label { width:100%!important; min-width:0!important; text-align:left!important; justify-content:flex-start!important; padding:9px!important; border-radius:9px!important; }
     #coach-chat-picker label span { overflow:hidden!important; text-overflow:ellipsis!important; white-space:nowrap!important; }
@@ -433,6 +438,7 @@ def build_chat_page(
                     label="Saved chats",
                     show_label=False,
                     interactive=True,
+                    container=True,
                     elem_id="coach-chat-picker",
                 )
 
