@@ -158,6 +158,32 @@ def _refresh_chat_picker(workspace_name, selected=None, session=None):
     return gr.update(choices=choices, value=value)
 
 
+def _refresh_chats_with_status(workspace_name, session=None):
+    """Show a useful error rather than silently treating failed access as no chats."""
+    from database import verified_chat_client
+    user_id = (workspace_name or "main").strip() or "main"
+    try:
+        client = verified_chat_client(user_id, session)
+        response = (client.table("coach_chats").select("id,title,is_pinned,updated_at")
+                    .eq("user_id", user_id)
+                    .order("is_pinned", desc=True)
+                    .order("updated_at", desc=True).execute())
+        chats = response.data or []
+        choices = [(("📌 " if chat.get("is_pinned") else "🕘 ") +
+                    (chat.get("title") or "New Chat"), chat["id"]) for chat in chats]
+        return gr.update(choices=choices, value=None), (
+            f"{len(chats)} saved conversation(s) found." if chats else
+            "No conversations returned for this signed-in account."
+        )
+    except Exception as exc:
+        print(f"Coach Chat refresh failed for {user_id}: {type(exc).__name__}: {exc}")
+        if isinstance(exc, PermissionError):
+            message = "Session verification failed. Sign out and sign back in, then refresh."
+        else:
+            message = "Could not load conversations. Check Render logs for 'Coach Chat refresh failed'."
+        return gr.update(choices=[], value=None), message
+
+
 def _new_chat(workspace_name, session=None):
     return [], None, _render_chat([]), "", _refresh_chat_picker(workspace_name, None, session=session), ""
 
@@ -401,6 +427,7 @@ def build_chat_page(
             with gr.Column(elem_id="coach-chat-sidebar", visible=True) as sidebar_column:
                 new_chat_button = gr.Button("＋  New chat", elem_id="coach-new-chat")
                 refresh_chats_button = gr.Button("↻  Refresh conversations", size="sm", elem_id="coach-refresh-chats")
+                chat_refresh_status = gr.Markdown("", elem_id="coach-chat-refresh-status")
                 chat_picker = gr.Radio(
                     choices=[],
                     label="Saved chats",
@@ -489,9 +516,9 @@ def build_chat_page(
         # Radio has no .focus() event. Refresh explicitly without changing
         # the selected conversation or invoking the chat-load callback.
         refresh_chats_button.click(
-            fn=lambda workspace, session: _refresh_chat_picker(workspace, session=session),
+            fn=_refresh_chats_with_status,
             inputs=[workspace_name, session_state],
-            outputs=[chat_picker],
+            outputs=[chat_picker, chat_refresh_status],
             show_progress="hidden",
         )
         chat_picker.change(
