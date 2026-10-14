@@ -400,6 +400,7 @@ def build_chat_page(
         with gr.Row(elem_id="coach-chat-shell"):
             with gr.Column(elem_id="coach-chat-sidebar", visible=True) as sidebar_column:
                 new_chat_button = gr.Button("＋  New chat", elem_id="coach-new-chat")
+                refresh_chats_button = gr.Button("↻  Refresh conversations", size="sm", elem_id="coach-refresh-chats")
                 chat_picker = gr.Radio(
                     choices=[],
                     label="Saved chats",
@@ -485,9 +486,9 @@ def build_chat_page(
             outputs=[history_state, chat_id_state, chat_display, rename_box, chat_picker, message_box],
             show_progress="hidden",
         )
-        # Choices start empty at build time; reload them when the user opens
-        # the selector, including after a Render restart or fresh login.
-        chat_picker.focus(
+        # Radio has no .focus() event. Refresh explicitly without changing
+        # the selected conversation or invoking the chat-load callback.
+        refresh_chats_button.click(
             fn=lambda workspace, session: _refresh_chat_picker(workspace, session=session),
             inputs=[workspace_name, session_state],
             outputs=[chat_picker],
