@@ -382,13 +382,16 @@ def build_chat_page(
     /* One-click conversation list */
     /* Flat ChatGPT-like conversation rows: no cards, outlines or horizontal scrolling. */
     #coach-chat-picker { display:none!important; }
-    #coach-chat-sidebar { overflow-x:hidden!important; }
-    #coach-chat-list { max-height:470px!important; overflow-y:auto!important; overflow-x:hidden!important; gap:2px!important; }
-    #coach-chat-list .gradio-row { gap:0!important; min-height:34px!important; align-items:center!important; flex-wrap:nowrap!important; }
+    #coach-chat-sidebar { overflow-x:hidden!important; overflow-y:auto!important; }
+    #coach-chat-list { flex:1 1 auto!important; min-height:0!important; max-height:485px!important; overflow-y:auto!important; overflow-x:hidden!important; gap:0!important; scrollbar-width:thin; scrollbar-color:#4b405c transparent; }
+    #coach-chat-list .gradio-row { gap:2px!important; min-height:35px!important; align-items:center!important; flex-wrap:nowrap!important; padding:0 4px!important; }
     #coach-chat-list button { background:transparent!important; border:0!important; box-shadow:none!important; border-radius:8px!important; color:#e6e6ee!important; font-size:13px!important; font-weight:400!important; }
     #coach-chat-list button:hover { background:#242532!important; }
-    #coach-chat-list .cc-conversation button { text-align:left!important; justify-content:flex-start!important; white-space:nowrap!important; overflow:hidden!important; text-overflow:ellipsis!important; padding:8px 9px!important; }
-    #coach-chat-list .cc-chat-menu button { padding:4px!important; min-width:26px!important; }
+    #coach-chat-list .cc-conversation { flex:1 1 auto!important; min-width:0!important; }
+    #coach-chat-list .cc-conversation button { width:100%!important; text-align:left!important; justify-content:flex-start!important; white-space:nowrap!important; overflow:hidden!important; text-overflow:ellipsis!important; padding:8px 9px!important; font-weight:400!important; line-height:1.3!important; }
+    #coach-chat-list .cc-chat-menu { flex:0 0 29px!important; min-width:29px!important; }
+    #coach-chat-list .cc-chat-menu button { padding:4px!important; min-width:27px!important; font-size:17px!important; }
+    #coach-chat-list .prose, #coach-chat-list .prose p { border:0!important; background:transparent!important; color:#9495a6!important; font-size:11px!important; text-align:left!important; }
     #coach-chat-refresh-status { font-size:11px!important; color:#999baa!important; }\n    #coach-chat-actions { padding:10px!important; background:#161821!important; border-radius:10px!important; }\n    #coach-chat-actions button { text-align:left!important; justify-content:flex-start!important; border:none!important; box-shadow:none!important; background:transparent!important; }
     #coach-chat-sidebar { overflow-x:hidden!important; }
     #coach-chat-window { overflow-x:hidden!important; overscroll-behavior:contain!important; }
@@ -492,16 +495,6 @@ def build_chat_page(
                 sidebar_ids = gr.State([])
                 sidebar_rows = []
                 sidebar_menus = []
-                with gr.Column(elem_id="coach-chat-list"):
-                    gr.Markdown("**CONVERSATIONS**")
-                    for slot in range(SIDEBAR_SLOTS):
-                        with gr.Row():
-                            row_button = gr.Button("", visible=False, elem_classes=["cc-conversation"], scale=12)
-                            menu_button = gr.Button("⋯", visible=False, elem_classes=["cc-chat-menu"], scale=0, min_width=30)
-                            sidebar_rows.append(row_button)
-                            sidebar_menus.append(menu_button)
-
-
                 with gr.Column(elem_id="coach-chat-actions", visible=False) as chat_actions:
                     gr.Markdown("**Conversation options**")
                     rename_box = gr.Textbox(
@@ -515,6 +508,17 @@ def build_chat_page(
                     delete_button = gr.Button("🗑️  Delete", variant="stop")
                     options_status = gr.Markdown("")
                     close_options_button = gr.Button("Close", size="sm")
+
+
+                with gr.Column(elem_id="coach-chat-list"):
+                    gr.Markdown("**CONVERSATIONS**")
+                    for slot in range(SIDEBAR_SLOTS):
+                        with gr.Row():
+                            row_button = gr.Button("", visible=False, elem_classes=["cc-conversation"], scale=12)
+                            menu_button = gr.Button("⋯", visible=False, elem_classes=["cc-chat-menu"], scale=0, min_width=30)
+                            sidebar_rows.append(row_button)
+                            sidebar_menus.append(menu_button)
+
 
             with gr.Column(elem_id="coach-chat-main"):
                 with gr.Row(elem_id="coach-chat-header"):
