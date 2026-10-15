@@ -1285,6 +1285,7 @@ with gr.Blocks(title="Channel Coach") as app:
             credit_balance,
             session_state=active_chat_session,
             visible=False,
+            navigation_button=chat_nav,
         )
 
         (
