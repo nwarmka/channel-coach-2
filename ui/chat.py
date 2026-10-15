@@ -510,14 +510,14 @@ def build_chat_page(
                     close_options_button = gr.Button("Close", size="sm")
 
 
-            with gr.Column(elem_id="coach-chat-list"):
-                gr.Markdown("**CONVERSATIONS**")
-                for slot in range(SIDEBAR_SLOTS):
-                    with gr.Row():
-                        row_button = gr.Button("", visible=False, elem_classes=["cc-conversation"], scale=12)
-                        menu_button = gr.Button("⋯", visible=False, elem_classes=["cc-chat-menu"], scale=0, min_width=30)
-                        sidebar_rows.append(row_button)
-                        sidebar_menus.append(menu_button)
+                with gr.Column(elem_id="coach-chat-list"):
+                    gr.Markdown("**CONVERSATIONS**")
+                    for slot in range(SIDEBAR_SLOTS):
+                        with gr.Row():
+                            row_button = gr.Button("", visible=False, elem_classes=["cc-conversation"], scale=12)
+                            menu_button = gr.Button("⋯", visible=False, elem_classes=["cc-chat-menu"], scale=0, min_width=30)
+                            sidebar_rows.append(row_button)
+                            sidebar_menus.append(menu_button)
 
 
             with gr.Column(elem_id="coach-chat-main"):
