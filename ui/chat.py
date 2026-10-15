@@ -184,6 +184,55 @@ def _refresh_chats_with_status(workspace_name, session=None):
         return gr.update(choices=[], value=None), message
 
 
+SIDEBAR_SLOTS = 24
+
+
+def _sidebar_listing(workspace_name, session=None):
+    """Populate flat buttons using the same verified, RLS-protected query."""
+    from database import verified_chat_client
+    user_id = (workspace_name or "main").strip() or "main"
+    try:
+        client = verified_chat_client(user_id, session)
+        response = (client.table("coach_chats").select("id,title,is_pinned,updated_at")
+                    .eq("user_id", user_id)
+                    .order("is_pinned", desc=True)
+                    .order("updated_at", desc=True).execute())
+        chats = response.data or []
+        ids = [item["id"] for item in chats[:SIDEBAR_SLOTS]]
+        updates = [
+            gr.update(value=("📌  " if item.get("is_pinned") else "") +
+                      (item.get("title") or "New Chat"), visible=True)
+            if i < len(chats) else gr.update(visible=False)
+            for i, item in enumerate(chats[:SIDEBAR_SLOTS] + [{}] * max(0, SIDEBAR_SLOTS - len(chats)))
+        ]
+        menu_updates = [gr.update(visible=i < len(ids)) for i in range(SIDEBAR_SLOTS)]
+        status = (f"{len(chats)} conversations" +
+                  (" (showing first 24)" if len(chats) > SIDEBAR_SLOTS else ""))
+        return [ids, status] + updates + menu_updates
+    except Exception as exc:
+        print(f"Coach Chat sidebar load failed: {type(exc).__name__}: {exc}")
+        return [[], "Could not load chats. Sign in again or check Render logs."] + [
+            gr.update(visible=False) for _ in range(SIDEBAR_SLOTS * 2)
+        ]
+
+
+def _open_sidebar_chat(slot, ids, workspace_name, session=None):
+    if slot >= len(ids or []):
+        return [], None, _render_chat([]), ""
+    return _load_chat(ids[slot], workspace_name, session=session)
+
+
+def _select_sidebar_options(slot, ids, workspace_name, session=None):
+    if slot >= len(ids or []):
+        return None, "", gr.update(visible=False)
+    chat_id = ids[slot]
+    user_id = (workspace_name or "main").strip() or "main"
+    chat = get_coach_chat(chat_id, user_id, session=session)
+    if not chat:
+        return None, "", gr.update(visible=False)
+    return chat_id, chat.get("title") or "New Chat", gr.update(visible=True)
+
+
 def _new_chat(workspace_name, session=None):
     return [], None, _render_chat([]), "", _refresh_chat_picker(workspace_name, None, session=session), ""
 
@@ -331,17 +380,15 @@ def build_chat_page(
     #coach-new-chat:hover { background:rgba(148,163,184,.09)!important; }
     /* One-click conversation list */
     /* Flat ChatGPT-like conversation rows: no cards, outlines or horizontal scrolling. */
-    #coach-chat-picker { width:100%!important; min-width:0!important; max-width:100%!important; padding:0!important; background:transparent!important; border:0!important; box-shadow:none!important; overflow:hidden!important; }
-    #coach-chat-picker::before { content:"CONVERSATIONS"; display:block; padding:14px 9px 8px; color:#9298a9; font-size:11px; font-weight:700; letter-spacing:.07em; }
-    #coach-chat-picker > div, #coach-chat-picker fieldset, #coach-chat-picker .wrap, #coach-chat-picker .form { width:100%!important; min-width:0!important; max-width:100%!important; padding:0!important; margin:0!important; border:0!important; background:transparent!important; box-shadow:none!important; overflow-x:hidden!important; }
-    #coach-chat-picker [role="radiogroup"], #coach-chat-picker .wrap { display:flex!important; flex-direction:column!important; flex-wrap:nowrap!important; gap:2px!important; max-height:440px!important; overflow-y:auto!important; overflow-x:hidden!important; }
-    #coach-chat-picker label, #coach-chat-picker [role="radio"] { display:flex!important; flex-direction:row!important; align-items:center!important; width:100%!important; min-width:0!important; max-width:100%!important; min-height:34px!important; padding:7px 9px!important; margin:0!important; border:0!important; outline:0!important; border-radius:8px!important; background:transparent!important; box-shadow:none!important; color:#eef2ff!important; font-size:13px!important; text-align:left!important; justify-content:flex-start!important; cursor:pointer!important; overflow:hidden!important; }
-    #coach-chat-picker label:hover { background:#202332!important; }
-    #coach-chat-picker label:has(input:checked) { background:#292538!important; }
-    #coach-chat-picker label span, #coach-chat-picker label p, #coach-chat-picker label .label-wrap { display:block!important; visibility:visible!important; opacity:1!important; color:#eef2ff!important; font-size:13px!important; text-align:left!important; white-space:nowrap!important; overflow:hidden!important; text-overflow:ellipsis!important; }
-    #coach-chat-picker input[type="radio"] { flex:0 0 auto!important; accent-color:#d946ef!important; margin-right:7px!important; }
-    #coach-chat-refresh-status { font-size:11px!important; color:#9298a9!important; }
-    #coach-chat-refresh-status p { color:#9298a9!important; font-size:11px!important; }
+    #coach-chat-picker { display:none!important; }
+    #coach-chat-sidebar { overflow-x:hidden!important; }
+    #coach-chat-list { max-height:470px!important; overflow-y:auto!important; overflow-x:hidden!important; gap:2px!important; }
+    #coach-chat-list .gradio-row { gap:0!important; min-height:34px!important; align-items:center!important; flex-wrap:nowrap!important; }
+    #coach-chat-list button { background:transparent!important; border:0!important; box-shadow:none!important; border-radius:8px!important; color:#e6e6ee!important; font-size:13px!important; font-weight:400!important; }
+    #coach-chat-list button:hover { background:#242532!important; }
+    #coach-chat-list .cc-conversation button { text-align:left!important; justify-content:flex-start!important; white-space:nowrap!important; overflow:hidden!important; text-overflow:ellipsis!important; padding:8px 9px!important; }
+    #coach-chat-list .cc-chat-menu button { padding:4px!important; min-width:26px!important; }
+    #coach-chat-refresh-status { font-size:11px!important; color:#999baa!important; }
     #coach-chat-sidebar { overflow-x:hidden!important; }
     #coach-chat-window { overflow-x:hidden!important; overscroll-behavior:contain!important; }
     #coach-chat-actions { margin-top:auto!important; padding-top:10px!important; border-top:1px solid rgba(148,163,184,.12)!important; }
@@ -435,16 +482,26 @@ def build_chat_page(
                 new_chat_button = gr.Button("＋  New chat", elem_id="coach-new-chat")
                 refresh_chats_button = gr.Button("↻  Refresh conversations", size="sm", elem_id="coach-refresh-chats")
                 chat_refresh_status = gr.Markdown("", elem_id="coach-chat-refresh-status")
+                # Keep the existing internal selection component for legacy
+                # send/save callbacks, but render actual flat conversation buttons.
                 chat_picker = gr.Radio(
-                    choices=[],
-                    label="Saved chats",
-                    show_label=False,
-                    interactive=True,
-                    container=True,
-                    elem_id="coach-chat-picker",
+                    choices=[], label="Saved chats", show_label=False,
+                    interactive=True, visible=False, elem_id="coach-chat-picker",
                 )
+                sidebar_ids = gr.State([])
+                sidebar_rows = []
+                sidebar_menus = []
+                with gr.Column(elem_id="coach-chat-list"):
+                    gr.Markdown("**CONVERSATIONS**")
+                    for slot in range(SIDEBAR_SLOTS):
+                        with gr.Row():
+                            row_button = gr.Button("", visible=False, elem_classes=["cc-conversation"], scale=12)
+                            menu_button = gr.Button("⋯", visible=False, elem_classes=["cc-chat-menu"], scale=0, min_width=30)
+                            sidebar_rows.append(row_button)
+                            sidebar_menus.append(menu_button)
 
-                with gr.Column(elem_id="coach-chat-actions"):
+
+                with gr.Column(elem_id="coach-chat-actions", visible=False) as chat_actions:
                     rename_box = gr.Textbox(
                         value="",
                         visible=False,
@@ -494,6 +551,25 @@ def build_chat_page(
             show_progress="hidden",
         )
 
+        sidebar_outputs = [sidebar_ids, chat_refresh_status] + sidebar_rows + sidebar_menus
+        def _reload_sidebar(workspace, session):
+            return _sidebar_listing(workspace, session=session)
+
+        for slot, row_button in enumerate(sidebar_rows):
+            row_button.click(
+                fn=lambda ids, workspace, session, i=slot: _open_sidebar_chat(i, ids, workspace, session),
+                inputs=[sidebar_ids, workspace_name, session_state],
+                outputs=[history_state, chat_id_state, chat_display, rename_box],
+                show_progress="hidden",
+            )
+        for slot, menu_button in enumerate(sidebar_menus):
+            menu_button.click(
+                fn=lambda ids, workspace, session, i=slot: _select_sidebar_options(i, ids, workspace, session),
+                inputs=[sidebar_ids, workspace_name, session_state],
+                outputs=[chat_id_state, rename_box, chat_actions],
+                show_progress="hidden",
+            )
+
         # Never carry a prior account's visible messages or picker options into
         # another login, even if Gradio keeps this browser tab's component state.
         def _clear_account_chat():
@@ -524,9 +600,9 @@ def build_chat_page(
         # Radio has no .focus() event. Refresh explicitly without changing
         # the selected conversation or invoking the chat-load callback.
         refresh_chats_button.click(
-            fn=_refresh_chats_with_status,
+            fn=_reload_sidebar,
             inputs=[workspace_name, session_state],
-            outputs=[chat_picker, chat_refresh_status],
+            outputs=sidebar_outputs,
             show_progress="hidden",
         )
         chat_picker.change(
