@@ -230,7 +230,7 @@ def _select_sidebar_options(slot, ids, workspace_name, session=None):
     chat = get_coach_chat(chat_id, user_id, session=session)
     if not chat:
         return None, "", gr.update(visible=False)
-    return chat_id, chat.get("title") or "New Chat", gr.update(visible=True)
+    return chat_id, gr.update(value=chat.get("title") or "New Chat", visible=True), gr.update(visible=True)
 
 
 def _new_chat(workspace_name, session=None):
@@ -389,7 +389,7 @@ def build_chat_page(
     #coach-chat-list button:hover { background:#242532!important; }
     #coach-chat-list .cc-conversation button { text-align:left!important; justify-content:flex-start!important; white-space:nowrap!important; overflow:hidden!important; text-overflow:ellipsis!important; padding:8px 9px!important; }
     #coach-chat-list .cc-chat-menu button { padding:4px!important; min-width:26px!important; }
-    #coach-chat-refresh-status { font-size:11px!important; color:#999baa!important; }
+    #coach-chat-refresh-status { font-size:11px!important; color:#999baa!important; }\n    #coach-chat-actions { padding:10px!important; background:#161821!important; border-radius:10px!important; }\n    #coach-chat-actions button { text-align:left!important; justify-content:flex-start!important; border:none!important; box-shadow:none!important; background:transparent!important; }
     #coach-chat-sidebar { overflow-x:hidden!important; }
     #coach-chat-window { overflow-x:hidden!important; overscroll-behavior:contain!important; }
     #coach-chat-actions { margin-top:auto!important; padding-top:10px!important; border-top:1px solid rgba(148,163,184,.12)!important; }
@@ -503,16 +503,18 @@ def build_chat_page(
 
 
                 with gr.Column(elem_id="coach-chat-actions", visible=False) as chat_actions:
+                    gr.Markdown("**Conversation options**")
                     rename_box = gr.Textbox(
-                        value="",
-                        visible=False,
-                        show_label=False,
+                        value="", label="Conversation title",
+                        visible=False, elem_id="coach-chat-rename",
                     )
-                    with gr.Accordion("Chat options", open=False, elem_id="coach-chat-options"):
-                        with gr.Row():
-                            rename_button = gr.Button("Rename")
-                            pin_button = gr.Button("Pin / Unpin")
-                            delete_button = gr.Button("Delete", variant="stop")
+                    rename_button = gr.Button("✏️  Rename")
+                    pin_button = gr.Button("📌  Pin / Unpin")
+                    archive_button = gr.Button("📦  Archive")
+                    share_button = gr.Button("↗  Share")
+                    delete_button = gr.Button("🗑️  Delete", variant="stop")
+                    options_status = gr.Markdown("")
+                    close_options_button = gr.Button("Close", size="sm")
 
             with gr.Column(elem_id="coach-chat-main"):
                 with gr.Row(elem_id="coach-chat-header"):
@@ -633,6 +635,18 @@ def build_chat_page(
             inputs=[chat_picker, workspace_name, session_state],
             outputs=[history_state, chat_id_state, chat_display, rename_box],
             show_progress="hidden",
+        )
+        close_options_button.click(
+            fn=lambda: gr.update(visible=False),
+            inputs=[], outputs=[chat_actions], show_progress="hidden",
+        )
+        archive_button.click(
+            fn=lambda: "Archive requires an archived-chat field in the database; not enabled yet.",
+            inputs=[], outputs=[options_status], show_progress="hidden",
+        )
+        share_button.click(
+            fn=lambda: "Sharing needs a secure share-link feature; not enabled yet.",
+            inputs=[], outputs=[options_status], show_progress="hidden",
         )
         rename_button.click(
             fn=_rename_selected,
