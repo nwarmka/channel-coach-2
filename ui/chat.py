@@ -358,6 +358,7 @@ def build_chat_page(
     credit_balance=None,
     session_state=None,
     visible=False,
+    navigation_button=None,
 ):
     """Full-page Coach Chat with a ChatGPT-style conversation sidebar."""
 
@@ -611,6 +612,16 @@ def build_chat_page(
         )
         # Radio has no .focus() event. Refresh explicitly without changing
         # the selected conversation or invoking the chat-load callback.
+        # Load the user's saved conversations as soon as Coach Chat is opened.
+        # Keep account verification in the server-side query.
+        if navigation_button is not None:
+            navigation_button.click(
+                fn=_reload_sidebar,
+                inputs=[workspace_name, session_state],
+                outputs=sidebar_outputs,
+                show_progress="hidden",
+            )
+
         refresh_chats_button.click(
             fn=_reload_sidebar,
             inputs=[workspace_name, session_state],
