@@ -591,6 +591,18 @@ def build_chat_page(
             show_progress="hidden",
         )
 
+        def _clear_sidebar():
+            return [[], ""] + [gr.update(visible=False) for _ in range(SIDEBAR_SLOTS * 2)]
+
+        workspace_name.change(
+            fn=_clear_sidebar, inputs=[], outputs=sidebar_outputs,
+            show_progress="hidden",
+        )
+        session_state.change(
+            fn=_clear_sidebar, inputs=[], outputs=sidebar_outputs,
+            show_progress="hidden",
+        )
+
         new_chat_button.click(
             fn=_new_chat,
             inputs=[workspace_name, session_state],
