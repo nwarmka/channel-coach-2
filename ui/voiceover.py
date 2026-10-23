@@ -68,6 +68,26 @@ def load_voice_choices():
         return gr.update(choices=[], value=None), str(exc)
 
 
+def preview_section_usage(section_id, sections):
+    """Show character usage without charging credits or calling ElevenLabs.
+
+    Credit pricing must be configured and validated against provider costs
+    before generation can be enabled.
+    """
+    try:
+        text = sections[int(section_id)]
+    except (ValueError, TypeError, IndexError):
+        return "Select a script section to see its estimated usage."
+    characters = len(text)
+    if characters > 5000:
+        return f"⚠️ {characters:,} characters. Shorten this section to 5,000 characters or less."
+    return (
+        f"Selected section: **{characters:,} characters**. "
+        "Channel Coach credit cost: **not configured yet**. "
+        "No credits have been charged."
+    )
+
+
 def build_voiceover_page(visible=False):
     """Build draft editor; generation intentionally unavailable."""
     with gr.Column(visible=visible, elem_id="voiceover-studio-page") as page:
@@ -77,6 +97,8 @@ def build_voiceover_page(visible=False):
             refresh_voices = gr.Button("Load available voices")
             voice = gr.Dropdown(label="Narrator voice", choices=[], interactive=True)
         voice_status = gr.Markdown()
+        usage = gr.Markdown("Select a section to see its character usage.")
+        gr.Markdown("**MP3 generation is disabled until credit pricing, authentication, and safe storage are ready.**")
         refresh_voices.click(load_voice_choices, outputs=[voice, voice_status])
         sections = gr.State([])
         script = gr.Textbox(label="Your script", lines=10, placeholder="Paste your script here. Separate sections with blank lines.")
@@ -93,4 +115,6 @@ def build_voiceover_page(visible=False):
         save.click(save_section, inputs=[selected, editor, sections], outputs=[sections, selected, status])
         up.click(lambda idx, parts: move_section(idx, parts, -1), inputs=[selected, sections], outputs=[sections, selected, status])
         down.click(lambda idx, parts: move_section(idx, parts, 1), inputs=[selected, sections], outputs=[sections, selected, status])
+        selected.change(preview_section_usage, inputs=[selected, sections], outputs=[usage])
+        save.click(preview_section_usage, inputs=[selected, sections], outputs=[usage])
     return page
