@@ -4,7 +4,7 @@ Read-only: this module does not connect to storage or generate signed URLs.
 Only server-verified job records may be passed to this helper.
 """
 import uuid
-from voiceover_storage_paths import build_voiceover_storage_path
+from voiceover_storage_paths import voiceover_object_path
 
 
 def validate_private_clip_request(user_id, job):
