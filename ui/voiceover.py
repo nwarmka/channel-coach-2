@@ -4,10 +4,10 @@ Not wired into app.py yet. Audio generation remains disabled until authenticated
 credit authorization, cost approval, and storage handling are implemented.
 """
 import re
-import hashlib
 import gradio as gr
 from elevenlabs_service import list_voices, ElevenLabsError
 from voiceover_pricing import quote_voiceover_credits
+from voiceover_quote import create_quote_snapshot, quote_is_current
 
 
 def split_script(script):
@@ -99,20 +99,16 @@ def preview_section_usage(section_id, sections):
 
 
 def quote_selected_section(section_id, sections, voice_id):
-    """Return a price and server-side quote snapshot; never charge or generate."""
+    """Return a read-only quote and snapshot; never charge or generate."""
     try:
-        text = sections[int(section_id)]
-        if not voice_id:
-            return "Select a narrator voice before requesting a quote.", None
+        index = int(section_id)
+        if not 0 <= index < len(sections):
+            raise IndexError("Invalid section")
+        text = sections[index]
         quote = quote_voiceover_credits(text)
-    except (ValueError, TypeError, IndexError) as exc:
+        snapshot = create_quote_snapshot(str(index), text, voice_id)
+    except (ValueError, TypeError, IndexError, AttributeError) as exc:
         return f"Cannot quote section: {exc}", None
-    snapshot = {
-        "section_id": str(section_id),
-        "voice_id": voice_id,
-        "text_sha256": hashlib.sha256(text.strip().encode("utf-8")).hexdigest(),
-        "credits": quote["credits"],
-    }
     return (
         f"**Estimated cost: {quote['credits']:,} Channel Coach credits** "
         f"for {quote['characters']:,} characters. "
@@ -121,24 +117,18 @@ def quote_selected_section(section_id, sections, voice_id):
 
 
 def confirm_quote(section_id, sections, voice_id, snapshot):
-    """Confirm a still-current quote; generation remains disabled."""
-    if not snapshot or not isinstance(snapshot, dict):
-        return "Request a new credit quote first."
+    """Confirm an unchanged quote; generation remains disabled."""
     try:
-        text = sections[int(section_id)]
-        current = quote_voiceover_credits(text)
-        fingerprint = hashlib.sha256(text.strip().encode("utf-8")).hexdigest()
+        index = int(section_id)
+        if not 0 <= index < len(sections):
+            raise IndexError("Invalid section")
+        valid = quote_is_current(snapshot, str(index), sections[index], voice_id)
     except (ValueError, TypeError, IndexError):
-        return "The section changed. Request a new quote."
-    if (
-        snapshot.get("section_id") != str(section_id)
-        or snapshot.get("voice_id") != voice_id
-        or snapshot.get("text_sha256") != fingerprint
-        or snapshot.get("credits") != current["credits"]
-    ):
-        return "The text, section, or voice changed. Request a new quote."
+        valid = False
+    if not valid:
+        return "The quote is missing or the section, text, voice, or price changed. Request a new quote."
     return (
-        f"Quote confirmed for {current['credits']} credits. "
+        f"Quote confirmed for {snapshot['credits']} credits. "
         "Generation is not enabled yet; no credits were charged."
     )
 
