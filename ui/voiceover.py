@@ -8,6 +8,9 @@ import gradio as gr
 from elevenlabs_service import list_voices, ElevenLabsError
 from voiceover_pricing import quote_voiceover_credits
 from voiceover_quote import create_quote_snapshot, quote_is_current
+from voiceover_jobs import list_voiceover_jobs
+from voiceover_job_display import summarize_voiceover_jobs
+from ui.ideas_inbox import _authenticated_client
 
 
 def split_script(script):
@@ -133,7 +136,27 @@ def confirm_quote(section_id, sections, voice_id, snapshot):
     )
 
 
-def build_voiceover_page(visible=False):
+def refresh_voiceover_history(saved_session):
+    """Read only the verified user's jobs; never disclose private storage paths."""
+    try:
+        client, user_id, updated = _authenticated_client(saved_session)
+        jobs = summarize_voiceover_jobs(list_voiceover_jobs(client, user_id))
+        if not jobs:
+            return [], "No voiceover jobs yet.", updated
+        rows = [
+            [job["created_at"][:19], job["status"],
+             job["characters"], job["quoted_credits"]]
+            for job in jobs
+        ]
+        return rows, f"Loaded {len(rows)} voiceover jobs.", updated
+    except ValueError:
+        return [], "Sign in to view your voiceover history.", saved_session
+    except Exception as exc:
+        print("Voiceover history refresh error:", type(exc).__name__)
+        return [], "Voiceover history is not available yet.", saved_session
+
+
+def build_voiceover_page(saved_login=None, visible=False):
     """Build draft editor; generation intentionally unavailable."""
     with gr.Column(visible=visible, elem_id="voiceover-studio-page") as page:
         gr.Markdown("## 🎙️ AI Script & Voiceover Studio")
@@ -144,6 +167,21 @@ def build_voiceover_page(visible=False):
         voice_status = gr.Markdown()
         usage = gr.Markdown("Select a section to see its character usage.")
         gr.Markdown("**MP3 generation is disabled.** A paid ElevenLabs plan with commercial rights, authenticated credit approval, and safe storage are required before launch.")
+        if saved_login is not None:
+            gr.Markdown("### Voiceover job history")
+            history_refresh = gr.Button("Refresh job history")
+            history_table = gr.Dataframe(
+                headers=["Created", "Status", "Characters", "Quoted credits"],
+                datatype=["str", "str", "number", "number"],
+                interactive=False,
+                value=[],
+            )
+            history_status = gr.Markdown("Refresh to load your private job history.")
+            history_refresh.click(
+                refresh_voiceover_history, inputs=[saved_login],
+                outputs=[history_table, history_status, saved_login],
+                show_progress="minimal",
+            )
         refresh_voices.click(load_voice_choices, outputs=[voice, voice_status])
         sections = gr.State([])
         script = gr.Textbox(label="Your script", lines=10, placeholder="Paste your script here. Separate sections with blank lines.")
