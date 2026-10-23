@@ -24,7 +24,8 @@ def split_script(script):
 
 def select_section(section_id, sections):
     try:
-        return sections[int(section_id)]
+        index = int(section_id)
+        return sections[index] if 0 <= index < len(sections) else ""
     except (ValueError, TypeError, IndexError):
         return ""
 
@@ -36,6 +37,8 @@ def save_section(section_id, updated_text, sections):
     try:
         index = int(section_id)
         new_sections = list(sections)
+        if not 0 <= index < len(new_sections):
+            raise IndexError("Invalid section")
         new_sections[index] = updated
     except (ValueError, TypeError, IndexError):
         return sections, gr.update(), "Select a section first."
@@ -47,8 +50,10 @@ def move_section(section_id, sections, direction):
     try:
         index = int(section_id)
         other = index + direction
+        if not 0 <= index < len(sections):
+            raise IndexError("Invalid section")
         if not 0 <= other < len(sections):
-            return sections, gr.update(), "Section is already at the end."
+            return sections, gr.update(), "Section is already at the beginning." if direction < 0 else "Section is already at the end."
         new_sections = list(sections)
         new_sections[index], new_sections[other] = new_sections[other], new_sections[index]
         choices = [(f"Section {i + 1}: {p[:55]}", str(i)) for i, p in enumerate(new_sections)]
@@ -77,7 +82,10 @@ def preview_section_usage(section_id, sections):
     before generation can be enabled.
     """
     try:
-        text = sections[int(section_id)]
+        index = int(section_id)
+        if not 0 <= index < len(sections):
+            raise IndexError("Invalid section")
+        text = sections[index]
     except (ValueError, TypeError, IndexError):
         return "Select a script section to see its estimated usage."
     characters = len(text)
