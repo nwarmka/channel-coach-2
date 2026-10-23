@@ -84,7 +84,7 @@ def preview_section_usage(section_id, sections):
         return f"⚠️ {characters:,} characters. Shorten this section to 5,000 characters or less."
     return (
         f"Selected section: **{characters:,} characters**. "
-        "Channel Coach credit cost: **not configured yet**. "
+        "Use Check credit cost for a quote. "
         "No credits have been charged."
     )
 
@@ -96,13 +96,6 @@ def quote_selected_section(section_id, sections):
         quote = quote_voiceover_credits(text)
     except (ValueError, TypeError, IndexError) as exc:
         return f"Cannot quote section: {exc}"
-    except RuntimeError:
-        return "Voiceover pricing is not configured correctly."
-    if quote is None:
-        return (
-            "Voiceover credit price is not available yet. "
-            "Generation remains disabled until pricing is approved."
-        )
     return (
         f"**Estimated cost: {quote['credits']:,} Channel Coach credits** "
         f"for {quote['characters']:,} characters. "
@@ -120,7 +113,7 @@ def build_voiceover_page(visible=False):
             voice = gr.Dropdown(label="Narrator voice", choices=[], interactive=True)
         voice_status = gr.Markdown()
         usage = gr.Markdown("Select a section to see its character usage.")
-        gr.Markdown("**MP3 generation is disabled until credit pricing, authentication, and safe storage are ready.**")
+        gr.Markdown("**MP3 generation is disabled.** A paid ElevenLabs plan with commercial rights, authenticated credit approval, and safe storage are required before launch.")
         refresh_voices.click(load_voice_choices, outputs=[voice, voice_status])
         sections = gr.State([])
         script = gr.Textbox(label="Your script", lines=10, placeholder="Paste your script here. Separate sections with blank lines.")
