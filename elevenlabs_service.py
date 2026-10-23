@@ -7,6 +7,7 @@ and calculate/approve credit costs before calling generate_speech().
 import os
 from pathlib import Path
 from tempfile import NamedTemporaryFile
+from urllib.parse import quote
 
 import requests
 
@@ -53,14 +54,15 @@ def generate_speech(text, voice_id, model_id=DEFAULT_MODEL):
     text = (text or "").strip()
     if not text or len(text) > MAX_SECTION_CHARS:
         raise ValueError(f"Section must contain 1–{MAX_SECTION_CHARS} characters.")
-    if not voice_id or not isinstance(voice_id, str):
+    if not isinstance(voice_id, str) or not voice_id.strip() or len(voice_id) > 128:
         raise ValueError("Select a valid voice.")
     if model_id != DEFAULT_MODEL:
         raise ValueError("Unsupported voiceover model.")
 
+    response = None
     try:
         response = requests.post(
-            f"{API_BASE}/text-to-speech/{voice_id}",
+            f"{API_BASE}/text-to-speech/{quote(voice_id, safe='')}",
             headers={**_headers(), "Content-Type": "application/json", "Accept": "audio/mpeg"},
             json={"text": text, "model_id": model_id},
             timeout=120,
@@ -80,3 +82,6 @@ def generate_speech(text, voice_id, model_id=DEFAULT_MODEL):
         raise ElevenLabsError(
             "Voiceover generation failed. Please check the ElevenLabs account and try again."
         ) from exc
+    finally:
+        if response is not None:
+            response.close()
