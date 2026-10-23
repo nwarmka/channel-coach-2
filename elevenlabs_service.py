@@ -55,7 +55,9 @@ def generate_speech(text, voice_id, model_id=DEFAULT_MODEL):
     Callers are responsible for authenticating the user, checking quotas and
     charging credits. Do not expose this function through an unauthenticated API.
     """
-    text = (text or "").strip()
+    if not isinstance(text, str):
+        raise ValueError("Section text must be a string.")
+    text = text.strip()
     if not text or len(text) > MAX_SECTION_CHARS:
         raise ValueError(f"Section must contain 1–{MAX_SECTION_CHARS} characters.")
     if not isinstance(voice_id, str) or not voice_id.strip() or len(voice_id) > 128:
