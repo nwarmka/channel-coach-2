@@ -1,30 +1,29 @@
-"""Voiceover credit quotes.
+"""Server-side, read-only credit quotes for ElevenLabs Multilingual v2.
 
-Pricing is deliberately disabled until the owner sets and validates a rate.
-Do not infer an ElevenLabs cost from characters alone: model, subscription,
-and account terms can change.
+Proposed price: 3 Channel Coach credits per 1,000 characters, rounded up.
+This is NOT an authorization to charge users or generate commercial audio.
+The ElevenLabs Free plan must not be used for commercial generation.
 """
 import math
-import os
+
+MODEL_ID = "eleven_multilingual_v2"
+CREDITS_PER_1000_CHARACTERS = 3
+MAX_SECTION_CHARACTERS = 5000
 
 
-def quote_voiceover_credits(text, model_id="eleven_multilingual_v2"):
-    """Return a quote for explicit approval, or None if pricing is unconfigured."""
-    if model_id != "eleven_multilingual_v2":
+def quote_voiceover_credits(text, model_id=MODEL_ID):
+    """Return a deterministic quote; never spend credits or call a provider."""
+    if model_id != MODEL_ID:
         raise ValueError("Unsupported voiceover model.")
-    characters = len((text or "").strip())
-    if not 1 <= characters <= 5000:
+    if not isinstance(text, str):
+        raise ValueError("Section text must be a string.")
+    characters = len(text.strip())
+    if not 1 <= characters <= MAX_SECTION_CHARACTERS:
         raise ValueError("A section must contain between 1 and 5,000 characters.")
-
-    raw_rate = os.getenv("CHANNEL_COACH_VOICEOVER_CREDITS_PER_1000_CHARS", "")
-    if not raw_rate:
-        return None
-    try:
-        rate = float(raw_rate)
-    except ValueError as exc:
-        raise RuntimeError("Voiceover pricing configuration is invalid.") from exc
-    if not math.isfinite(rate) or rate <= 0:
-        raise RuntimeError("Voiceover pricing must be a positive finite number.")
-
-    credits = math.ceil(characters * rate / 1000)
-    return {"characters": characters, "credits": max(1, credits), "model_id": model_id}
+    credits = math.ceil(characters * CREDITS_PER_1000_CHARACTERS / 1000)
+    return {
+        "characters": characters,
+        "credits": credits,
+        "model_id": model_id,
+        "rate_per_1000_characters": CREDITS_PER_1000_CHARACTERS,
+    }
