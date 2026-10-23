@@ -64,6 +64,8 @@ def generate_speech(text, voice_id, model_id=DEFAULT_MODEL):
         raise ValueError("Unsupported voiceover model.")
 
     response = None
+    temp_path = None
+    completed = False
     try:
         response = requests.post(
             f"{API_BASE}/text-to-speech/{quote(voice_id, safe='')}",
@@ -73,15 +75,18 @@ def generate_speech(text, voice_id, model_id=DEFAULT_MODEL):
             stream=True,
         )
         response.raise_for_status()
+        content_type = response.headers.get("Content-Type", "").lower()
+        if "audio/mpeg" not in content_type and "audio/mp3" not in content_type:
+            raise ElevenLabsError("ElevenLabs did not return MP3 audio.")
         with NamedTemporaryFile(prefix="cc_voice_", suffix=".mp3", delete=False) as out:
-            try:
-                for chunk in response.iter_content(chunk_size=65536):
-                    if chunk:
-                        out.write(chunk)
-            except Exception:
-                Path(out.name).unlink(missing_ok=True)
-                raise
-            return out.name
+            temp_path = out.name
+            for chunk in response.iter_content(chunk_size=65536):
+                if chunk:
+                    out.write(chunk)
+            if out.tell() == 0:
+                raise ElevenLabsError("ElevenLabs returned an empty audio file.")
+        completed = True
+        return temp_path
     except requests.RequestException as exc:
         raise ElevenLabsError(
             "Voiceover generation failed. Please check the ElevenLabs account and try again."
@@ -89,3 +94,5 @@ def generate_speech(text, voice_id, model_id=DEFAULT_MODEL):
     finally:
         if response is not None:
             response.close()
+        if temp_path is not None and not completed:
+            Path(temp_path).unlink(missing_ok=True)
