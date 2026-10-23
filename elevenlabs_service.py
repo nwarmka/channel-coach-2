@@ -29,6 +29,7 @@ def _headers():
 
 def list_voices():
     """Return available voice IDs and names for a server-side voice picker."""
+    response = None
     try:
         response = requests.get(
             f"{API_BASE}/voices",
@@ -41,8 +42,11 @@ def list_voices():
             for voice in response.json().get("voices", [])
             if voice.get("voice_id")
         ]
-    except requests.RequestException as exc:
+    except (requests.RequestException, ValueError, KeyError, TypeError) as exc:
         raise ElevenLabsError("Could not load ElevenLabs voices.") from exc
+    finally:
+        if response is not None:
+            response.close()
 
 
 def generate_speech(text, voice_id, model_id=DEFAULT_MODEL):
