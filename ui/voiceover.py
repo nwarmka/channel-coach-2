@@ -6,6 +6,7 @@ credit authorization, cost approval, and storage handling are implemented.
 import re
 import gradio as gr
 from elevenlabs_service import list_voices, ElevenLabsError
+from voiceover_pricing import quote_voiceover_credits
 
 
 def split_script(script):
@@ -88,6 +89,27 @@ def preview_section_usage(section_id, sections):
     )
 
 
+def quote_selected_section(section_id, sections):
+    """Display a non-binding quote; no credits are spent here."""
+    try:
+        text = sections[int(section_id)]
+        quote = quote_voiceover_credits(text)
+    except (ValueError, TypeError, IndexError) as exc:
+        return f"Cannot quote section: {exc}"
+    except RuntimeError:
+        return "Voiceover pricing is not configured correctly."
+    if quote is None:
+        return (
+            "Voiceover credit price is not available yet. "
+            "Generation remains disabled until pricing is approved."
+        )
+    return (
+        f"**Estimated cost: {quote['credits']:,} Channel Coach credits** "
+        f"for {quote['characters']:,} characters. "
+        "This is a preview only; no credits have been deducted."
+    )
+
+
 def build_voiceover_page(visible=False):
     """Build draft editor; generation intentionally unavailable."""
     with gr.Column(visible=visible, elem_id="voiceover-studio-page") as page:
@@ -110,6 +132,9 @@ def build_voiceover_page(visible=False):
             up = gr.Button("Move up")
             down = gr.Button("Move down")
         status = gr.Markdown()
+        quote_button = gr.Button("Check credit cost")
+        quote_result = gr.Markdown("No quote requested yet.")
+        quote_button.click(quote_selected_section, inputs=[selected, sections], outputs=[quote_result])
         split.click(split_script, inputs=[script], outputs=[sections, selected, editor, status])
         selected.change(select_section, inputs=[selected, sections], outputs=[editor])
         save.click(save_section, inputs=[selected, editor, sections], outputs=[sections, selected, status])
