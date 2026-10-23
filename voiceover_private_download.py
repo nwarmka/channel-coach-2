@@ -24,7 +24,7 @@ def validate_private_clip_request(user_id, job):
         raise PermissionError("This voiceover clip belongs to another account.")
     if job.get("status") != "completed":
         raise ValueError("The voiceover clip is not ready.")
-    expected = build_voiceover_storage_path(user, job_id)
+    expected = voiceover_object_path(user, job_id)
     if job.get("storage_path") != expected:
         raise ValueError("The private clip path is invalid.")
     return expected
