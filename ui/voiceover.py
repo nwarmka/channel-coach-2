@@ -5,6 +5,7 @@ credit authorization, cost approval, and storage handling are implemented.
 """
 import re
 import gradio as gr
+from elevenlabs_service import list_voices, ElevenLabsError
 
 
 def split_script(script):
@@ -54,11 +55,29 @@ def move_section(section_id, sections, direction):
         return sections, gr.update(), "Select a section first."
 
 
+def load_voice_choices():
+    """Retrieve available voices on demand; never expose the API key."""
+    try:
+        voices = list_voices()
+        choices = [(voice["name"], voice["voice_id"]) for voice in voices]
+        return gr.update(choices=choices, value=None), (
+            f"Loaded {len(choices)} available voices." if choices else
+            "No voices available for this ElevenLabs account."
+        )
+    except ElevenLabsError as exc:
+        return gr.update(choices=[], value=None), str(exc)
+
+
 def build_voiceover_page(visible=False):
     """Build draft editor; generation intentionally unavailable."""
     with gr.Column(visible=visible, elem_id="voiceover-studio-page") as page:
         gr.Markdown("## 🎙️ AI Script & Voiceover Studio")
         gr.Markdown("Draft and arrange narration sections. Audio generation is coming soon.")
+        with gr.Row():
+            refresh_voices = gr.Button("Load available voices")
+            voice = gr.Dropdown(label="Narrator voice", choices=[], interactive=True)
+        voice_status = gr.Markdown()
+        refresh_voices.click(load_voice_choices, outputs=[voice, voice_status])
         sections = gr.State([])
         script = gr.Textbox(label="Your script", lines=10, placeholder="Paste your script here. Separate sections with blank lines.")
         split = gr.Button("Split into sections")
