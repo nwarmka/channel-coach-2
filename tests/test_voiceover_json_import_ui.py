@@ -36,8 +36,8 @@ class JSONImportUITests(unittest.TestCase):
             path = Path(directory) / "draft.json"
             path.write_text("not-json", encoding="utf-8")
             _, sections, _, _, status = import_handler()(str(path))
-        self.assertEqual(sections, [])
-        self.assertIn("Could not import", status)
+        self.assertEqual(sections, {})
+        self.assertIn("current draft is unchanged", status)
 
     def test_reject_non_json_extension(self):
         with tempfile.TemporaryDirectory() as directory:
