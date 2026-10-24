@@ -44,12 +44,12 @@ class JSONImportUITests(unittest.TestCase):
             path = Path(directory) / "draft.txt"
             path.write_text("hello", encoding="utf-8")
             _, sections, _, _, status = import_handler()(str(path))
-        self.assertEqual(sections, [])
+        self.assertEqual(sections, {})
         self.assertIn("Could not import", status)
 
     def test_reject_missing_path(self):
         _, sections, _, _, status = import_handler()(None)
-        self.assertEqual(sections, [])
+        self.assertEqual(sections, {})
         self.assertIn("Select a JSON", status)
 
     def test_reject_oversized_file(self):
@@ -57,7 +57,7 @@ class JSONImportUITests(unittest.TestCase):
             path = Path(directory) / "draft.json"
             path.write_text("x" * 1_000_001, encoding="utf-8")
             _, sections, _, _, status = import_handler()(str(path))
-        self.assertEqual(sections, [])
+        self.assertEqual(sections, {})
         self.assertIn("Could not import", status)
 
 
