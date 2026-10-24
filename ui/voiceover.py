@@ -230,6 +230,52 @@ def delete_script_section(section_id, sections):
         updated[index] if updated else ""), "Section deleted from the current draft."
 
 
+def save_new_script_draft(saved_session, title, sections):
+    """Create a private new project only; existing-project updates require CAS."""
+    from voiceover_project_store import save_script_project
+    try:
+        client, user_id, updated = _authenticated_client(saved_session)
+        project_id = save_script_project(client, user_id, title, sections)
+        return project_id, "New script project saved.", updated
+    except ValueError as exc:
+        return "", f"Cannot save project: {exc}", saved_session
+    except Exception as exc:
+        print("Voiceover draft save unavailable:", type(exc).__name__)
+        return "", "Project saving is unavailable until the private database table is deployed.", saved_session
+
+
+def refresh_saved_script_drafts(saved_session):
+    """List only the authenticated user's projects; no service-role access."""
+    from voiceover_project_store import list_script_projects
+    try:
+        client, user_id, updated = _authenticated_client(saved_session)
+        projects = list_script_projects(client, user_id)
+        choices = [(p["title"], p["id"]) for p in projects]
+        return gr.update(choices=choices, value=None), f"Found {len(choices)} saved projects.", updated
+    except ValueError:
+        return gr.update(choices=[], value=None), "Sign in to see saved projects.", saved_session
+    except Exception as exc:
+        print("Voiceover draft listing unavailable:", type(exc).__name__)
+        return gr.update(choices=[], value=None), "Saved projects are not available yet.", saved_session
+
+
+def open_saved_script_draft(saved_session, project_id):
+    """Open an owned project into the in-memory editor without overwriting it."""
+    from voiceover_project_store import load_script_project
+    try:
+        client, user_id, updated = _authenticated_client(saved_session)
+        project = load_script_project(client, user_id, project_id)
+        sections = project["sections"]
+        choices = [(f"Section {i + 1}: {p[:55]}", str(i)) for i, p in enumerate(sections)]
+        return (project["title"], sections, gr.update(choices=choices, value="0"),
+                sections[0], "Project opened. Save as a new project to keep changes.", updated)
+    except (ValueError, FileNotFoundError):
+        return "", [], gr.update(choices=[], value=None), "", "Project not found or access denied.", saved_session
+    except Exception as exc:
+        print("Voiceover draft load unavailable:", type(exc).__name__)
+        return "", [], gr.update(choices=[], value=None), "", "Saved project could not be loaded.", saved_session
+
+
 def build_voiceover_page(saved_login=None, visible=False):
     """Build draft editor; generation intentionally unavailable."""
     with gr.Column(visible=visible, elem_id="voiceover-studio-page") as page:
@@ -270,6 +316,31 @@ def build_voiceover_page(saved_login=None, visible=False):
             delete_section = gr.Button("Delete selected section")
         gr.Markdown("### Export your script")
         export_title = gr.Textbox(label="Project title", value="My voiceover script")
+        if saved_login is not None:
+            gr.Markdown("### Private saved script projects")
+            gr.Markdown("Saving creates a new copy. Existing-project overwrites are disabled until conflict-safe database updates are deployed.")
+            with gr.Row():
+                save_project_button = gr.Button("Save as new project")
+                refresh_projects_button = gr.Button("Refresh saved projects")
+            saved_project_id = gr.Textbox(label="New project ID", interactive=False)
+            saved_projects = gr.Dropdown(label="Saved projects", choices=[], interactive=True)
+            open_project_button = gr.Button("Open selected saved project")
+            saved_project_status = gr.Markdown()
+            save_project_button.click(
+                save_new_script_draft,
+                inputs=[saved_login, export_title, sections],
+                outputs=[saved_project_id, saved_project_status, saved_login],
+            )
+            refresh_projects_button.click(
+                refresh_saved_script_drafts,
+                inputs=[saved_login],
+                outputs=[saved_projects, saved_project_status, saved_login],
+            )
+            open_project_button.click(
+                open_saved_script_draft,
+                inputs=[saved_login, saved_projects],
+                outputs=[export_title, sections, selected, editor, saved_project_status, saved_login],
+            )
         export_format = gr.Dropdown(label="Export format", choices=["txt", "json"], value="txt")
         export_button = gr.Button("Prepare script download")
         export_file = gr.File(label="Download script", interactive=False)
