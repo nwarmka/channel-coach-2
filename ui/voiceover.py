@@ -8,6 +8,7 @@ import gradio as gr
 from elevenlabs_service import list_voices, ElevenLabsError
 from voiceover_pricing import quote_voiceover_credits
 from voiceover_quote import create_quote_snapshot, quote_is_current
+from voiceover_batch_quote import quote_script_sections
 from voiceover_script_export import build_script_export
 from voiceover_jobs import list_voiceover_jobs
 from voiceover_job_display import summarize_voiceover_jobs
@@ -171,6 +172,20 @@ def export_script_file(title, sections, export_format):
         return None, f"Cannot export script: {exc}"
 
 
+def quote_full_script(sections):
+    """Preview the complete section-by-section cost without any billing."""
+    try:
+        quote = quote_script_sections(sections)
+    except (ValueError, TypeError) as exc:
+        return f"Cannot quote script: {exc}"
+    return (
+        f"**Entire script: {quote['total_credits']:,} credits** "
+        f"for {quote['total_characters']:,} characters across "
+        f"{len(quote['sections'])} sections. "
+        "Each section is rounded separately. No credits charged."
+    )
+
+
 def build_voiceover_page(saved_login=None, visible=False):
     """Build draft editor; generation intentionally unavailable."""
     with gr.Column(visible=visible, elem_id="voiceover-studio-page") as page:
@@ -217,6 +232,10 @@ def build_voiceover_page(saved_login=None, visible=False):
                             inputs=[export_title, sections, export_format],
                             outputs=[export_file, export_status])
         status = gr.Markdown()
+        whole_script_quote = gr.Button("Check entire script credit cost")
+        whole_script_quote_result = gr.Markdown("No full-script quote requested.")
+        whole_script_quote.click(quote_full_script, inputs=[sections],
+                                 outputs=[whole_script_quote_result])
         quote_snapshot = gr.State(None)
         quote_button = gr.Button("Check credit cost")
         quote_result = gr.Markdown("No quote requested yet.")
