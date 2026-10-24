@@ -8,6 +8,7 @@ import gradio as gr
 from elevenlabs_service import list_voices, ElevenLabsError
 from voiceover_pricing import quote_voiceover_credits
 from voiceover_quote import create_quote_snapshot, quote_is_current
+from voiceover_section_copy import section_copy_text
 from voiceover_regeneration_quote import quote_clip_regeneration
 from voiceover_batch_quote import quote_script_sections
 from voiceover_script_export import build_script_export
@@ -201,6 +202,14 @@ def preview_clip_regeneration(section_id, sections):
     )
 
 
+def prepare_section_copy(section_id, sections):
+    """Show a validated section in a copy-friendly text field."""
+    try:
+        return section_copy_text(sections, int(section_id)), "Section ready to copy."
+    except (ValueError, TypeError, IndexError) as exc:
+        return "", f"Cannot copy section: {exc}"
+
+
 def build_voiceover_page(saved_login=None, visible=False):
     """Build draft editor; generation intentionally unavailable."""
     with gr.Column(visible=visible, elem_id="voiceover-studio-page") as page:
@@ -246,6 +255,12 @@ def build_voiceover_page(saved_login=None, visible=False):
         export_button.click(export_script_file,
                             inputs=[export_title, sections, export_format],
                             outputs=[export_file, export_status])
+        copy_button = gr.Button("Prepare selected section to copy")
+        copy_text = gr.Textbox(label="Copy selected narration text", lines=4,
+                               interactive=True)
+        copy_status = gr.Markdown()
+        copy_button.click(prepare_section_copy, inputs=[selected, sections],
+                          outputs=[copy_text, copy_status])
         status = gr.Markdown()
         whole_script_quote = gr.Button("Check entire script credit cost")
         whole_script_quote_result = gr.Markdown("No full-script quote requested.")
