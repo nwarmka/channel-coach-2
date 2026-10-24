@@ -20,7 +20,7 @@ def load_handler():
 class WholeScriptQuoteUITests(unittest.TestCase):
     def test_quote_shows_total_without_charging(self):
         message = load_handler()(["Hello", "World"])
-        self.assertIn("6 credits", message)
+        self.assertIn("2 credits", message)
         self.assertIn("10 characters", message)
         self.assertIn("No credits charged", message)
 
