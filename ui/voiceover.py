@@ -361,20 +361,22 @@ def build_voiceover_page(saved_login=None, visible=False):
                 inputs=[saved_login],
                 outputs=[saved_projects, saved_project_status, saved_login],
             )
-            open_project_button.click(
+            open_event = open_project_button.click(
                 open_saved_script_draft,
                 inputs=[saved_login, saved_projects],
                 outputs=[export_title, sections, selected, editor, saved_project_status, saved_login],
             )
+            open_event.then(preview_section_usage, inputs=[selected, sections], outputs=[usage])
         gr.Markdown("### Import a previously exported script")
         import_file = gr.File(label="Import JSON script", file_types=[".json"], type="filepath")
         import_button = gr.Button("Import JSON script")
         import_status = gr.Markdown()
-        import_button.click(
+        import_event = import_button.click(
             restore_script_from_json,
             inputs=[import_file],
             outputs=[export_title, sections, selected, editor, import_status],
         )
+        import_event.then(preview_section_usage, inputs=[selected, sections], outputs=[usage])
         gr.Markdown("### Export your script")
         export_format = gr.Dropdown(label="Export format", choices=["txt", "json"], value="txt")
         export_button = gr.Button("Prepare script download")
@@ -405,7 +407,7 @@ def build_voiceover_page(saved_login=None, visible=False):
         quote_button.click(quote_selected_section, inputs=[selected, sections, voice], outputs=[quote_result, quote_snapshot])
         confirm_button = gr.Button("Confirm quote (no charge)")
         confirm_button.click(confirm_quote, inputs=[selected, sections, voice, quote_snapshot], outputs=[quote_result])
-        split.click(split_script, inputs=[script], outputs=[sections, selected, editor, status])
+        split_event = split.click(split_script, inputs=[script], outputs=[sections, selected, editor, status])
         selected.change(select_section, inputs=[selected, sections], outputs=[editor])
         add_event = add_section.click(add_script_section, inputs=[sections], outputs=[sections, selected, editor, status])
         delete_event = delete_section.click(delete_script_section, inputs=[selected, sections], outputs=[sections, selected, editor, status])
@@ -413,6 +415,7 @@ def build_voiceover_page(saved_login=None, visible=False):
         up_event = up.click(lambda idx, parts: move_section(idx, parts, -1), inputs=[selected, sections], outputs=[sections, selected, status])
         down_event = down.click(lambda idx, parts: move_section(idx, parts, 1), inputs=[selected, sections], outputs=[sections, selected, status])
         selected.change(preview_section_usage, inputs=[selected, sections], outputs=[usage])
+        split_event.then(preview_section_usage, inputs=[selected, sections], outputs=[usage])
         # Refresh after edits finish, rather than racing independent click handlers.
         for edit_event in (save_event, add_event, delete_event, up_event, down_event):
             edit_event.then(preview_section_usage, inputs=[selected, sections], outputs=[usage])
