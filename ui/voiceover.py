@@ -10,6 +10,7 @@ from voiceover_pricing import quote_voiceover_credits
 from voiceover_quote import create_quote_snapshot, quote_is_current
 from voiceover_section_copy import section_copy_text
 from voiceover_regeneration_quote import quote_clip_regeneration
+from voiceover_batch_quote_display import format_batch_quote
 from voiceover_batch_quote import quote_script_sections
 from voiceover_script_export import build_script_export
 from voiceover_jobs import list_voiceover_jobs
@@ -177,15 +178,9 @@ def export_script_file(title, sections, export_format):
 def quote_full_script(sections):
     """Preview the complete section-by-section cost without any billing."""
     try:
-        quote = quote_script_sections(sections)
+        return format_batch_quote(sections)
     except (ValueError, TypeError) as exc:
         return f"Cannot quote script: {exc}"
-    return (
-        f"**Entire script: {quote['total_credits']:,} credits** "
-        f"for {quote['total_characters']:,} characters across "
-        f"{len(quote['sections'])} sections. "
-        "Each section is rounded separately. No credits charged."
-    )
 
 
 def preview_clip_regeneration(section_id, sections):
