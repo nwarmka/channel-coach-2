@@ -23,15 +23,11 @@ drop policy if exists voiceover_script_projects_insert_own on public.voiceover_s
 create policy voiceover_script_projects_insert_own
     on public.voiceover_script_projects for insert to authenticated
     with check (user_id = (select auth.uid()));
+-- Stage 1 is insert-only: do not permit editing or deleting cloud drafts yet.
+-- Drop stale policies if this draft is ever re-applied to an existing table.
 drop policy if exists voiceover_script_projects_update_own on public.voiceover_script_projects;
-create policy voiceover_script_projects_update_own
-    on public.voiceover_script_projects for update to authenticated
-    using (user_id = (select auth.uid()))
-    with check (user_id = (select auth.uid()));
 drop policy if exists voiceover_script_projects_delete_own on public.voiceover_script_projects;
-create policy voiceover_script_projects_delete_own
-    on public.voiceover_script_projects for delete to authenticated
-    using (user_id = (select auth.uid()));
 revoke all on public.voiceover_script_projects from anon;
-grant select, insert, update, delete on public.voiceover_script_projects to authenticated;
+revoke update, delete on public.voiceover_script_projects from authenticated;
+grant select, insert on public.voiceover_script_projects to authenticated;
 -- The application must still enforce per-section length and total project size.
