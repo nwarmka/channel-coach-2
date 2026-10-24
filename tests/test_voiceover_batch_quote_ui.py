@@ -3,6 +3,7 @@ import ast
 from pathlib import Path
 import unittest
 from voiceover_batch_quote import quote_script_sections
+from voiceover_batch_quote_display import format_batch_quote
 
 
 def load_handler():
@@ -11,7 +12,7 @@ def load_handler():
              and n.name == "quote_full_script"]
     if len(nodes) != 1:
         raise AssertionError("Missing whole-script quote handler")
-    namespace = {"quote_script_sections": quote_script_sections}
+    namespace = {"quote_script_sections": quote_script_sections, "format_batch_quote": format_batch_quote}
     exec(compile(ast.Module(body=nodes, type_ignores=[]),
                  "ui/voiceover.py", "exec"), namespace)
     return namespace["quote_full_script"]
