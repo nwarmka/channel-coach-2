@@ -47,6 +47,11 @@ class JSONImportUITests(unittest.TestCase):
         self.assertEqual(sections, [])
         self.assertIn("Could not import", status)
 
+    def test_reject_missing_path(self):
+        _, sections, _, _, status = import_handler()(None)
+        self.assertEqual(sections, [])
+        self.assertIn("Select a JSON", status)
+
     def test_reject_oversized_file(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "draft.json"
