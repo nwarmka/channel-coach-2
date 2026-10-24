@@ -7,6 +7,7 @@ install_usage_tracking(client)
 from ui.calendar import build_calendar_page
 from ui.dashboard import build_dashboard_page
 from ui.toolkit import build_toolkit_page
+from ui.voiceover import build_voiceover_page
 from ui.settings import build_settings_page
 from ui.chat import build_chat_page
 from ui.bug_report import build_bug_report_page
@@ -1254,6 +1255,7 @@ with gr.Blocks(title="Channel Coach") as app:
             calendar_nav = gr.Button("\U0001F4C5 Calendar")
             ideas_nav = gr.Button("💡 Content Ideas Inbox")
             toolkit_nav = gr.Button("\U0001F3AC Toolkit")
+            voiceover_nav = gr.Button("🎙️ Script Studio")
             settings_nav = gr.Button("\u2699\uFE0F Settings")
             bug_report_nav = gr.Button("\U0001F41E Report a Bug")
             bug_admin_nav = gr.Button("\U0001F6E0\uFE0F Bug Dashboard", visible=False)
@@ -1368,6 +1370,8 @@ with gr.Blocks(title="Channel Coach") as app:
             visible=False,
         )
 
+        voiceover_page = build_voiceover_page(saved_login, visible=False)
+
         toolkit_page = build_toolkit_page(
             workspace_name,
             credit_balance,
@@ -1418,7 +1422,7 @@ with gr.Blocks(title="Channel Coach") as app:
     # =========================
     # PAGE NAVIGATION
     # =========================
-    PAGE_NAMES = ["chat", "dashboard", "calendar", "ideas", "toolkit", "settings", "bugs", "bug_admin"]
+    PAGE_NAMES = ["chat", "dashboard", "calendar", "ideas", "toolkit", "voiceover", "settings", "bugs", "bug_admin"]
 
     def toggle_menu(is_open):
         new_state = not bool(is_open)
