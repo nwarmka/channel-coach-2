@@ -285,6 +285,7 @@ def build_voiceover_page(saved_login=None, visible=False):
     with gr.Column(visible=visible, elem_id="voiceover-studio-page") as page:
         gr.Markdown("## 🎙️ AI Script & Voiceover Studio")
         gr.Markdown("Draft and arrange narration sections. Audio generation is coming soon.")
+        gr.Markdown("**Preview release:** Script editing and exports are available. Saving projects requires the private database migration. Voice generation and credit charging are not active.")
         with gr.Row():
             refresh_voices = gr.Button("Load available voices")
             voice = gr.Dropdown(label="Narrator voice", choices=[], interactive=True)
@@ -318,7 +319,7 @@ def build_voiceover_page(saved_login=None, visible=False):
             down = gr.Button("Move down")
             add_section = gr.Button("Add section")
             delete_section = gr.Button("Delete selected section")
-        gr.Markdown("### Export your script")
+        gr.Markdown("### Your script project")
         export_title = gr.Textbox(label="Project title", value="My voiceover script")
         if saved_login is not None:
             gr.Markdown("### Private saved script projects")
@@ -345,6 +346,7 @@ def build_voiceover_page(saved_login=None, visible=False):
                 inputs=[saved_login, saved_projects],
                 outputs=[export_title, sections, selected, editor, saved_project_status, saved_login],
             )
+        gr.Markdown("### Export your script")
         export_format = gr.Dropdown(label="Export format", choices=["txt", "json"], value="txt")
         export_button = gr.Button("Prepare script download")
         export_file = gr.File(label="Download script", interactive=False)
