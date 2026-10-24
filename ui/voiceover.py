@@ -37,7 +37,7 @@ def restore_script_from_json(file_path):
     from pathlib import Path
     from voiceover_script_drafts import deserialize_script_draft
     if not file_path:
-        return "", [], gr.update(choices=[], value=None), "", "Select a JSON script export first."
+        return gr.update(), gr.update(), gr.update(), gr.update(), "Select a JSON script export first."
     try:
         path = Path(file_path)
         if path.suffix.lower() != ".json" or path.stat().st_size > 600_000:
@@ -47,7 +47,7 @@ def restore_script_from_json(file_path):
         choices = [(f"Section {i + 1}: {p[:55]}", str(i)) for i, p in enumerate(parts)]
         return draft["title"], parts, gr.update(choices=choices, value="0"), parts[0], "Script imported. Review sections before saving."
     except (OSError, UnicodeError, ValueError, TypeError, KeyError, AttributeError):
-        return "", [], gr.update(choices=[], value=None), "", "Could not import this script JSON file."
+        return gr.update(), gr.update(), gr.update(), gr.update(), "Could not import this script JSON file. Your current draft is unchanged."
 
 
 def select_section(section_id, sections):
@@ -366,7 +366,6 @@ def build_voiceover_page(saved_login=None, visible=False):
                 inputs=[saved_login, saved_projects],
                 outputs=[export_title, sections, selected, editor, saved_project_status, saved_login],
             )
-        gr.Markdown("### Export your script")
         gr.Markdown("### Import a previously exported script")
         import_file = gr.File(label="Import JSON script", file_types=[".json"], type="filepath")
         import_button = gr.Button("Import JSON script")
@@ -376,6 +375,7 @@ def build_voiceover_page(saved_login=None, visible=False):
             inputs=[import_file],
             outputs=[export_title, sections, selected, editor, import_status],
         )
+        gr.Markdown("### Export your script")
         export_format = gr.Dropdown(label="Export format", choices=["txt", "json"], value="txt")
         export_button = gr.Button("Prepare script download")
         export_file = gr.File(label="Download script", interactive=False)
