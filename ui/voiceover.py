@@ -8,6 +8,7 @@ import gradio as gr
 from elevenlabs_service import list_voices, ElevenLabsError
 from voiceover_pricing import quote_voiceover_credits
 from voiceover_quote import create_quote_snapshot, quote_is_current
+from voiceover_regeneration_quote import quote_clip_regeneration
 from voiceover_batch_quote import quote_script_sections
 from voiceover_script_export import build_script_export
 from voiceover_jobs import list_voiceover_jobs
@@ -186,6 +187,20 @@ def quote_full_script(sections):
     )
 
 
+def preview_clip_regeneration(section_id, sections):
+    """Read-only preview; no new audio job or charge is created."""
+    try:
+        quote = quote_clip_regeneration(sections, int(section_id))
+    except (ValueError, TypeError, IndexError) as exc:
+        return f"Cannot quote clip regeneration: {exc}"
+    return (
+        f"**Regenerate section {quote['section_index'] + 1}: "
+        f"{quote['credits']} credits** for {quote['characters']} characters. "
+        "A fresh approval will be required. "
+        "Regeneration is not enabled yet; no credits charged."
+    )
+
+
 def build_voiceover_page(saved_login=None, visible=False):
     """Build draft editor; generation intentionally unavailable."""
     with gr.Column(visible=visible, elem_id="voiceover-studio-page") as page:
@@ -236,6 +251,11 @@ def build_voiceover_page(saved_login=None, visible=False):
         whole_script_quote_result = gr.Markdown("No full-script quote requested.")
         whole_script_quote.click(quote_full_script, inputs=[sections],
                                  outputs=[whole_script_quote_result])
+        regenerate_preview = gr.Button("Preview cost to regenerate selected clip")
+        regenerate_result = gr.Markdown("No regeneration quote requested.")
+        regenerate_preview.click(preview_clip_regeneration,
+                                 inputs=[selected, sections],
+                                 outputs=[regenerate_result])
         quote_snapshot = gr.State(None)
         quote_button = gr.Button("Check credit cost")
         quote_result = gr.Markdown("No quote requested yet.")
