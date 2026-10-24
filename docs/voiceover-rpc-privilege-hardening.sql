@@ -1,0 +1,14 @@
+-- DRAFT SECURITY HARDENING: do not apply until reviewed.
+-- Remove direct user UPDATE permission and UPDATE policy so all script edits
+-- must pass through a reviewed compare-and-swap RPC.
+-- NOTE: an invoker-security RPC cannot UPDATE after these privileges are
+-- revoked. A final production implementation must use a narrowly scoped,
+-- security-definer RPC with strict auth.uid() ownership checks, a locked-down
+-- search_path, and no broader grants. Do not deploy these changes alone.
+
+-- REFERENCE ONLY; deliberately not executable SQL:
+-- revoke update on public.voiceover_script_projects from authenticated;
+-- drop policy if exists voiceover_script_projects_update_own
+--     on public.voiceover_script_projects;
+-- replace public.update_voiceover_script_project_if_revision with a
+-- reviewed SECURITY DEFINER function owned by a restricted DB role.
