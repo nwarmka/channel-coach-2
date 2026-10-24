@@ -2,7 +2,10 @@
 import ast
 from pathlib import Path
 import unittest
-import gradio as gr
+from types import SimpleNamespace
+
+
+gr = SimpleNamespace(update=lambda **kwargs: kwargs)
 from voiceover_section_editor import append_script_section, remove_script_section
 
 
