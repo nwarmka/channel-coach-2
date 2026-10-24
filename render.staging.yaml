@@ -1,0 +1,24 @@
+# Script Studio staging deployment (separate Render service)
+#
+# Create a NEW Render Blueprint/service from this development branch.
+# Do not attach this configuration to the existing production service.
+# Supply staging-only secrets through Render's environment settings.
+services:
+  - type: web
+    name: channel-coach-script-studio-staging
+    runtime: python
+    plan: free
+    branch: feature/elevenlabs-voiceover-foundation
+    buildCommand: pip install -r requirements.txt
+    startCommand: python app.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.11
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: ELEVENLABS_API_KEY
+        sync: false
