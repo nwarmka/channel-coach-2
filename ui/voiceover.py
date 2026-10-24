@@ -311,9 +311,31 @@ def build_voiceover_page(saved_login=None, visible=False):
                 save_project_button = gr.Button("Save new copy", variant="primary", scale=1)
         with gr.Tabs():
             with gr.Tab("✍️ Write"):
-                script = gr.Textbox(label="Script", lines=12, placeholder="Start writing or paste your script here. Use blank lines to separate scenes.")
-                split = gr.Button("Create sections from script", variant="primary")
-                gr.Markdown("**Tip:** Separate paragraphs with a blank line to create individual narration sections.")
+                gr.Markdown("### How would you like to start?")
+                writing_mode = gr.Radio(
+                    choices=["Write My Own Script", "Generate a Script"],
+                    value="Write My Own Script",
+                    label="Choose your starting point",
+                    interactive=True,
+                )
+                with gr.Column(visible=True) as manual_script_area:
+                    script = gr.Textbox(label="Script", lines=12, placeholder="Start writing or paste your script here. Use blank lines to separate scenes.")
+                    split = gr.Button("Create sections from script", variant="primary")
+                    gr.Markdown("**Tip:** Separate paragraphs with a blank line to create individual narration sections.")
+                with gr.Column(visible=False) as generated_script_area:
+                    gr.Markdown("### Tell us about your video")
+                    gr.Textbox(label="Video topic", placeholder="What is your video about?", interactive=True)
+                    gr.Dropdown(label="Platform", choices=["YouTube", "YouTube Shorts", "TikTok", "Instagram", "Facebook", "Other"], value="YouTube")
+                    gr.Dropdown(label="Video length", choices=["30 seconds", "60 seconds", "2 minutes", "5 minutes", "10 minutes"], value="2 minutes")
+                    gr.Dropdown(label="Style", choices=["Friendly", "Educational", "Energetic", "Professional", "Storytelling"], value="Friendly")
+                    gr.Markdown("Script generation is being prepared. A credit estimate and your approval will be required before generating.")
+                    gr.Button("Generate Script — coming soon", interactive=False)
+                writing_mode.change(
+                    lambda mode: (gr.update(visible=mode == "Write My Own Script"),
+                                  gr.update(visible=mode == "Generate a Script")),
+                    inputs=[writing_mode],
+                    outputs=[manual_script_area, generated_script_area],
+                )
             with gr.Tab("🧩 Sections"):
                 gr.Markdown("Select a section to edit its narration or change its order.")
                 selected = gr.Dropdown(label="Choose section", choices=[], interactive=True)
