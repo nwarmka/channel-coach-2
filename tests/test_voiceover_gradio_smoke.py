@@ -7,7 +7,10 @@ from unittest.mock import patch
 
 class VoiceoverGradioSmokeTests(unittest.TestCase):
     def test_builds_editor_and_authenticated_controls(self):
-        import gradio as gr
+        try:
+            import gradio as gr
+        except ImportError:
+            self.skipTest("Gradio is tested in the dedicated smoke-test CI job")
         fake_inbox = types.ModuleType("ui.ideas_inbox")
         fake_inbox._authenticated_client = lambda session: (_ for _ in ()).throw(
             ValueError("Authentication disabled in smoke test")
