@@ -263,7 +263,7 @@ def save_new_script_draft(saved_session, title, sections):
         return "", f"Cannot save project: {exc}", saved_session
     except Exception as exc:
         print("Voiceover draft save unavailable:", type(exc).__name__)
-        return "", "Project saving is unavailable until the private database table is deployed.", saved_session
+        return "", "Project saving is temporarily unavailable. Please download a JSON backup and try again.", saved_session
 
 
 def refresh_saved_script_drafts(saved_session):
@@ -303,9 +303,9 @@ def build_voiceover_page(saved_login=None, visible=False):
     with gr.Column(visible=visible, elem_id="voiceover-studio-page") as page:
         gr.Markdown("## 🎙️ AI Script & Voiceover Studio")
         gr.Markdown("Draft and arrange narration sections. Audio generation is coming soon.")
-        gr.Markdown("**Preview release:** Script editing and exports are available. Saving projects requires the private database migration. Voice generation and credit charging are not active.")
+        gr.Markdown("**Preview release:** Script editing, exports, and private save-as-new project storage are prepared. Cloud saving still needs an authenticated end-to-end test before release. Voice generation and credit charging are not active.")
         gr.Markdown("**Editing tip:** After changing narration text, click **Save section** before exporting, quoting, or saving your project. Unsaved edits in the text box are not included.")
-        gr.Markdown("**Offline backup:** Download your script as JSON so you can import it again later. Cloud project saving is unavailable until the database migration is verified.")
+        gr.Markdown("**Offline backup:** Download your script as JSON so you can import it again later, even if cloud storage is unavailable.")
         with gr.Row():
             refresh_voices = gr.Button("Load available voices")
             voice = gr.Dropdown(label="Narrator voice", choices=[], interactive=True)
