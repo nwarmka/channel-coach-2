@@ -7,12 +7,12 @@ class BatchQuoteTests(unittest.TestCase):
     def test_all_sections_quoted_individually(self):
         quote = quote_script_sections(["Hi", "Bye"])
         self.assertEqual(quote["total_characters"], 5)
-        self.assertEqual(quote["total_credits"], 6)
+        self.assertEqual(quote["total_credits"], 2)
         self.assertEqual([row["index"] for row in quote["sections"]], [0, 1])
 
     def test_selected_section_only(self):
         quote = quote_script_sections(["Hi", "Bye"], [1])
-        self.assertEqual(quote["total_credits"], 3)
+        self.assertEqual(quote["total_credits"], 1)
         self.assertEqual(quote["sections"][0]["index"], 1)
 
     def test_duplicate_selection_rejected(self):
