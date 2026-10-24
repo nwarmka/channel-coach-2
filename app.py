@@ -1455,6 +1455,7 @@ with gr.Blocks(title="Channel Coach") as app:
         calendar_page,
         ideas_page,
         toolkit_page,
+        voiceover_page,
         settings_page,
         bug_report_page,
         bug_admin_page,
@@ -1569,6 +1570,12 @@ with gr.Blocks(title="Channel Coach") as app:
     )
     toolkit_nav.click(
         lambda current: navigate_to("toolkit", current),
+        inputs=[current_page],
+        outputs=page_outputs,
+        show_progress="hidden",
+    )
+    voiceover_nav.click(
+        lambda current: navigate_to("voiceover", current),
         inputs=[current_page],
         outputs=page_outputs,
         show_progress="hidden",
