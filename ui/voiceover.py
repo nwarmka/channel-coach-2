@@ -286,6 +286,7 @@ def build_voiceover_page(saved_login=None, visible=False):
         gr.Markdown("## 🎙️ AI Script & Voiceover Studio")
         gr.Markdown("Draft and arrange narration sections. Audio generation is coming soon.")
         gr.Markdown("**Preview release:** Script editing and exports are available. Saving projects requires the private database migration. Voice generation and credit charging are not active.")
+        gr.Markdown("**Editing tip:** After changing narration text, click **Save section** before exporting, quoting, or saving your project. Unsaved edits in the text box are not included.")
         with gr.Row():
             refresh_voices = gr.Button("Load available voices")
             voice = gr.Dropdown(label="Narrator voice", choices=[], interactive=True)
