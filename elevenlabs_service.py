@@ -1,0 +1,100 @@
+"""Server-side ElevenLabs text-to-speech adapter for Channel Coach.
+
+This module is intentionally not exposed as a public endpoint or wired to the
+credit ledger yet. UI integration must authenticate users, enforce quotas,
+and calculate/approve credit costs before calling generate_speech().
+"""
+import os
+from pathlib import Path
+from tempfile import NamedTemporaryFile
+from urllib.parse import quote
+
+import requests
+
+API_BASE = "https://api.elevenlabs.io/v1"
+DEFAULT_MODEL = "eleven_multilingual_v2"
+MAX_SECTION_CHARS = 5000
+
+
+class ElevenLabsError(RuntimeError):
+    """A safe-to-display ElevenLabs integration error."""
+
+
+def _headers():
+    key = os.getenv("ELEVENLABS_API_KEY", "").strip()
+    if not key:
+        raise ElevenLabsError("ElevenLabs is not configured on the server.")
+    return {"xi-api-key": key}
+
+
+def list_voices():
+    """Return available voice IDs and names for a server-side voice picker."""
+    response = None
+    try:
+        response = requests.get(
+            f"{API_BASE}/voices",
+            headers=_headers(),
+            timeout=20,
+        )
+        response.raise_for_status()
+        return [
+            {"voice_id": voice["voice_id"], "name": voice.get("name", "Unnamed")}
+            for voice in response.json().get("voices", [])
+            if voice.get("voice_id")
+        ]
+    except (requests.RequestException, ValueError, KeyError, TypeError) as exc:
+        raise ElevenLabsError("Could not load ElevenLabs voices.") from exc
+    finally:
+        if response is not None:
+            response.close()
+
+
+def generate_speech(text, voice_id, model_id=DEFAULT_MODEL):
+    """Generate one section as an MP3; return its temporary server-side path.
+
+    Callers are responsible for authenticating the user, checking quotas and
+    charging credits. Do not expose this function through an unauthenticated API.
+    """
+    if not isinstance(text, str):
+        raise ValueError("Section text must be a string.")
+    text = text.strip()
+    if not text or len(text) > MAX_SECTION_CHARS:
+        raise ValueError(f"Section must contain 1–{MAX_SECTION_CHARS} characters.")
+    if not isinstance(voice_id, str) or not voice_id.strip() or len(voice_id) > 128:
+        raise ValueError("Select a valid voice.")
+    if model_id != DEFAULT_MODEL:
+        raise ValueError("Unsupported voiceover model.")
+
+    response = None
+    temp_path = None
+    completed = False
+    try:
+        response = requests.post(
+            f"{API_BASE}/text-to-speech/{quote(voice_id, safe='')}",
+            headers={**_headers(), "Content-Type": "application/json", "Accept": "audio/mpeg"},
+            json={"text": text, "model_id": model_id},
+            timeout=120,
+            stream=True,
+        )
+        response.raise_for_status()
+        content_type = response.headers.get("Content-Type", "").lower()
+        if "audio/mpeg" not in content_type and "audio/mp3" not in content_type:
+            raise ElevenLabsError("ElevenLabs did not return MP3 audio.")
+        with NamedTemporaryFile(prefix="cc_voice_", suffix=".mp3", delete=False) as out:
+            temp_path = out.name
+            for chunk in response.iter_content(chunk_size=65536):
+                if chunk:
+                    out.write(chunk)
+            if out.tell() == 0:
+                raise ElevenLabsError("ElevenLabs returned an empty audio file.")
+        completed = True
+        return temp_path
+    except requests.RequestException as exc:
+        raise ElevenLabsError(
+            "Voiceover generation failed. Please check the ElevenLabs account and try again."
+        ) from exc
+    finally:
+        if response is not None:
+            response.close()
+        if temp_path is not None and not completed:
+            Path(temp_path).unlink(missing_ok=True)

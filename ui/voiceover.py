@@ -1,0 +1,420 @@
+"""Voiceover Studio UI draft.
+
+Integrated into app.py on the development branch. Audio generation remains disabled until authenticated
+credit authorization, cost approval, and storage handling are implemented.
+"""
+import re
+import gradio as gr
+from elevenlabs_service import list_voices, ElevenLabsError
+from voiceover_pricing import quote_voiceover_credits
+from voiceover_quote import create_quote_snapshot, quote_is_current
+from voiceover_section_copy import section_copy_text
+from voiceover_regeneration_quote import quote_clip_regeneration
+from voiceover_batch_quote_display import format_batch_quote
+from voiceover_batch_quote import quote_script_sections
+from voiceover_script_export import build_script_export
+from voiceover_jobs import list_voiceover_jobs
+from voiceover_job_display import summarize_voiceover_jobs
+from ui.ideas_inbox import _authenticated_client
+
+
+def split_script(script):
+    """Split on blank lines, preserving paragraph text as editable sections."""
+    text = (script or "").strip()
+    if not text:
+        return [], gr.update(choices=[], value=None), "", "Enter a script first."
+    parts = [p.strip() for p in re.split(r"\n\s*\n", text) if p.strip()]
+    if len(parts) > 100:
+        return [], gr.update(choices=[], value=None), "", "Limit scripts to 100 sections."
+    if any(len(part) > 5000 for part in parts):
+        return [], gr.update(choices=[], value=None), "", "Each section must be 5,000 characters or less."
+    choices = [(f"Section {i + 1}: {p[:55]}", str(i)) for i, p in enumerate(parts)]
+    return parts, gr.update(choices=choices, value="0"), parts[0], f"{len(parts)} editable sections ready."
+
+
+def restore_script_from_json(file_path):
+    """Import a previously exported JSON script; never execute file contents."""
+    from pathlib import Path
+    from voiceover_script_drafts import deserialize_script_draft
+    if not file_path:
+        return gr.update(), gr.update(), gr.update(), gr.update(), "Select a JSON script export first."
+    try:
+        path = Path(file_path)
+        if path.suffix.lower() != ".json" or path.stat().st_size > 600_000:
+            raise ValueError("Choose a JSON script export no larger than 600 KB.")
+        draft = deserialize_script_draft(path.read_text(encoding="utf-8"))
+        parts = draft["sections"]
+        choices = [(f"Section {i + 1}: {p[:55]}", str(i)) for i, p in enumerate(parts)]
+        return draft["title"], parts, gr.update(choices=choices, value="0"), parts[0], "Script imported. Review sections before saving."
+    except (OSError, UnicodeError, ValueError, TypeError, KeyError, AttributeError):
+        return gr.update(), gr.update(), gr.update(), gr.update(), "Could not import this script JSON file. Your current draft is unchanged."
+
+
+def select_section(section_id, sections):
+    try:
+        index = int(section_id)
+        return sections[index] if 0 <= index < len(sections) else ""
+    except (ValueError, TypeError, IndexError):
+        return ""
+
+
+def save_section(section_id, updated_text, sections):
+    updated = (updated_text or "").strip()
+    if not updated:
+        return sections, gr.update(), "A section cannot be empty."
+    if len(updated) > 5000:
+        return sections, gr.update(), "A section cannot exceed 5,000 characters."
+    try:
+        index = int(section_id)
+        new_sections = list(sections)
+        if not 0 <= index < len(new_sections):
+            raise IndexError("Invalid section")
+        new_sections[index] = updated
+    except (ValueError, TypeError, IndexError):
+        return sections, gr.update(), "Select a section first."
+    choices = [(f"Section {i + 1}: {p[:55]}", str(i)) for i, p in enumerate(new_sections)]
+    return new_sections, gr.update(choices=choices, value=str(index)), "Section saved."
+
+
+def move_section(section_id, sections, direction):
+    try:
+        index = int(section_id)
+        other = index + direction
+        if not 0 <= index < len(sections):
+            raise IndexError("Invalid section")
+        if not 0 <= other < len(sections):
+            return sections, gr.update(), "Section is already at the beginning." if direction < 0 else "Section is already at the end."
+        new_sections = list(sections)
+        new_sections[index], new_sections[other] = new_sections[other], new_sections[index]
+        choices = [(f"Section {i + 1}: {p[:55]}", str(i)) for i, p in enumerate(new_sections)]
+        return new_sections, gr.update(choices=choices, value=str(other)), "Section moved."
+    except (ValueError, TypeError, IndexError):
+        return sections, gr.update(), "Select a section first."
+
+
+def load_voice_choices():
+    """Retrieve available voices on demand; never expose the API key."""
+    try:
+        voices = list_voices()
+        choices = [(voice["name"], voice["voice_id"]) for voice in voices]
+        return gr.update(choices=choices, value=None), (
+            f"Loaded {len(choices)} available voices." if choices else
+            "No voices available for this ElevenLabs account."
+        )
+    except ElevenLabsError as exc:
+        return gr.update(choices=[], value=None), str(exc)
+
+
+def preview_section_usage(section_id, sections):
+    """Show character usage without charging credits or calling ElevenLabs.
+
+    Credit pricing must be configured and validated against provider costs
+    before generation can be enabled.
+    """
+    try:
+        index = int(section_id)
+        if not 0 <= index < len(sections):
+            raise IndexError("Invalid section")
+        text = sections[index]
+    except (ValueError, TypeError, IndexError):
+        return "Select a script section to see its estimated usage."
+    characters = len(text)
+    if characters > 5000:
+        return f"⚠️ {characters:,} characters. Shorten this section to 5,000 characters or less."
+    return (
+        f"Selected section: **{characters:,} characters**. "
+        "Use Check credit cost for a quote. "
+        "No credits have been charged."
+    )
+
+
+def quote_selected_section(section_id, sections, voice_id):
+    """Return a read-only quote and snapshot; never charge or generate."""
+    try:
+        index = int(section_id)
+        if not 0 <= index < len(sections):
+            raise IndexError("Invalid section")
+        text = sections[index]
+        quote = quote_voiceover_credits(text)
+        snapshot = create_quote_snapshot(str(index), text, voice_id)
+    except (ValueError, TypeError, IndexError, AttributeError) as exc:
+        return f"Cannot quote section: {exc}", None
+    return (
+        f"**Estimated cost: {quote['credits']:,} Channel Coach credits** "
+        f"for {quote['characters']:,} characters. "
+        "Review this quote before confirming. No credits have been deducted."
+    ), snapshot
+
+
+def confirm_quote(section_id, sections, voice_id, snapshot):
+    """Confirm an unchanged quote; generation remains disabled."""
+    try:
+        index = int(section_id)
+        if not 0 <= index < len(sections):
+            raise IndexError("Invalid section")
+        valid = quote_is_current(snapshot, str(index), sections[index], voice_id)
+    except (ValueError, TypeError, IndexError):
+        valid = False
+    if not valid:
+        return "The quote is missing or the section, text, voice, or price changed. Request a new quote."
+    return (
+        f"Quote confirmed for {snapshot['credits']} credits. "
+        "Generation is not enabled yet; no credits were charged."
+    )
+
+
+def refresh_voiceover_history(saved_session):
+    """Read only the verified user's jobs; never disclose private storage paths."""
+    try:
+        client, user_id, updated = _authenticated_client(saved_session)
+        jobs = summarize_voiceover_jobs(list_voiceover_jobs(client, user_id))
+        if not jobs:
+            return [], "No voiceover jobs yet.", updated
+        rows = [
+            [job["created_at"][:19], job["status"],
+             job["characters"], job["quoted_credits"]]
+            for job in jobs
+        ]
+        return rows, f"Loaded {len(rows)} voiceover jobs.", updated
+    except ValueError:
+        return [], "Sign in to view your voiceover history.", saved_session
+    except Exception as exc:
+        print("Voiceover history refresh error:", type(exc).__name__)
+        return [], "Voiceover history is not available yet.", saved_session
+
+
+def export_script_file(title, sections, export_format):
+    """Create an offline script export without generation or credit charges."""
+    import tempfile
+    from pathlib import Path
+    try:
+        artifact = build_script_export(title, sections, export_format)
+        directory = Path(tempfile.mkdtemp(prefix="cc_script_export_"))
+        path = directory / artifact["filename"]
+        path.write_bytes(artifact["content"])
+        return str(path), "Script export ready. No credits charged."
+    except (ValueError, TypeError) as exc:
+        return None, f"Cannot export script: {exc}"
+
+
+def quote_full_script(sections):
+    """Preview the complete section-by-section cost without any billing."""
+    try:
+        return format_batch_quote(sections)
+    except (ValueError, TypeError) as exc:
+        return f"Cannot quote script: {exc}"
+
+
+def preview_clip_regeneration(section_id, sections):
+    """Read-only preview; no new audio job or charge is created."""
+    try:
+        quote = quote_clip_regeneration(sections, int(section_id))
+    except (ValueError, TypeError, IndexError) as exc:
+        return f"Cannot quote clip regeneration: {exc}"
+    return (
+        f"**Regenerate section {quote['section_index'] + 1}: "
+        f"{quote['credits']} credits** for {quote['characters']} characters. "
+        "A fresh approval will be required. "
+        "Regeneration is not enabled yet; no credits charged."
+    )
+
+
+def prepare_section_copy(section_id, sections):
+    """Show a validated section in a copy-friendly text field."""
+    try:
+        return section_copy_text(sections, int(section_id)), "Section ready to copy."
+    except (ValueError, TypeError, IndexError) as exc:
+        return "", f"Cannot copy section: {exc}"
+
+
+def add_script_section(sections):
+    """Append an editable section without modifying stored projects."""
+    from voiceover_section_editor import append_script_section
+    try:
+        updated = append_script_section(sections, "New section")
+    except (ValueError, TypeError) as exc:
+        return sections, gr.update(), "", f"Cannot add section: {exc}"
+    index = len(updated) - 1
+    choices = [(f"Section {i + 1}: {p[:55]}", str(i)) for i, p in enumerate(updated)]
+    return updated, gr.update(choices=choices, value=str(index)), updated[index], "Section added."
+
+
+def delete_script_section(section_id, sections):
+    """Delete only the selected in-memory section, never a stored project."""
+    from voiceover_section_editor import remove_script_section
+    try:
+        updated = remove_script_section(sections, int(section_id))
+    except (ValueError, TypeError, IndexError) as exc:
+        return sections, gr.update(), "", f"Cannot delete section: {exc}"
+    choices = [(f"Section {i + 1}: {p[:55]}", str(i)) for i, p in enumerate(updated)]
+    index = min(int(section_id), len(updated) - 1)
+    return updated, gr.update(choices=choices, value=str(index) if updated else None), (
+        updated[index] if updated else ""), "Section deleted from the current draft."
+
+
+def save_new_script_draft(saved_session, title, sections):
+    """Create a private new project only; existing-project updates require CAS."""
+    from voiceover_project_store import save_script_project
+    try:
+        client, user_id, updated = _authenticated_client(saved_session)
+        project_id = save_script_project(client, user_id, title, sections)
+        return project_id, "New script project saved.", updated
+    except ValueError as exc:
+        return "", f"Cannot save project: {exc}", saved_session
+    except Exception as exc:
+        print("Voiceover draft save unavailable:", type(exc).__name__)
+        return "", "Project saving is temporarily unavailable. Please download a JSON backup and try again.", saved_session
+
+
+def refresh_saved_script_drafts(saved_session):
+    """List only the authenticated user's projects; no service-role access."""
+    from voiceover_project_store import list_script_projects
+    try:
+        client, user_id, updated = _authenticated_client(saved_session)
+        projects = list_script_projects(client, user_id)
+        choices = [(p["title"], p["id"]) for p in projects]
+        return gr.update(choices=choices, value=None), f"Found {len(choices)} saved projects.", updated
+    except ValueError:
+        return gr.update(choices=[], value=None), "Sign in to see saved projects.", saved_session
+    except Exception as exc:
+        print("Voiceover draft listing unavailable:", type(exc).__name__)
+        return gr.update(choices=[], value=None), "Saved projects are not available yet.", saved_session
+
+
+def open_saved_script_draft(saved_session, project_id):
+    """Open an owned project into the in-memory editor without overwriting it."""
+    from voiceover_project_store import load_script_project
+    try:
+        client, user_id, updated = _authenticated_client(saved_session)
+        project = load_script_project(client, user_id, project_id)
+        sections = project["sections"]
+        choices = [(f"Section {i + 1}: {p[:55]}", str(i)) for i, p in enumerate(sections)]
+        return (project["title"], sections, gr.update(choices=choices, value="0"),
+                sections[0], "Project opened. Save as a new project to keep changes.", updated)
+    except (ValueError, FileNotFoundError):
+        return gr.update(), gr.update(), gr.update(), gr.update(), "Project not found or access denied. Current draft unchanged.", saved_session
+    except Exception as exc:
+        print("Voiceover draft load unavailable:", type(exc).__name__)
+        return gr.update(), gr.update(), gr.update(), gr.update(), "Saved project could not be loaded. Current draft unchanged.", saved_session
+
+
+def build_voiceover_page(saved_login=None, visible=False):
+    """A focused writing workspace with advanced tools kept out of the way."""
+    with gr.Column(visible=visible, elem_id="voiceover-studio-page") as page:
+        gr.Markdown("## 🎙️ Script Studio")
+        gr.Markdown("Write your script, organize your scenes, and save your work.")
+        sections = gr.State([])
+        quote_snapshot = gr.State(None)
+        with gr.Row():
+            export_title = gr.Textbox(label="Project name", value="My voiceover script", scale=4)
+            if saved_login is not None:
+                save_project_button = gr.Button("Save new copy", variant="primary", scale=1)
+        with gr.Tabs():
+            with gr.Tab("✍️ Write"):
+                gr.Markdown("### How would you like to start?")
+                writing_mode = gr.Radio(
+                    choices=["Write My Own Script", "Generate a Script"],
+                    value="Write My Own Script",
+                    label="Choose your starting point",
+                    interactive=True,
+                )
+                with gr.Column(visible=True) as manual_script_area:
+                    script = gr.Textbox(label="Script", lines=12, placeholder="Start writing or paste your script here. Use blank lines to separate scenes.")
+                    split = gr.Button("Create sections from script", variant="primary")
+                    gr.Markdown("**Tip:** Separate paragraphs with a blank line to create individual narration sections.")
+                with gr.Column(visible=False) as generated_script_area:
+                    gr.Markdown("### Tell us about your video")
+                    gr.Textbox(label="Video topic", placeholder="What is your video about?", interactive=True)
+                    gr.Dropdown(label="Platform", choices=["YouTube", "YouTube Shorts", "TikTok", "Instagram", "Facebook", "Other"], value="YouTube")
+                    gr.Dropdown(label="Video length", choices=["30 seconds", "60 seconds", "2 minutes", "5 minutes", "10 minutes"], value="2 minutes")
+                    gr.Dropdown(label="Style", choices=["Friendly", "Educational", "Energetic", "Professional", "Storytelling"], value="Friendly")
+                    gr.Markdown("Script generation is being prepared. A credit estimate and your approval will be required before generating.")
+                    gr.Button("Generate Script — coming soon", interactive=False)
+                writing_mode.change(
+                    lambda mode: (gr.update(visible=mode == "Write My Own Script"),
+                                  gr.update(visible=mode == "Generate a Script")),
+                    inputs=[writing_mode],
+                    outputs=[manual_script_area, generated_script_area],
+                )
+            with gr.Tab("🧩 Sections"):
+                gr.Markdown("Select a section to edit its narration or change its order.")
+                selected = gr.Dropdown(label="Choose section", choices=[], interactive=True)
+                editor = gr.Textbox(label="Narration text", lines=8)
+                with gr.Row():
+                    save = gr.Button("Save section", variant="primary")
+                    add_section = gr.Button("+ Add")
+                    up = gr.Button("↑ Move")
+                    down = gr.Button("↓ Move")
+                    delete_section = gr.Button("Delete")
+                usage = gr.Markdown("Select a section to see its character count.")
+                with gr.Accordion("Copy narration", open=False):
+                    copy_button = gr.Button("Prepare text to copy")
+                    copy_text = gr.Textbox(label="Selected narration", lines=3)
+                    copy_status = gr.Markdown()
+            with gr.Tab("🎙️ Voiceover"):
+                gr.Markdown("Choose a narrator and preview estimated credits. **Audio generation is not available yet.** No credits will be charged.")
+                with gr.Row():
+                    voice = gr.Dropdown(label="Narrator voice", choices=[], interactive=True, scale=3)
+                    refresh_voices = gr.Button("Load voices", scale=1)
+                voice_status = gr.Markdown()
+                with gr.Row():
+                    whole_script_quote = gr.Button("Estimate full script", variant="primary")
+                    quote_button = gr.Button("Estimate selected section")
+                whole_script_quote_result = gr.Markdown()
+                quote_result = gr.Markdown()
+                with gr.Accordion("More voiceover details", open=False):
+                    regenerate_preview = gr.Button("Estimate section regeneration")
+                    regenerate_result = gr.Markdown()
+                    confirm_button = gr.Button("Confirm quote (no charge)")
+                    gr.Markdown("Quotes are estimates only. Voice generation and credit charging remain disabled.")
+                    if saved_login is not None:
+                        history_refresh = gr.Button("Refresh voiceover history")
+                        history_table = gr.Dataframe(headers=["Created", "Status", "Characters", "Quoted credits"], datatype=["str", "str", "number", "number"], interactive=False, value=[])
+                        history_status = gr.Markdown()
+            with gr.Tab("📁 My Projects"):
+                if saved_login is not None:
+                    gr.Markdown("Save creates a **new private copy**. Existing projects cannot be overwritten yet.")
+                    with gr.Row():
+                        refresh_projects_button = gr.Button("Refresh my projects")
+                        open_project_button = gr.Button("Open selected project", variant="primary")
+                    saved_projects = gr.Dropdown(label="My saved scripts", choices=[], interactive=True)
+                    saved_project_id = gr.Textbox(label="Saved project ID", interactive=False, visible=False)
+                    saved_project_status = gr.Markdown()
+                with gr.Accordion("Download a backup", open=True):
+                    export_format = gr.Dropdown(label="File type", choices=["txt", "json"], value="txt")
+                    export_button = gr.Button("Prepare download")
+                    export_file = gr.File(label="Download file", interactive=False)
+                    export_status = gr.Markdown()
+                with gr.Accordion("Import a script", open=False):
+                    import_file = gr.File(label="Select JSON backup", file_types=[".json"], type="filepath")
+                    import_button = gr.Button("Import script")
+                    import_status = gr.Markdown()
+        status = gr.Markdown()
+
+        refresh_voices.click(load_voice_choices, outputs=[voice, voice_status])
+        split_event = split.click(split_script, inputs=[script], outputs=[sections, selected, editor, status])
+        selected.change(select_section, inputs=[selected, sections], outputs=[editor])
+        selected.change(preview_section_usage, inputs=[selected, sections], outputs=[usage])
+        split_event.then(preview_section_usage, inputs=[selected, sections], outputs=[usage])
+        add_event = add_section.click(add_script_section, inputs=[sections], outputs=[sections, selected, editor, status])
+        delete_event = delete_section.click(delete_script_section, inputs=[selected, sections], outputs=[sections, selected, editor, status])
+        save_event = save.click(save_section, inputs=[selected, editor, sections], outputs=[sections, selected, status])
+        up_event = up.click(lambda idx, parts: move_section(idx, parts, -1), inputs=[selected, sections], outputs=[sections, selected, status])
+        down_event = down.click(lambda idx, parts: move_section(idx, parts, 1), inputs=[selected, sections], outputs=[sections, selected, status])
+        for event in (save_event, add_event, delete_event, up_event, down_event):
+            event.then(preview_section_usage, inputs=[selected, sections], outputs=[usage])
+        copy_button.click(prepare_section_copy, inputs=[selected, sections], outputs=[copy_text, copy_status])
+        whole_script_quote.click(quote_full_script, inputs=[sections], outputs=[whole_script_quote_result])
+        regenerate_preview.click(preview_clip_regeneration, inputs=[selected, sections], outputs=[regenerate_result])
+        quote_button.click(quote_selected_section, inputs=[selected, sections, voice], outputs=[quote_result, quote_snapshot])
+        confirm_button.click(confirm_quote, inputs=[selected, sections, voice, quote_snapshot], outputs=[quote_result])
+        export_button.click(export_script_file, inputs=[export_title, sections, export_format], outputs=[export_file, export_status])
+        import_event = import_button.click(restore_script_from_json, inputs=[import_file], outputs=[export_title, sections, selected, editor, import_status])
+        import_event.then(preview_section_usage, inputs=[selected, sections], outputs=[usage])
+        if saved_login is not None:
+            save_project_button.click(save_new_script_draft, inputs=[saved_login, export_title, sections], outputs=[saved_project_id, saved_project_status, saved_login])
+            refresh_projects_button.click(refresh_saved_script_drafts, inputs=[saved_login], outputs=[saved_projects, saved_project_status, saved_login])
+            opened = open_project_button.click(open_saved_script_draft, inputs=[saved_login, saved_projects], outputs=[export_title, sections, selected, editor, saved_project_status, saved_login])
+            opened.then(preview_section_usage, inputs=[selected, sections], outputs=[usage])
+            history_refresh.click(refresh_voiceover_history, inputs=[saved_login], outputs=[history_table, history_status, saved_login], show_progress="minimal")
+    return page
