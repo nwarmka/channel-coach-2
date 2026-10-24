@@ -407,15 +407,13 @@ def build_voiceover_page(saved_login=None, visible=False):
         confirm_button.click(confirm_quote, inputs=[selected, sections, voice, quote_snapshot], outputs=[quote_result])
         split.click(split_script, inputs=[script], outputs=[sections, selected, editor, status])
         selected.change(select_section, inputs=[selected, sections], outputs=[editor])
-        add_section.click(add_script_section, inputs=[sections], outputs=[sections, selected, editor, status])
-        delete_section.click(delete_script_section, inputs=[selected, sections], outputs=[sections, selected, editor, status])
-        save.click(save_section, inputs=[selected, editor, sections], outputs=[sections, selected, status])
-        up.click(lambda idx, parts: move_section(idx, parts, -1), inputs=[selected, sections], outputs=[sections, selected, status])
-        down.click(lambda idx, parts: move_section(idx, parts, 1), inputs=[selected, sections], outputs=[sections, selected, status])
+        add_event = add_section.click(add_script_section, inputs=[sections], outputs=[sections, selected, editor, status])
+        delete_event = delete_section.click(delete_script_section, inputs=[selected, sections], outputs=[sections, selected, editor, status])
+        save_event = save.click(save_section, inputs=[selected, editor, sections], outputs=[sections, selected, status])
+        up_event = up.click(lambda idx, parts: move_section(idx, parts, -1), inputs=[selected, sections], outputs=[sections, selected, status])
+        down_event = down.click(lambda idx, parts: move_section(idx, parts, 1), inputs=[selected, sections], outputs=[sections, selected, status])
         selected.change(preview_section_usage, inputs=[selected, sections], outputs=[usage])
-        save.click(preview_section_usage, inputs=[selected, sections], outputs=[usage])
-        add_section.click(preview_section_usage, inputs=[selected, sections], outputs=[usage])
-        delete_section.click(preview_section_usage, inputs=[selected, sections], outputs=[usage])
-        up.click(preview_section_usage, inputs=[selected, sections], outputs=[usage])
-        down.click(preview_section_usage, inputs=[selected, sections], outputs=[usage])
+        # Refresh after edits finish, rather than racing independent click handlers.
+        for edit_event in (save_event, add_event, delete_event, up_event, down_event):
+            edit_event.then(preview_section_usage, inputs=[selected, sections], outputs=[usage])
     return page
