@@ -40,13 +40,13 @@ def restore_script_from_json(file_path):
         return "", [], gr.update(choices=[], value=None), "", "Select a JSON script export first."
     try:
         path = Path(file_path)
-        if path.suffix.lower() != ".json" or path.stat().st_size > 1_000_000:
-            raise ValueError("Choose a JSON script export smaller than 1 MB.")
+        if path.suffix.lower() != ".json" or path.stat().st_size > 600_000:
+            raise ValueError("Choose a JSON script export no larger than 600 KB.")
         draft = deserialize_script_draft(path.read_text(encoding="utf-8"))
         parts = draft["sections"]
         choices = [(f"Section {i + 1}: {p[:55]}", str(i)) for i, p in enumerate(parts)]
         return draft["title"], parts, gr.update(choices=choices, value="0"), parts[0], "Script imported. Review sections before saving."
-    except (OSError, UnicodeError, ValueError, TypeError, KeyError):
+    except (OSError, UnicodeError, ValueError, TypeError, KeyError, AttributeError):
         return "", [], gr.update(choices=[], value=None), "", "Could not import this script JSON file."
 
 
