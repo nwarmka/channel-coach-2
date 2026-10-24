@@ -292,10 +292,10 @@ def open_saved_script_draft(saved_session, project_id):
         return (project["title"], sections, gr.update(choices=choices, value="0"),
                 sections[0], "Project opened. Save as a new project to keep changes.", updated)
     except (ValueError, FileNotFoundError):
-        return "", [], gr.update(choices=[], value=None), "", "Project not found or access denied.", saved_session
+        return gr.update(), gr.update(), gr.update(), gr.update(), "Project not found or access denied. Current draft unchanged.", saved_session
     except Exception as exc:
         print("Voiceover draft load unavailable:", type(exc).__name__)
-        return "", [], gr.update(choices=[], value=None), "", "Saved project could not be loaded.", saved_session
+        return gr.update(), gr.update(), gr.update(), gr.update(), "Saved project could not be loaded. Current draft unchanged.", saved_session
 
 
 def build_voiceover_page(saved_login=None, visible=False):
