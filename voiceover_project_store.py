@@ -1,4 +1,4 @@
-"""User-scoped draft project CRUD helpers.
+"""User-scoped draft project creation and read helpers.
 
 Only pass a Supabase client bound to a verified signed-in user session.
 Database RLS provides a second ownership boundary. Never use service role.
@@ -29,13 +29,10 @@ def save_script_project(client, verified_user_id, title, sections, project_id=No
     payload = json.loads(serialize_script_draft(title, sections))
     row = {"title": payload["title"], "sections": payload["sections"],
            "schema_version": 1}
-    table = client.table("voiceover_script_projects")
-    if project_id is None:
-        row["user_id"] = user
-        response = table.insert(row).execute()
-    else:
-        response = (table.update(row).eq("id", _project_uuid(project_id))
-                    .eq("user_id", user).execute())
+    if project_id is not None:
+        raise ValueError("Updating saved projects is not available yet. Save a new copy instead.")
+    row["user_id"] = user
+    response = client.table("voiceover_script_projects").insert(row).execute()
     if not response.data:
         raise FileNotFoundError("Script project could not be saved.")
     return response.data[0]["id"]
