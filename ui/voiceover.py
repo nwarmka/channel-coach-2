@@ -299,124 +299,100 @@ def open_saved_script_draft(saved_session, project_id):
 
 
 def build_voiceover_page(saved_login=None, visible=False):
-    """Build draft editor; generation intentionally unavailable."""
+    """A focused writing workspace with advanced tools kept out of the way."""
     with gr.Column(visible=visible, elem_id="voiceover-studio-page") as page:
-        gr.Markdown("## 🎙️ AI Script & Voiceover Studio")
-        gr.Markdown("Draft and arrange narration sections. Audio generation is coming soon.")
-        gr.Markdown("**Preview release:** Script editing, exports, and private save-as-new project storage are prepared. Cloud saving still needs an authenticated end-to-end test before release. Voice generation and credit charging are not active.")
-        gr.Markdown("**Editing tip:** After changing narration text, click **Save section** before exporting, quoting, or saving your project. Unsaved edits in the text box are not included.")
-        gr.Markdown("**Offline backup:** Download your script as JSON so you can import it again later, even if cloud storage is unavailable.")
-        with gr.Row():
-            refresh_voices = gr.Button("Load available voices")
-            voice = gr.Dropdown(label="Narrator voice", choices=[], interactive=True)
-        voice_status = gr.Markdown()
-        usage = gr.Markdown("Select a section to see its character usage.")
-        gr.Markdown("**MP3 generation is disabled.** A paid ElevenLabs plan with commercial rights, authenticated credit approval, and safe storage are required before launch.")
-        if saved_login is not None:
-            gr.Markdown("### Voiceover job history")
-            history_refresh = gr.Button("Refresh job history")
-            history_table = gr.Dataframe(
-                headers=["Created", "Status", "Characters", "Quoted credits"],
-                datatype=["str", "str", "number", "number"],
-                interactive=False,
-                value=[],
-            )
-            history_status = gr.Markdown("Refresh to load your private job history.")
-            history_refresh.click(
-                refresh_voiceover_history, inputs=[saved_login],
-                outputs=[history_table, history_status, saved_login],
-                show_progress="minimal",
-            )
-        refresh_voices.click(load_voice_choices, outputs=[voice, voice_status])
+        gr.Markdown("## 🎙️ Script Studio")
+        gr.Markdown("Write your script, organize your scenes, and save your work.")
         sections = gr.State([])
-        script = gr.Textbox(label="Your script", lines=10, placeholder="Paste your script here. Separate sections with blank lines.")
-        split = gr.Button("Split into sections")
-        selected = gr.Dropdown(label="Script sections", choices=[], interactive=True)
-        editor = gr.Textbox(label="Edit selected section", lines=5)
-        with gr.Row():
-            save = gr.Button("Save section")
-            up = gr.Button("Move up")
-            down = gr.Button("Move down")
-            add_section = gr.Button("Add section")
-            delete_section = gr.Button("Delete selected section")
-        gr.Markdown("### Your script project")
-        export_title = gr.Textbox(label="Project title", value="My voiceover script")
-        if saved_login is not None:
-            gr.Markdown("### Private saved script projects")
-            gr.Markdown("Saving creates a new copy. Existing-project overwrites are disabled until conflict-safe database updates are deployed.")
-            with gr.Row():
-                save_project_button = gr.Button("Save as new project")
-                refresh_projects_button = gr.Button("Refresh saved projects")
-            saved_project_id = gr.Textbox(label="New project ID", interactive=False)
-            saved_projects = gr.Dropdown(label="Saved projects", choices=[], interactive=True)
-            open_project_button = gr.Button("Open selected saved project")
-            saved_project_status = gr.Markdown()
-            save_project_button.click(
-                save_new_script_draft,
-                inputs=[saved_login, export_title, sections],
-                outputs=[saved_project_id, saved_project_status, saved_login],
-            )
-            refresh_projects_button.click(
-                refresh_saved_script_drafts,
-                inputs=[saved_login],
-                outputs=[saved_projects, saved_project_status, saved_login],
-            )
-            open_event = open_project_button.click(
-                open_saved_script_draft,
-                inputs=[saved_login, saved_projects],
-                outputs=[export_title, sections, selected, editor, saved_project_status, saved_login],
-            )
-            open_event.then(preview_section_usage, inputs=[selected, sections], outputs=[usage])
-        gr.Markdown("### Import a previously exported script")
-        import_file = gr.File(label="Import JSON script", file_types=[".json"], type="filepath")
-        import_button = gr.Button("Import JSON script")
-        import_status = gr.Markdown()
-        import_event = import_button.click(
-            restore_script_from_json,
-            inputs=[import_file],
-            outputs=[export_title, sections, selected, editor, import_status],
-        )
-        import_event.then(preview_section_usage, inputs=[selected, sections], outputs=[usage])
-        gr.Markdown("### Export your script")
-        export_format = gr.Dropdown(label="Export format", choices=["txt", "json"], value="txt")
-        export_button = gr.Button("Prepare script download")
-        export_file = gr.File(label="Download script", interactive=False)
-        export_status = gr.Markdown()
-        export_button.click(export_script_file,
-                            inputs=[export_title, sections, export_format],
-                            outputs=[export_file, export_status])
-        copy_button = gr.Button("Prepare selected section to copy")
-        copy_text = gr.Textbox(label="Copy selected narration text", lines=4,
-                               interactive=True)
-        copy_status = gr.Markdown()
-        copy_button.click(prepare_section_copy, inputs=[selected, sections],
-                          outputs=[copy_text, copy_status])
-        status = gr.Markdown()
-        whole_script_quote = gr.Button("Check entire script credit cost")
-        whole_script_quote_result = gr.Markdown("No full-script quote requested.")
-        whole_script_quote.click(quote_full_script, inputs=[sections],
-                                 outputs=[whole_script_quote_result])
-        regenerate_preview = gr.Button("Preview cost to regenerate selected clip")
-        regenerate_result = gr.Markdown("No regeneration quote requested.")
-        regenerate_preview.click(preview_clip_regeneration,
-                                 inputs=[selected, sections],
-                                 outputs=[regenerate_result])
         quote_snapshot = gr.State(None)
-        quote_button = gr.Button("Check credit cost")
-        quote_result = gr.Markdown("No quote requested yet.")
-        quote_button.click(quote_selected_section, inputs=[selected, sections, voice], outputs=[quote_result, quote_snapshot])
-        confirm_button = gr.Button("Confirm quote (no charge)")
-        confirm_button.click(confirm_quote, inputs=[selected, sections, voice, quote_snapshot], outputs=[quote_result])
+        with gr.Row():
+            export_title = gr.Textbox(label="Project name", value="My voiceover script", scale=4)
+            if saved_login is not None:
+                save_project_button = gr.Button("Save new copy", variant="primary", scale=1)
+        with gr.Tabs():
+            with gr.Tab("✍️ Write"):
+                script = gr.Textbox(label="Script", lines=12, placeholder="Start writing or paste your script here. Use blank lines to separate scenes.")
+                split = gr.Button("Create sections from script", variant="primary")
+                gr.Markdown("**Tip:** Separate paragraphs with a blank line to create individual narration sections.")
+            with gr.Tab("🧩 Sections"):
+                gr.Markdown("Select a section to edit its narration or change its order.")
+                selected = gr.Dropdown(label="Choose section", choices=[], interactive=True)
+                editor = gr.Textbox(label="Narration text", lines=8)
+                with gr.Row():
+                    save = gr.Button("Save section", variant="primary")
+                    add_section = gr.Button("+ Add")
+                    up = gr.Button("↑ Move")
+                    down = gr.Button("↓ Move")
+                    delete_section = gr.Button("Delete")
+                usage = gr.Markdown("Select a section to see its character count.")
+                with gr.Accordion("Copy narration", open=False):
+                    copy_button = gr.Button("Prepare text to copy")
+                    copy_text = gr.Textbox(label="Selected narration", lines=3)
+                    copy_status = gr.Markdown()
+            with gr.Tab("🎙️ Voiceover"):
+                gr.Markdown("Choose a narrator and preview estimated credits. **Audio generation is not available yet.** No credits will be charged.")
+                with gr.Row():
+                    voice = gr.Dropdown(label="Narrator voice", choices=[], interactive=True, scale=3)
+                    refresh_voices = gr.Button("Load voices", scale=1)
+                voice_status = gr.Markdown()
+                with gr.Row():
+                    whole_script_quote = gr.Button("Estimate full script", variant="primary")
+                    quote_button = gr.Button("Estimate selected section")
+                whole_script_quote_result = gr.Markdown()
+                quote_result = gr.Markdown()
+                with gr.Accordion("More voiceover details", open=False):
+                    regenerate_preview = gr.Button("Estimate section regeneration")
+                    regenerate_result = gr.Markdown()
+                    confirm_button = gr.Button("Confirm quote (no charge)")
+                    gr.Markdown("Quotes are estimates only. Voice generation and credit charging remain disabled.")
+                    if saved_login is not None:
+                        history_refresh = gr.Button("Refresh voiceover history")
+                        history_table = gr.Dataframe(headers=["Created", "Status", "Characters", "Quoted credits"], datatype=["str", "str", "number", "number"], interactive=False, value=[])
+                        history_status = gr.Markdown()
+            with gr.Tab("📁 My Projects"):
+                if saved_login is not None:
+                    gr.Markdown("Save creates a **new private copy**. Existing projects cannot be overwritten yet.")
+                    with gr.Row():
+                        refresh_projects_button = gr.Button("Refresh my projects")
+                        open_project_button = gr.Button("Open selected project", variant="primary")
+                    saved_projects = gr.Dropdown(label="My saved scripts", choices=[], interactive=True)
+                    saved_project_id = gr.Textbox(label="Saved project ID", interactive=False, visible=False)
+                    saved_project_status = gr.Markdown()
+                with gr.Accordion("Download a backup", open=True):
+                    export_format = gr.Dropdown(label="File type", choices=["txt", "json"], value="txt")
+                    export_button = gr.Button("Prepare download")
+                    export_file = gr.File(label="Download file", interactive=False)
+                    export_status = gr.Markdown()
+                with gr.Accordion("Import a script", open=False):
+                    import_file = gr.File(label="Select JSON backup", file_types=[".json"], type="filepath")
+                    import_button = gr.Button("Import script")
+                    import_status = gr.Markdown()
+        status = gr.Markdown()
+
+        refresh_voices.click(load_voice_choices, outputs=[voice, voice_status])
         split_event = split.click(split_script, inputs=[script], outputs=[sections, selected, editor, status])
         selected.change(select_section, inputs=[selected, sections], outputs=[editor])
+        selected.change(preview_section_usage, inputs=[selected, sections], outputs=[usage])
+        split_event.then(preview_section_usage, inputs=[selected, sections], outputs=[usage])
         add_event = add_section.click(add_script_section, inputs=[sections], outputs=[sections, selected, editor, status])
         delete_event = delete_section.click(delete_script_section, inputs=[selected, sections], outputs=[sections, selected, editor, status])
         save_event = save.click(save_section, inputs=[selected, editor, sections], outputs=[sections, selected, status])
         up_event = up.click(lambda idx, parts: move_section(idx, parts, -1), inputs=[selected, sections], outputs=[sections, selected, status])
         down_event = down.click(lambda idx, parts: move_section(idx, parts, 1), inputs=[selected, sections], outputs=[sections, selected, status])
-        selected.change(preview_section_usage, inputs=[selected, sections], outputs=[usage])
-        split_event.then(preview_section_usage, inputs=[selected, sections], outputs=[usage])
-        # Refresh after edits finish, rather than racing independent click handlers.
-        for edit_event in (save_event, add_event, delete_event, up_event, down_event):
-            edit_event.then(preview_section_usage, inputs=[selected, sections], outputs=[usage])
+        for event in (save_event, add_event, delete_event, up_event, down_event):
+            event.then(preview_section_usage, inputs=[selected, sections], outputs=[usage])
+        copy_button.click(prepare_section_copy, inputs=[selected, sections], outputs=[copy_text, copy_status])
+        whole_script_quote.click(quote_full_script, inputs=[sections], outputs=[whole_script_quote_result])
+        regenerate_preview.click(preview_clip_regeneration, inputs=[selected, sections], outputs=[regenerate_result])
+        quote_button.click(quote_selected_section, inputs=[selected, sections, voice], outputs=[quote_result, quote_snapshot])
+        confirm_button.click(confirm_quote, inputs=[selected, sections, voice, quote_snapshot], outputs=[quote_result])
+        export_button.click(export_script_file, inputs=[export_title, sections, export_format], outputs=[export_file, export_status])
+        import_event = import_button.click(restore_script_from_json, inputs=[import_file], outputs=[export_title, sections, selected, editor, import_status])
+        import_event.then(preview_section_usage, inputs=[selected, sections], outputs=[usage])
+        if saved_login is not None:
+            save_project_button.click(save_new_script_draft, inputs=[saved_login, export_title, sections], outputs=[saved_project_id, saved_project_status, saved_login])
+            refresh_projects_button.click(refresh_saved_script_drafts, inputs=[saved_login], outputs=[saved_projects, saved_project_status, saved_login])
+            opened = open_project_button.click(open_saved_script_draft, inputs=[saved_login, saved_projects], outputs=[export_title, sections, selected, editor, saved_project_status, saved_login])
+            opened.then(preview_section_usage, inputs=[selected, sections], outputs=[usage])
+            history_refresh.click(refresh_voiceover_history, inputs=[saved_login], outputs=[history_table, history_status, saved_login], show_progress="minimal")
     return page
