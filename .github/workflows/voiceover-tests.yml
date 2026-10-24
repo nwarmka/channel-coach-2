@@ -8,6 +8,7 @@ on:
     paths:
       - 'voiceover_*.py'
       - 'ui/voiceover.py'
+      - 'app.py'
       - 'tests/test_voiceover_*.py'
       - '.github/workflows/voiceover-tests.yml'
   workflow_dispatch:
