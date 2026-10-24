@@ -21,6 +21,12 @@ class ProjectStoreTests(unittest.TestCase):
         self.assertEqual(row["user_id"], USER)
         self.assertEqual(row["sections"], ["Intro"])
 
+    def test_update_rejected_without_database_call(self):
+        client = MagicMock()
+        with self.assertRaisesRegex(ValueError, "Save a new copy"):
+            save_script_project(client, USER, "Video", ["Intro"], project_id=PROJECT)
+        client.table.assert_not_called()
+
     def test_list_projects_filters_user(self):
         client = MagicMock()
         client.table.return_value.select.return_value.eq.return_value.order.return_value.limit.return_value.execute.return_value.data = []
