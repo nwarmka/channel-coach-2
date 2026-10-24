@@ -1,6 +1,6 @@
 """Voiceover Studio UI draft.
 
-Not wired into app.py yet. Audio generation remains disabled until authenticated
+Integrated into app.py on the development branch. Audio generation remains disabled until authenticated
 credit authorization, cost approval, and storage handling are implemented.
 """
 import re
@@ -205,6 +205,31 @@ def prepare_section_copy(section_id, sections):
         return "", f"Cannot copy section: {exc}"
 
 
+def add_script_section(sections):
+    """Append an editable section without modifying stored projects."""
+    from voiceover_section_editor import append_script_section
+    try:
+        updated = append_script_section(sections, "New section")
+    except (ValueError, TypeError) as exc:
+        return sections, gr.update(), "", f"Cannot add section: {exc}"
+    index = len(updated) - 1
+    choices = [(f"Section {i + 1}: {p[:55]}", str(i)) for i, p in enumerate(updated)]
+    return updated, gr.update(choices=choices, value=str(index)), updated[index], "Section added."
+
+
+def delete_script_section(section_id, sections):
+    """Delete only the selected in-memory section, never a stored project."""
+    from voiceover_section_editor import remove_script_section
+    try:
+        updated = remove_script_section(sections, int(section_id))
+    except (ValueError, TypeError, IndexError) as exc:
+        return sections, gr.update(), "", f"Cannot delete section: {exc}"
+    choices = [(f"Section {i + 1}: {p[:55]}", str(i)) for i, p in enumerate(updated)]
+    index = min(int(section_id), len(updated) - 1)
+    return updated, gr.update(choices=choices, value=str(index) if updated else None), (
+        updated[index] if updated else ""), "Section deleted from the current draft."
+
+
 def build_voiceover_page(saved_login=None, visible=False):
     """Build draft editor; generation intentionally unavailable."""
     with gr.Column(visible=visible, elem_id="voiceover-studio-page") as page:
@@ -241,6 +266,8 @@ def build_voiceover_page(saved_login=None, visible=False):
             save = gr.Button("Save section")
             up = gr.Button("Move up")
             down = gr.Button("Move down")
+            add_section = gr.Button("Add section")
+            delete_section = gr.Button("Delete selected section")
         gr.Markdown("### Export your script")
         export_title = gr.Textbox(label="Project title", value="My voiceover script")
         export_format = gr.Dropdown(label="Export format", choices=["txt", "json"], value="txt")
@@ -274,6 +301,8 @@ def build_voiceover_page(saved_login=None, visible=False):
         confirm_button.click(confirm_quote, inputs=[selected, sections, voice, quote_snapshot], outputs=[quote_result])
         split.click(split_script, inputs=[script], outputs=[sections, selected, editor, status])
         selected.change(select_section, inputs=[selected, sections], outputs=[editor])
+        add_section.click(add_script_section, inputs=[sections], outputs=[sections, selected, editor, status])
+        delete_section.click(delete_script_section, inputs=[selected, sections], outputs=[sections, selected, editor, status])
         save.click(save_section, inputs=[selected, editor, sections], outputs=[sections, selected, status])
         up.click(lambda idx, parts: move_section(idx, parts, -1), inputs=[selected, sections], outputs=[sections, selected, status])
         down.click(lambda idx, parts: move_section(idx, parts, 1), inputs=[selected, sections], outputs=[sections, selected, status])
