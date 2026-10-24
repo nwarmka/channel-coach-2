@@ -8,6 +8,7 @@ import gradio as gr
 from elevenlabs_service import list_voices, ElevenLabsError
 from voiceover_pricing import quote_voiceover_credits
 from voiceover_quote import create_quote_snapshot, quote_is_current
+from voiceover_script_export import build_script_export
 from voiceover_jobs import list_voiceover_jobs
 from voiceover_job_display import summarize_voiceover_jobs
 from ui.ideas_inbox import _authenticated_client
@@ -156,6 +157,20 @@ def refresh_voiceover_history(saved_session):
         return [], "Voiceover history is not available yet.", saved_session
 
 
+def export_script_file(title, sections, export_format):
+    """Create an offline script export without generation or credit charges."""
+    import tempfile
+    from pathlib import Path
+    try:
+        artifact = build_script_export(title, sections, export_format)
+        directory = Path(tempfile.mkdtemp(prefix="cc_script_export_"))
+        path = directory / artifact["filename"]
+        path.write_bytes(artifact["content"])
+        return str(path), "Script export ready. No credits charged."
+    except (ValueError, TypeError) as exc:
+        return None, f"Cannot export script: {exc}"
+
+
 def build_voiceover_page(saved_login=None, visible=False):
     """Build draft editor; generation intentionally unavailable."""
     with gr.Column(visible=visible, elem_id="voiceover-studio-page") as page:
@@ -192,6 +207,15 @@ def build_voiceover_page(saved_login=None, visible=False):
             save = gr.Button("Save section")
             up = gr.Button("Move up")
             down = gr.Button("Move down")
+        gr.Markdown("### Export your script")
+        export_title = gr.Textbox(label="Project title", value="My voiceover script")
+        export_format = gr.Dropdown(label="Export format", choices=["txt", "json"], value="txt")
+        export_button = gr.Button("Prepare script download")
+        export_file = gr.File(label="Download script", interactive=False)
+        export_status = gr.Markdown()
+        export_button.click(export_script_file,
+                            inputs=[export_title, sections, export_format],
+                            outputs=[export_file, export_status])
         status = gr.Markdown()
         quote_snapshot = gr.State(None)
         quote_button = gr.Button("Check credit cost")
