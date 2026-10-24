@@ -26,6 +26,8 @@ def split_script(script):
     parts = [p.strip() for p in re.split(r"\n\s*\n", text) if p.strip()]
     if len(parts) > 100:
         return [], gr.update(choices=[], value=None), "", "Limit scripts to 100 sections."
+    if any(len(part) > 5000 for part in parts):
+        return [], gr.update(choices=[], value=None), "", "Each section must be 5,000 characters or less."
     choices = [(f"Section {i + 1}: {p[:55]}", str(i)) for i, p in enumerate(parts)]
     return parts, gr.update(choices=choices, value="0"), parts[0], f"{len(parts)} editable sections ready."
 
@@ -42,6 +44,8 @@ def save_section(section_id, updated_text, sections):
     updated = (updated_text or "").strip()
     if not updated:
         return sections, gr.update(), "A section cannot be empty."
+    if len(updated) > 5000:
+        return sections, gr.update(), "A section cannot exceed 5,000 characters."
     try:
         index = int(section_id)
         new_sections = list(sections)
