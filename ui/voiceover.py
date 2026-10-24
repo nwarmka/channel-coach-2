@@ -413,4 +413,8 @@ def build_voiceover_page(saved_login=None, visible=False):
         down.click(lambda idx, parts: move_section(idx, parts, 1), inputs=[selected, sections], outputs=[sections, selected, status])
         selected.change(preview_section_usage, inputs=[selected, sections], outputs=[usage])
         save.click(preview_section_usage, inputs=[selected, sections], outputs=[usage])
+        add_section.click(preview_section_usage, inputs=[selected, sections], outputs=[usage])
+        delete_section.click(preview_section_usage, inputs=[selected, sections], outputs=[usage])
+        up.click(preview_section_usage, inputs=[selected, sections], outputs=[usage])
+        down.click(preview_section_usage, inputs=[selected, sections], outputs=[usage])
     return page
